@@ -1,12 +1,14 @@
 import React from 'react';
 import { Layout, Nav, Button, Avatar, Icon } from '@douyinfe/semi-ui';
-import { IconBell, IconHelpCircle, IconGithubLogo, IconHome, IconHistogram, IconLive, IconSetting, IconSemiLogo } from '@douyinfe/semi-icons';
-import { Gateway } from '../components/icon';
+import { IconBell, IconHelpCircle, IconGithubLogo, IconHome, IconServerStroked, IconLive, IconSetting, } from '@douyinfe/semi-icons';
+import { Outlet,useNavigate } from 'react-router-dom';
 
 export default function MainLayout() {
     const [selectedKeys, setSelectedKeys] = React.useState(['Home']);
 
     const { Header, Footer, Sider, Content } = Layout;
+    const navigate = useNavigate();
+
     return (
         <Layout style={{ border: '1px solid var(--semi-color-border)', height: '100vh' }}>
             <Sider style={{ backgroundColor: 'var(--semi-color-bg-1)' }}>
@@ -14,11 +16,20 @@ export default function MainLayout() {
                     defaultSelectedKeys={selectedKeys}
                     onSelect={key => {
                         setSelectedKeys([key.itemKey.toString()]);
+                        if (key.itemKey === 'Home') {
+                            navigate('/');
+                        } else if (key.itemKey === 'Gateway') {
+                            navigate('/Gateway');
+                        } else if (key.itemKey === 'Logger') {
+                            navigate('/Logger');
+                        } else if (key.itemKey === 'Setting') {
+                            navigate('/Setting');
+                        }
                     }}
                     style={{ maxWidth: 220, height: '100%' }}
                     items={[
                         { itemKey: 'Home', text: '首页', icon: <IconHome size="large" /> },
-                        { itemKey: 'Gateway', text: '代理设置', icon: <Icon svg={<Gateway color={(selectedKeys[0] === "Gateway" ? "#3661F8" : "#333333")} />}></Icon> },
+                        { itemKey: 'Gateway', text: '代理设置', icon: <IconServerStroked /> },
                         { itemKey: 'Logger', text: '日志', icon: <IconLive size="large" /> },
                         { itemKey: 'Setting', text: '设置', icon: <IconSetting size="large" /> },
                     ]}
@@ -37,24 +48,9 @@ export default function MainLayout() {
                         mode="horizontal"
                         footer={
                             <>
-                                <Button
-                                    theme="borderless"
-                                    icon={<IconBell size="large" />}
-                                    style={{
-                                        color: 'var(--semi-color-text-2)',
-                                        marginRight: '12px',
-                                    }}
-                                />
-                                <Button
-                                    theme="borderless"
-                                    icon={<IconHelpCircle size="large" />}
-                                    style={{
-                                        color: 'var(--semi-color-text-2)',
-                                        marginRight: '12px',
-                                    }}
-                                />
+
                                 <Avatar color="orange" size="small">
-                                    YJ
+                                    Gateway
                                 </Avatar>
                             </>
                         }
@@ -66,6 +62,7 @@ export default function MainLayout() {
                         backgroundColor: 'var(--semi-color-bg-0)',
                     }}
                 >
+                    <Outlet />
                 </Content>
                 <Footer
                     style={{

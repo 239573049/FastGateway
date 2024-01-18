@@ -8,8 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CoreFlex.Jwt" Version="0.1.4" />
-    <PackageReference Include="LiteDB" Version="5.0.17" />
+    <PackageReference Include="FreeSql" Version="3.2.810" />
+    <PackageReference Include="FreeSql.DbContext" Version="3.2.810" />
+    <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.2.810" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
   </ItemGroup>
