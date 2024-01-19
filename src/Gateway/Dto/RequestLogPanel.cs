@@ -2,7 +2,9 @@
 
 public class RequestLogPanel
 {
-    public int RequestCount { get; set; }
+    public int Value { get; set; }
     
     public DateTime StartTime { get; set; }
+    
+    public string Time => StartTime.ToString("yyyy-MM-dd HH:mm:ss");
 }

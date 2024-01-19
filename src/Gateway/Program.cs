@@ -11,6 +11,17 @@ Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHand
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.GetSection(nameof(RequestOptions)).Get<RequestOptions>();
+builder.Services.AddMemoryCache();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder => builder
+            .SetIsOriginAllowed(_ => true)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
+});
 
 builder.Services.AddSingleton<RequestLogService>();
 builder.Services.AddSingleton<IFreeSql>((_ =>
@@ -27,6 +38,8 @@ builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 app.Use((async (context, next) =>
 {
