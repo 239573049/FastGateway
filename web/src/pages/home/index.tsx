@@ -1,10 +1,11 @@
-import {Panel} from '../../service/RequestLogService';
-import {useEffect, useState} from "react";
+import { Panel } from '../../service/RequestLogService';
+import { useEffect, useState } from "react";
 import { VChart } from "@visactor/react-vchart";
+import { Col, Row } from '@douyinfe/semi-ui';
 
 export default function Home() {
     const [hours, setHours] = useState<number>(24);
-    const [data, setData] = useState<any>({
+    const [requestSize, setRequestSize] = useState<any>({
         spec: {
 
             type: 'area',
@@ -12,21 +13,101 @@ export default function Home() {
                 values: [
                 ]
             },
+            title: {
+                visible: true,
+                text: '最近24小时记录'
+            },
             xField: 'time',
             yField: 'value'
         }
     });
+    const [requestPath, setRequestPath] = useState<any>({
+        spec: {
+
+            type: 'pie',
+            data: [
+                {
+                    id: 'id0',
+                    values: [
+                    ]
+                }
+            ],
+            outerRadius: 0.8,
+            valueField: 'value',
+            categoryField: 'type',
+            title: {
+                visible: true,
+                text: '路由热度排名'
+            },
+            legends: {
+                visible: true,
+                orient: 'left'
+            },
+            label: {
+                visible: true
+            },
+            tooltip: {
+                mark: {
+                    content: [
+                        {
+                            key: (datum: { [x: string]: any; }) => datum['type'],
+                            value: (datum: { [x: string]: string; }) => datum['value'] + '%'
+                        }
+                    ]
+                }
+            }
+        }
+    })
+
     async function loadingPanel() {
-        const response = await Panel(hours);
-        console.log(response);
-        setData({
+        const response = await Panel(hours) as any;
+        setRequestSize({
             spec: {
                 type: 'area',
                 data: {
-                    values: response
+                    values: response.data.requestSize
+                },
+                title: {
+                    visible: true,
+                    text: '最近24小时记录'
                 },
                 xField: 'time',
                 yField: 'value'
+            }
+        });
+        setRequestPath({
+            spec: {
+                type: 'pie',
+                data: [
+                    {
+                        id: 'id0',
+                        values: response.data.requestPath
+                    }
+                ],
+                outerRadius: 0.8,
+                valueField: 'value',
+                categoryField: 'type',
+                title: {
+                    visible: true,
+                    text: '路由热度排名'
+                },
+                legends: {
+                    visible: true,
+                    orient: 'left'
+                },
+                label: {
+                    visible: true
+                },
+                tooltip: {
+                    mark: {
+                        content: [
+                            {
+                                key: (datum: { [x: string]: any; }) => datum['type'],
+                                value: (datum: { [x: string]: string; }) => datum['value'] + '%'
+                            }
+                        ]
+                    }
+                }
             }
         });
     }
@@ -37,14 +118,22 @@ export default function Home() {
 
     return (
         <div className="App">
-            <h2>24小时请求记录</h2>
-            <VChart
-                spec={{
-                    height: 200,
-                    width: 500,
-                    ...data.spec,
-                }}
-            />
+
+            <Row>
+                <Col span={12}><div className="col-content">
+                    <VChart
+                        spec={{
+                            height: 200,
+                            ...requestSize.spec,
+                        }}
+                    /></div></Col>
+                <Col span={12}><div className="col-content">
+                    <VChart
+                        spec={{
+                            height: 200,
+                            ...requestPath.spec,
+                        }} /></div></Col>
+            </Row>
         </div>
     );
 }

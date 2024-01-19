@@ -6,7 +6,7 @@ import request from "../utils/request";
 * @constructor
 */
 export function Panel(hours:number){
-    return request.get("/api/panel",{
+    return request.get("/api/gateway/panel",{
         params:{
             hours
         }

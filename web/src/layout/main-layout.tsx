@@ -1,6 +1,6 @@
 import React from 'react';
-import { Layout, Nav, Button, Avatar, Icon } from '@douyinfe/semi-ui';
-import { IconBell, IconHelpCircle, IconGithubLogo, IconHome, IconServerStroked, IconLive, IconSetting, } from '@douyinfe/semi-icons';
+import { Layout, Nav, Button, Avatar } from '@douyinfe/semi-ui';
+import { IconGithubLogo, IconHome, IconServerStroked, IconLive, IconSetting, } from '@douyinfe/semi-icons';
 import { Outlet,useNavigate } from 'react-router-dom';
 
 export default function MainLayout() {

@@ -1,18 +1,16 @@
-using System.Diagnostics;
-using FreeSql;
-using FreeSql.Internal;
-using Gateway.Entities;
-using Gateway.Options;
-using Gateway.Services;
-using Gateway.TypeHandlers;
+#region FreeSql类型转换
 
-Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler());
+Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
+Utils.TypeHandlers.TryAdd(typeof(List<RouteMatchEntity>), new StringJsonHandler<List<RouteMatchEntity>>());
+Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
+
+#endregion
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.GetSection(nameof(RequestOptions)).Get<RequestOptions>();
 builder.Services.AddMemoryCache();
-
+builder.Services.AddSingleton<RequestLogMiddleware>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -24,7 +22,8 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSingleton<RequestLogService>();
-builder.Services.AddSingleton<IFreeSql>((_ =>
+builder.Services.AddSingleton<GatewayService>();
+builder.Services.AddSingleton<IFreeSql>(_ =>
 {
     var freeSql = new FreeSqlBuilder()
         .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -32,48 +31,54 @@ builder.Services.AddSingleton<IFreeSql>((_ =>
         .UseAutoSyncStructure(true) //自动同步实体结构到数据库，FreeSql不会扫描程序集，只有CRUD时才会生成表。
         .Build();
     return freeSql;
-}));
+});
+
 
 builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters);
 
 var app = builder.Build();
 
 app.UseCors("AllowAll");
 
-app.Use((async (context, next) =>
-{
-    if (RequestOptions.FilterSuffixes.Any(x => context.Request.Path.Value?.EndsWith(x) == true))
-        return;
+app.UseStaticFiles();
 
-    var requestLogService = context.RequestServices.GetRequiredService<RequestLogService>();
-    var ip = context.Connection.RemoteIpAddress?.ToString();
+app.UseMiddleware<RequestLogMiddleware>();
 
-    var requestLog = new RequestLog
-    {
-        Path = context.Request.Path,
-        Method = context.Request.Method,
-        QueryString = context.Request.QueryString.ToString(),
-        CreatedTime = DateTime.Now,
-        Ip = ip,
-        BrowserInfo = context.Request.Headers.UserAgent.ToString(),
-    };
-    context.Items["RequestLog"] = requestLog;
-    var stopwatch = Stopwatch.StartNew();
-    await next();
-    stopwatch.Stop();
-
-    // 过滤Content-Type
-    if (RequestOptions.FilterContentTypes.Any(x => context.Response.ContentType?.Contains(x) == true))
-        return;
-
-    requestLog.ExecutionDuration = stopwatch.Elapsed.TotalMilliseconds;
-    requestLog.StatusCode = context.Response.StatusCode;
-    await requestLogService.LogAsync(requestLog);
-}));
-
-app.MapGet("/api/panel", async (RequestLogService requestLogService, int hours) =>
+app.MapGet("/api/gateway/panel", async (RequestLogService requestLogService, int hours) =>
     await requestLogService.PanelAsync(hours));
+
+#region Router
+
+app.MapGet("/api/gateway/routes", async (GatewayService gatewayService) =>
+    await gatewayService.GetRouteAsync());
+
+app.MapPost("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
+    await gatewayService.CreateRouteAsync(routeEntity));
+
+app.MapPut("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
+    await gatewayService.UpdateRouteAsync(routeEntity));
+
+app.MapDelete("/api/gateway/routes/{routeId}", async (GatewayService gatewayService, string routeId) =>
+    await gatewayService.DeleteRouteAsync(routeId));
+
+#endregion
+
+#region Clusters
+
+app.MapGet("/api/gateway/clusters", async (GatewayService gatewayService) =>
+    await gatewayService.GetClusterAsync());
+
+app.MapPost("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
+    await gatewayService.CreateClusterAsync(clusterEntity));
+
+app.MapPut("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
+    await gatewayService.UpdateClusterAsync(clusterEntity));
+
+app.MapDelete("/api/gateway/clusters/{clusterId}", async (GatewayService gatewayService, string clusterId) =>
+    await gatewayService.DeleteClusterAsync(clusterId));
+
+#endregion
 
 app.MapReverseProxy();
 

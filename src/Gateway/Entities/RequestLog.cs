@@ -1,6 +1,4 @@
-﻿using FreeSql.DataAnnotations;
-
-namespace Gateway.Entities;
+﻿namespace Gateway.Entities;
 
 [Index("uk_path", nameof(Path), false)]
 [Index("uk_ip", nameof(Ip), false)]

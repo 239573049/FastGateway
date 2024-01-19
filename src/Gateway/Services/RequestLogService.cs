@@ -1,10 +1,4 @@
-﻿using System.Text.Json;
-using System.Threading.Channels;
-using Gateway.Dto;
-using Gateway.Entities;
-using Microsoft.Extensions.Caching.Memory;
-
-namespace Gateway.Services;
+﻿namespace Gateway.Services;
 
 /// <summary>
 /// 请求日志服务处理
@@ -44,15 +38,17 @@ public class RequestLogService
         await _channel.Writer.WriteAsync(requestLog);
     }
 
-    public async Task<List<RequestLogPanel>> PanelAsync(int hours)
+    public async Task<ResultDto<RequestLogPanel>> PanelAsync(int hours)
     {
         // 从缓存中获取
         var cacheKey = $"RequestLogPanel-{hours}";
-        if (_memoryCache.TryGetValue(cacheKey, out List<RequestLogPanel> result))
-            return result;
+        if (_memoryCache.TryGetValue(cacheKey, out RequestLogPanel result))
+            return ResultDto<RequestLogPanel>.Success(result);
+
+        result = new RequestLogPanel();
         
         // hours是传递的多少小时，查询每小时的请求量，返回一个数组
-        result = (await _freeSql.Ado.QueryAsync<RequestLogPanel>(
+        var requestSizePanels = (await _freeSql.Ado.QueryAsync<RequestSizePanel>(
             $"""
              WITH RECURSIVE HoursBefore AS (
                  SELECT strftime('%Y-%m-%d %H:00:00', 'now', 'localtime') AS StartTime,
@@ -79,9 +75,19 @@ public class RequestLogService
                  HB.StartTime DESC
              """)).OrderBy(x => x.StartTime).ToList();
 
+        result.RequestSize = requestSizePanels;
+        var pathResult = (await _freeSql.Ado.QueryAsync<RequestPathPanel>(
+            "select count(*) as Value, Path AS Type,Id from RequestLog where CreatedTime > @Time group by Path order by count(*) desc limit 5",
+            new
+            {
+                Time = DateTime.Now.ToString("yyyy-MM-dd 00:00")
+            })).OrderByDescending(x => x.Value).ToList();
+
+        result.RequestPath = pathResult;
+
         // 设置缓存
         _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
-        
-        return result;
+
+        return ResultDto<RequestLogPanel>.Success(result);
     }
 }
