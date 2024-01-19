@@ -2,17 +2,21 @@
 
 public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryConfigProvider)
 {
-    public static RouteConfig[] Routes { get; private set; } = Array.Empty<RouteConfig>();
+    public static List<RouteConfig> Routes { get; private set; } = new();
 
-    public static ClusterConfig[] Clusters { get; private set; } = Array.Empty<ClusterConfig>();
+    public static List<ClusterConfig> Clusters { get; private set; } = new List<ClusterConfig>();
 
     /// <summary>
     /// 初始化刷新路由配置
     /// </summary>
-    public async Task UpdateConfig()
+    public async Task RefreshConfig()
     {
         var routes = await freeSql.Select<RouteEntity>().ToListAsync();
         var clusters = await freeSql.Select<ClusterEntity>().ToListAsync();
+        
+        Clusters.Clear();
+        Routes.Clear();
+        
         Routes = routes.Select(route => new RouteConfig
         {
             RouteId = route.RouteId,
@@ -22,18 +26,20 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
             {
                 Path = route.MatchEntities.Path
             }
-        }).ToArray();
+        }).ToList();
 
-        Clusters = clusters.Select(cluster => new ClusterConfig
+        foreach (var item in clusters)
         {
-            ClusterId = cluster.ClusterId,
-            Destinations = cluster.DestinationsEntities.ToDictionary(destination => destination.Id, destination =>
-                new DestinationConfig
-                {
-                    Address = destination?.Address,
-                    Host = destination?.Host
-                })
-        }).ToArray();
+            var items = item.DestinationsEntities.ToDictionary(entity => entity.Id, entity => new DestinationConfig() { Address = entity.Address, Host = entity.Host, });
+
+            var cluster = new ClusterConfig()
+            {
+                ClusterId = item.ClusterId,
+                Destinations = items
+            };
+            
+            Clusters.Add(cluster);
+        }
 
         inMemoryConfigProvider.Update(Routes, Clusters);
     }
@@ -49,9 +55,10 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         {
             return ResultDto.Error("路由Id已存在");
         }
+        
+        routeEntity.RouteId = Guid.NewGuid().ToString("N");
 
         await freeSql.Insert(routeEntity).ExecuteAffrowsAsync();
-        await UpdateConfig();
 
         return ResultDto.Success();
     }
@@ -69,7 +76,6 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         }
 
         await freeSql.Update<RouteEntity>().SetSource(routeEntity).ExecuteAffrowsAsync();
-        await UpdateConfig();
 
         return ResultDto.Success();
     }
@@ -87,8 +93,7 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         }
 
         await freeSql.Delete<RouteEntity>().Where(x => x.RouteId == routeId).ExecuteAffrowsAsync();
-        await UpdateConfig();
-
+        
         return ResultDto.Success();
     }
 
@@ -96,17 +101,33 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
     /// 获取路由
     /// </summary>
     /// <returns></returns>
-    public async Task<ResultDto<List<RouteEntity>>> GetRouteAsync()
+    public async Task<ResultDto<List<RouteDto>>> GetRouteAsync()
     {
         var routeEntity = await freeSql.Select<RouteEntity>().ToListAsync();
         if (routeEntity == null)
         {
-            return ResultDto<List<RouteEntity>>.Error("路由Id不存在");
+            return ResultDto<List<RouteDto>>.Error("路由Id不存在");
+        }
+        
+        var ids = routeEntity.Select(x => x.ClusterId).ToList();
+        
+        var clusterEntity = await freeSql.Select<ClusterEntity>().Where(x => ids.Contains(x.ClusterId)).ToListAsync();
+
+        var result = routeEntity.Select(x => new RouteDto(x.RouteId, x.RouteName, x.Description, x.ClusterId,
+            x.MaxRequestBodySize, new RouteMatchDto()
+            {
+                Path = x.MatchEntities.Path,
+                Hosts = x.MatchEntities.Hosts
+            }, null)).ToList();
+        
+        foreach (var entity in result)
+        {
+            entity.ClusterEntity = clusterEntity.FirstOrDefault(x => x.ClusterId == entity.ClusterId);
         }
 
-        return ResultDto<List<RouteEntity>>.Success(routeEntity);
+        return ResultDto<List<RouteDto>>.Success(result.ToList());
     }
-    
+
     /// <summary>
     /// 创建集群
     /// </summary>
@@ -114,16 +135,23 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
     /// <returns></returns>
     public async Task<ResultDto> CreateClusterAsync(ClusterEntity clusterEntity)
     {
-        if (await freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterEntity.ClusterId))
+        if (await freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterName == clusterEntity.ClusterName))
         {
             return ResultDto.Error("集群Id已存在");
         }
+        
+        clusterEntity.ClusterId = Guid.NewGuid().ToString("N");
+
+        foreach (var destinationsEntity in clusterEntity.DestinationsEntities)
+        {
+            destinationsEntity.Id = Guid.NewGuid().ToString("N");
+        }
 
         await freeSql.Insert(clusterEntity).ExecuteAffrowsAsync();
-
+        
         return ResultDto.Success();
     }
-    
+
     /// <summary>
     /// 更新集群
     /// </summary>
@@ -140,7 +168,7 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
 
         return ResultDto.Success();
     }
-    
+
     /// <summary>
     /// 删除集群
     /// </summary>
@@ -154,11 +182,10 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         }
 
         await freeSql.Delete<ClusterEntity>().Where(x => x.ClusterId == clusterId).ExecuteAffrowsAsync();
-        await UpdateConfig();
 
         return ResultDto.Success();
     }
-    
+
     /// <summary>
     /// 获取集群
     /// </summary>
@@ -173,5 +200,4 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
 
         return ResultDto<List<ClusterEntity>>.Success(clusterEntity);
     }
-    
 }

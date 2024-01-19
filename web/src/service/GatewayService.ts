@@ -69,3 +69,11 @@ export function updateCluster(data: ClusterEntity) {
 export function deleteCluster(clusterId: string) {
   return request.delete("/api/gateway/clusters/" + clusterId);
 }
+
+/**
+ * 刷新配置
+ * @returns 
+ */
+export function RefreshConfig() {
+  return request.put("/api/gateway/refresh-config");
+}

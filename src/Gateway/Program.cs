@@ -48,6 +48,9 @@ app.UseMiddleware<RequestLogMiddleware>();
 app.MapGet("/api/gateway/panel", async (RequestLogService requestLogService, int hours) =>
     await requestLogService.PanelAsync(hours));
 
+app.MapPut("/api/gateway/refresh-config", async (GatewayService gatewayService) =>
+    await gatewayService.RefreshConfig());
+
 #region Router
 
 app.MapGet("/api/gateway/routes", async (GatewayService gatewayService) =>

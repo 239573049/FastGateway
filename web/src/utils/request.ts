@@ -1,9 +1,12 @@
 import axios from "axios";
-import config from "../store/config";
+
+// @ts-ignore
+window._env_ = window._env_ || {};
 
 // 创建axios实例
 const service = axios.create({
-    baseURL: config.API_URL, // api的base_url
+    // @ts-ignore
+    baseURL: window._env_.api_url, // api的base_url
     timeout: 240000, // 请求超时时间
 });
 

@@ -21,9 +21,9 @@ public class ClusterEntity
 
 public class DestinationsEntity
 {
-    public string Id { get; init; }
+    public string Id { get; set; }
     
-    public string Address { get; init; }
+    public string Address { get; set; }
     
-    public string? Host { get; init; }
+    public string? Host { get; set; }
 }

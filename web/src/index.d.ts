@@ -1,8 +1,11 @@
 export interface RouteEntity {
     routeId: string;
+    routeName: string;
+    description: string;
     clusterId: string | null;
     maxRequestBodySize: number | null;
     matchEntities: RouteMatchEntity;
+    clusterEntity: ClusterEntity | null;
 }
 
 export interface RouteMatchEntity {
@@ -12,6 +15,8 @@ export interface RouteMatchEntity {
 
 export interface ClusterEntity {
     clusterId: string;
+    clusterName: string;
+    description: string;
     destinationsEntities: DestinationsEntity[];
 }
 
