@@ -6,6 +6,16 @@ public class RouteEntity
     public string RouteId { get; set; } = null!;
 
     /// <summary>
+    /// 路由名称
+    /// </summary>
+    public string RouteName { get; set; } = null!;
+
+    /// <summary>
+    /// 路由描述
+    /// </summary>
+    public string? Description { get; set; }
+    
+    /// <summary>
     /// 绑定集群Id可空
     /// </summary>
     public string? ClusterId { get; set; }

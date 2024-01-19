@@ -123,14 +123,14 @@ export default function Home() {
                 <Col span={12}><div className="col-content">
                     <VChart
                         spec={{
-                            height: 200,
+                            height: 350,
                             ...requestSize.spec,
                         }}
                     /></div></Col>
                 <Col span={12}><div className="col-content">
                     <VChart
                         spec={{
-                            height: 200,
+                            height: 350,
                             ...requestPath.spec,
                         }} /></div></Col>
             </Row>

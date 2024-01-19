@@ -13,3 +13,4 @@ global using System.Threading.Channels;
 global using Gateway.Dto;
 global using Microsoft.Extensions.Caching.Memory;
 global using Yarp.ReverseProxy.Configuration;
+global using Gateway;

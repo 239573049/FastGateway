@@ -1,12 +1,14 @@
 #region FreeSql类型转换
 
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
-Utils.TypeHandlers.TryAdd(typeof(List<RouteMatchEntity>), new StringJsonHandler<List<RouteMatchEntity>>());
+Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
 
 #endregion
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHostedService<GatewayBackgroundService>();
 
 builder.Configuration.GetSection(nameof(RequestOptions)).Get<RequestOptions>();
 builder.Services.AddMemoryCache();
@@ -40,8 +42,6 @@ builder.Services.AddReverseProxy()
 var app = builder.Build();
 
 app.UseCors("AllowAll");
-
-app.UseStaticFiles();
 
 app.UseMiddleware<RequestLogMiddleware>();
 

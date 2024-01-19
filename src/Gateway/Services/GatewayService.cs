@@ -1,28 +1,18 @@
 ﻿namespace Gateway.Services;
 
-public class GatewayService
+public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryConfigProvider)
 {
     public static RouteConfig[] Routes { get; private set; } = Array.Empty<RouteConfig>();
 
     public static ClusterConfig[] Clusters { get; private set; } = Array.Empty<ClusterConfig>();
 
-    private readonly IFreeSql _freeSql;
-    private readonly InMemoryConfigProvider _inMemoryConfigProvider;
-
-    public GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryConfigProvider)
-    {
-        _freeSql = freeSql;
-        _inMemoryConfigProvider = inMemoryConfigProvider;
-        Task.Run(UpdateConfig);
-    }
-
     /// <summary>
     /// 初始化刷新路由配置
     /// </summary>
-    private async Task UpdateConfig()
+    public async Task UpdateConfig()
     {
-        var routes = await _freeSql.Select<RouteEntity>().ToListAsync();
-        var clusters = await _freeSql.Select<ClusterEntity>().ToListAsync();
+        var routes = await freeSql.Select<RouteEntity>().ToListAsync();
+        var clusters = await freeSql.Select<ClusterEntity>().ToListAsync();
         Routes = routes.Select(route => new RouteConfig
         {
             RouteId = route.RouteId,
@@ -40,12 +30,12 @@ public class GatewayService
             Destinations = cluster.DestinationsEntities.ToDictionary(destination => destination.Id, destination =>
                 new DestinationConfig
                 {
-                    Address = destination.Address,
-                    Host = destination.Host
+                    Address = destination?.Address,
+                    Host = destination?.Host
                 })
         }).ToArray();
 
-        _inMemoryConfigProvider.Update(Routes, Clusters);
+        inMemoryConfigProvider.Update(Routes, Clusters);
     }
 
     /// <summary>
@@ -55,12 +45,12 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto> CreateRouteAsync(RouteEntity routeEntity)
     {
-        if (await _freeSql.Select<RouteEntity>().AnyAsync(x => x.RouteId == routeEntity.RouteId))
+        if (await freeSql.Select<RouteEntity>().AnyAsync(x => x.RouteId == routeEntity.RouteId))
         {
             return ResultDto.Error("路由Id已存在");
         }
 
-        await _freeSql.Insert(routeEntity).ExecuteAffrowsAsync();
+        await freeSql.Insert(routeEntity).ExecuteAffrowsAsync();
         await UpdateConfig();
 
         return ResultDto.Success();
@@ -73,12 +63,12 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto> UpdateRouteAsync(RouteEntity routeEntity)
     {
-        if (!await _freeSql.Select<RouteEntity>().AnyAsync(x => x.RouteId == routeEntity.RouteId))
+        if (!await freeSql.Select<RouteEntity>().AnyAsync(x => x.RouteId == routeEntity.RouteId))
         {
             return ResultDto.Error("路由Id不存在");
         }
 
-        await _freeSql.Update<RouteEntity>().SetSource(routeEntity).ExecuteAffrowsAsync();
+        await freeSql.Update<RouteEntity>().SetSource(routeEntity).ExecuteAffrowsAsync();
         await UpdateConfig();
 
         return ResultDto.Success();
@@ -91,12 +81,12 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto> DeleteRouteAsync(string routeId)
     {
-        if (!await _freeSql.Select<RouteEntity>().AnyAsync(x => x.RouteId == routeId))
+        if (!await freeSql.Select<RouteEntity>().AnyAsync(x => x.RouteId == routeId))
         {
             return ResultDto.Error("路由Id不存在");
         }
 
-        await _freeSql.Delete<RouteEntity>().Where(x => x.RouteId == routeId).ExecuteAffrowsAsync();
+        await freeSql.Delete<RouteEntity>().Where(x => x.RouteId == routeId).ExecuteAffrowsAsync();
         await UpdateConfig();
 
         return ResultDto.Success();
@@ -108,7 +98,7 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto<List<RouteEntity>>> GetRouteAsync()
     {
-        var routeEntity = await _freeSql.Select<RouteEntity>().ToListAsync();
+        var routeEntity = await freeSql.Select<RouteEntity>().ToListAsync();
         if (routeEntity == null)
         {
             return ResultDto<List<RouteEntity>>.Error("路由Id不存在");
@@ -124,13 +114,12 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto> CreateClusterAsync(ClusterEntity clusterEntity)
     {
-        if (await _freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterEntity.ClusterId))
+        if (await freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterEntity.ClusterId))
         {
             return ResultDto.Error("集群Id已存在");
         }
 
-        await _freeSql.Insert(clusterEntity).ExecuteAffrowsAsync();
-        await UpdateConfig();
+        await freeSql.Insert(clusterEntity).ExecuteAffrowsAsync();
 
         return ResultDto.Success();
     }
@@ -142,13 +131,12 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto> UpdateClusterAsync(ClusterEntity clusterEntity)
     {
-        if (!await _freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterEntity.ClusterId))
+        if (!await freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterEntity.ClusterId))
         {
             return ResultDto.Error("集群Id不存在");
         }
 
-        await _freeSql.Update<ClusterEntity>().SetSource(clusterEntity).ExecuteAffrowsAsync();
-        await UpdateConfig();
+        await freeSql.Update<ClusterEntity>().SetSource(clusterEntity).ExecuteAffrowsAsync();
 
         return ResultDto.Success();
     }
@@ -160,12 +148,12 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto> DeleteClusterAsync(string clusterId)
     {
-        if (!await _freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterId))
+        if (!await freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterId))
         {
             return ResultDto.Error("集群Id不存在");
         }
 
-        await _freeSql.Delete<ClusterEntity>().Where(x => x.ClusterId == clusterId).ExecuteAffrowsAsync();
+        await freeSql.Delete<ClusterEntity>().Where(x => x.ClusterId == clusterId).ExecuteAffrowsAsync();
         await UpdateConfig();
 
         return ResultDto.Success();
@@ -177,7 +165,7 @@ public class GatewayService
     /// <returns></returns>
     public async Task<ResultDto<List<ClusterEntity>>> GetClusterAsync()
     {
-        var clusterEntity = await _freeSql.Select<ClusterEntity>().ToListAsync();
+        var clusterEntity = await freeSql.Select<ClusterEntity>().ToListAsync();
         if (clusterEntity == null)
         {
             return ResultDto<List<ClusterEntity>>.Error("集群Id不存在");

@@ -1,4 +1,5 @@
 import { TabPane, Tabs } from "@douyinfe/semi-ui";
+import ClusterGateway from "../../components/Cluster-Gateway";
 
 export default function Gateway() {
     
@@ -15,7 +16,7 @@ export default function Gateway() {
                     itemKey="1"
                 >
                     <div style={{ padding: '0 24px' }}>
-                        
+                        <ClusterGateway />
                     </div>
                 </TabPane>
                 <TabPane
