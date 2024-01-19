@@ -17,7 +17,7 @@ services:
     container_name: gateway-web
     privileged: true
     environment:
-      api_url: http://token-ai.cn
+      api_url: http://token-ai.cn:8200
     ports:
       - 10800:80
     networks:
