@@ -1,13 +1,10 @@
 
 FROM node:alpine as builder
- 
-WORKDIR /app
-COPY app/package.json .
-COPY app/yarn.lock .
+WORKDIR /src
+COPY . .
 RUN yarn config set registry https://registry.npm.taobao.org -g
 RUN yarn config set sass_binary_site http://cdn.npm.taobao.org/dist/node-sass -g
 RUN yarn
-COPY app/. .
 RUN yarn build
  
 # => Run container
@@ -18,7 +15,7 @@ RUN rm -rf /etc/nginx/conf.d
 COPY conf /etc/nginx
  
 # Static build
-COPY --from=builder /app/build /usr/share/nginx/html/
+COPY --from=builder /src/build /usr/share/nginx/html/
  
 # Default port exposure
 EXPOSE 80
