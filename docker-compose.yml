@@ -1,4 +1,5 @@
-vservices:
+
+services:
   gateway-api:
     image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
     restart: always
