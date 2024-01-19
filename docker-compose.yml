@@ -1,0 +1,28 @@
+vservices:
+  gateway-api:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
+    restart: always
+    container_name: gateway-api
+    ports:
+      - 8200:8080
+    networks:
+      - token
+    volumes:
+      - ./Gateway.db:/app/Gateway.db
+
+  gateway-web:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
+    restart: always
+    container_name: gateway-web
+    privileged: true
+    environment:
+      - api_url=http://token-ai.cn:
+    ports:
+      - 10800:80
+    networks:
+      - token
+
+
+networks:
+  token:
+    driver: bridge
