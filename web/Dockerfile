@@ -1,3 +1,7 @@
+FROM nginx:stable-alpine AS base
+WORKDIR /usr/share/nginx/html
+EXPOSE 80
+
 
 FROM node:alpine as builder
 WORKDIR /src
@@ -8,29 +12,17 @@ RUN yarn
 RUN yarn build
  
 # => Run container
-FROM nginx:1.15.2-alpine
- 
-# Nginx config
-RUN rm -rf /etc/nginx/conf.d
-COPY conf /etc/nginx
- 
-# Static build
-COPY --from=builder /src/build /usr/share/nginx/html/
- 
-# Default port exposure
-EXPOSE 80
- 
-# Copy .env file and shell script to container
+FROM base AS web
 WORKDIR /usr/share/nginx/html
+COPY gateway.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /src/build /usr/share/nginx/html/
+EXPOSE 80
 COPY ./env.sh .
 COPY .env .
  
-# Add bash
 RUN echo http://mirrors.aliyun.com/alpine/v3.7/main/ >> /etc/apk/repositories
 RUN apk add --no-cache bash
  
-# Make our shell script executable
 RUN chmod +x env.sh
  
-# Start Nginx server
 CMD ["/bin/bash", "-c", "/usr/share/nginx/html/env.sh && nginx -g \"daemon off;\""]
