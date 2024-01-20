@@ -108,10 +108,60 @@ public class RequestLogService
                 Time = DateTime.Now.ToString("yyyy-MM-dd 00:00")
             })).OrderByDescending(x => x.Value).ToList();
 
+        // 24小时内状态码统计
+        var statusCodeResult = (await _freeSql.Ado.QueryAsync<RequestStatusCodePanel>(
+            $@"SELECT
+    strftime('%Y-%m-%d %H', CreatedTime) as Hour,
+    CreatedTime,
+    SUM(CASE WHEN StatusCode >= 200 AND StatusCode < 300 THEN 1 ELSE 0 END) as NormalRequests,
+    SUM(CASE WHEN StatusCode >= 400 AND StatusCode < 500 THEN 1 ELSE 0 END) as ExceptionalRequests,
+    SUM(CASE WHEN StatusCode >= 500 THEN 1 ELSE 0 END) as ErrorRequests
+FROM
+    RequestLog
+WHERE
+    CreatedTime >= datetime('now', '-7 days')
+GROUP BY
+    strftime('%Y-%m-%d %H', CreatedTime)
+ORDER BY
+    strftime('%Y-%m-%d %H', CreatedTime) ASC;
+",
+            new
+            {
+                Time = DateTime.Now.ToString("yyyy-MM-dd 00:00")
+            })).OrderBy(x => x.CreatedTime).ToList();
+
         result.RequestPath = pathResult;
 
+        var requestStatusCode = new List<object>();
+
+        foreach (var statusCodePanel in statusCodeResult)
+        {
+            requestStatusCode.Add(new
+            {
+                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd"),
+                country = "正常请求",
+                value = statusCodePanel.NormalRequests
+            });
+
+            requestStatusCode.Add(new
+            {
+                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd"),
+                country = "特殊请求",
+                value = statusCodePanel.ExceptionalRequests
+            });
+
+            requestStatusCode.Add(new
+            {
+                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd"),
+                country = "异常请求",
+                value = statusCodePanel.ErrorRequests
+            });
+        }
+
+        result.RequestStatusCode = requestStatusCode;
+
         // 设置缓存
-        _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+        _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(5));
 
         return ResultDto<RequestLogPanel>.Success(result);
     }

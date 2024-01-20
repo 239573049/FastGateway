@@ -7,7 +7,8 @@ public class RequestLogMiddleware : IMiddleware
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        if (RequestOptions.FilterSuffixes.Any(x => context.Request.Path.Value?.EndsWith(x) == true))
+        if (RequestOptions.FilterSuffixes.Any(x => context.Request.Path.Value?.EndsWith(x) == true) ||
+            context.Request.Path.Value?.Contains("/api/gateway") == true)
         {
             await next(context);
             return;

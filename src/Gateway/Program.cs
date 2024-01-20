@@ -90,72 +90,89 @@ app.UseCors("AllowAll");
 app.UseMiddleware<RequestLogMiddleware>();
 
 app.MapGet("/api/gateway/panel", async (RequestLogService requestLogService, int hours) =>
-    await requestLogService.PanelAsync(hours));
+    await requestLogService.PanelAsync(hours))
+    .RequireAuthorization();
 
 app.MapGet("/api/gateway/request-log", async (RequestLogService requestLogService, string keyword, int page, int pageSize,
         DateTime? startTime, DateTime? endTime) =>
-    await requestLogService.GetListAsync(keyword, page, pageSize, startTime, endTime));
+    await requestLogService.GetListAsync(keyword, page, pageSize, startTime, endTime))
+    .RequireAuthorization();
 
 app.MapPut("/api/gateway/refresh-config", async (GatewayService gatewayService) =>
-    await gatewayService.RefreshConfig());
+    await gatewayService.RefreshConfig())
+    .RequireAuthorization();
 
 #region Router
 
 app.MapGet("/api/gateway/routes", async (GatewayService gatewayService) =>
-    await gatewayService.GetRouteAsync());
+    await gatewayService.GetRouteAsync())
+    .RequireAuthorization();
 
 app.MapPost("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
-    await gatewayService.CreateRouteAsync(routeEntity));
+    await gatewayService.CreateRouteAsync(routeEntity))
+    .RequireAuthorization();
 
 app.MapPut("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
-    await gatewayService.UpdateRouteAsync(routeEntity));
+    await gatewayService.UpdateRouteAsync(routeEntity))
+    .RequireAuthorization();
 
 app.MapDelete("/api/gateway/routes/{routeId}", async (GatewayService gatewayService, string routeId) =>
-    await gatewayService.DeleteRouteAsync(routeId));
+    await gatewayService.DeleteRouteAsync(routeId))
+    .RequireAuthorization();
 
 #endregion
 
 #region Clusters
 
 app.MapGet("/api/gateway/clusters", async (GatewayService gatewayService) =>
-    await gatewayService.GetClusterAsync());
+    await gatewayService.GetClusterAsync())
+    .RequireAuthorization();
 
 app.MapPost("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
-    await gatewayService.CreateClusterAsync(clusterEntity));
+    await gatewayService.CreateClusterAsync(clusterEntity))
+    .RequireAuthorization();
 
 app.MapPut("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
-    await gatewayService.UpdateClusterAsync(clusterEntity));
+    await gatewayService.UpdateClusterAsync(clusterEntity))
+    .RequireAuthorization();
 
 app.MapDelete("/api/gateway/clusters/{clusterId}", async (GatewayService gatewayService, string clusterId) =>
-    await gatewayService.DeleteClusterAsync(clusterId));
+    await gatewayService.DeleteClusterAsync(clusterId))
+    .RequireAuthorization();
 
 #endregion
 
 #region FileStorage
 
 app.MapPost("/api/gateway/file-storage", async (FileStorageService fileStorageService, HttpContext context) =>
-    await fileStorageService.UploadAsync(context));
+    await fileStorageService.UploadAsync(context))
+    .RequireAuthorization();
 
 #endregion
 
 #region Certificate
 
 app.MapGet("/api/gateway/certificates", async (CertificateService certificateService) =>
-    await certificateService.GetAsync());
+    await certificateService.GetAsync())
+    .RequireAuthorization();
 
 app.MapPost("/api/gateway/certificates",
     async (CertificateService certificateService, CertificateEntity certificateEntity) =>
-        await certificateService.CreateAsync(certificateEntity));
+        await certificateService.CreateAsync(certificateEntity))
+    .RequireAuthorization();
 
 app.MapPut("/api/gateway/certificates",
     async (CertificateService certificateService, CertificateEntity certificateEntity) =>
-        await certificateService.UpdateAsync(certificateEntity));
+        await certificateService.UpdateAsync(certificateEntity))
+    .RequireAuthorization();
 
 app.MapDelete("/api/gateway/certificates/{id}", async (CertificateService certificateService, string id) =>
-    await certificateService.DeleteAsync(id));
+    await certificateService.DeleteAsync(id))
+    .RequireAuthorization();
 
 app.MapPut("/api/gateway/certificates/{id}", async (string id, string path, CertificateService certificateService) =>
-    await certificateService.UpdateCertificateAsync(id, path));
+    await certificateService.UpdateCertificateAsync(id, path))
+    .RequireAuthorization();
 
 #endregion
 

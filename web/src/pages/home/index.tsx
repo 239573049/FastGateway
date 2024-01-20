@@ -21,9 +21,18 @@ export default function Home() {
             yField: 'value'
         }
     });
+
+    const [requestStatusCode, setRequestStatusCode] = useState<any>({
+        spec: {
+            type: 'bar',
+            data: {
+                values: [
+                ]
+            }
+        }
+    })
     const [requestPath, setRequestPath] = useState<any>({
         spec: {
-
             type: 'pie',
             data: [
                 {
@@ -110,6 +119,34 @@ export default function Home() {
                 }
             }
         });
+
+        debugger
+        setRequestStatusCode({
+            spec: {
+                type: 'bar',
+                data: {
+                    values: response.data.requestStatusCode
+                },
+                xField: ['type', 'country'],
+                yField: 'value',
+                seriesField: 'country',
+                animationAppear: {
+                    duration: 1500,
+                    easing: 'linear'
+                },
+                legends: [{ visible: true, position: 'middle', orient: 'bottom' }],
+                // @ts-ignore
+                animationAppear: {
+                    duration: 500,
+                    oneByOne: true
+                },
+                axes: [
+                    {
+                        orient: 'left',
+                    }
+                ]
+            }
+        });
     }
 
     useEffect(() => {
@@ -133,6 +170,22 @@ export default function Home() {
                             height: 350,
                             ...requestPath.spec,
                         }} /></div></Col>
+            </Row>
+
+            <Row style={{
+                marginTop: '20px',
+            }}>
+                <div style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    marginBottom: '20px',
+                }}>
+                    7天请求状态码分布
+                </div>
+                <VChart
+                    spec={{
+                        ...requestStatusCode.spec,
+                    }} />
             </Row>
         </div>
     );
