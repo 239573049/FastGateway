@@ -2,9 +2,9 @@
 
 public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryConfigProvider)
 {
-    public static List<RouteConfig> Routes { get; private set; } = new();
+    public static List<RouteConfig> Routes { get; private set; } = [];
 
-    public static List<ClusterConfig> Clusters { get; private set; } = new List<ClusterConfig>();
+    public static List<ClusterConfig> Clusters { get; private set; } = [];
 
     /// <summary>
     /// 初始化刷新路由配置
