@@ -8,7 +8,10 @@ public class RequestLogMiddleware : IMiddleware
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         if (RequestOptions.FilterSuffixes.Any(x => context.Request.Path.Value?.EndsWith(x) == true))
+        {
+            await next(context);
             return;
+        }
 
         var requestLogService = context.RequestServices.GetRequiredService<RequestLogService>();
         var ip = context.Connection.RemoteIpAddress?.ToString();
@@ -28,7 +31,9 @@ public class RequestLogMiddleware : IMiddleware
 
         // 过滤Content-Type
         if (RequestOptions.FilterContentTypes.Any(x => context.Response.ContentType?.Contains(x) == true))
+        {
             return;
+        }
 
         requestLog.ExecutionDuration = stopwatch.Elapsed.TotalMilliseconds;
         requestLog.StatusCode = context.Response.StatusCode;
