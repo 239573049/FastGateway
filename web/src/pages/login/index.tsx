@@ -23,7 +23,11 @@ export default function Login() {
             }
             Toast.success('登录成功');
             localStorage.setItem('token', res.data.token);
-            navigate('/')
+
+            // 等待1秒后跳转到首页
+            setTimeout(() => {
+                navigate('/')
+            }, 1000);
         })
     };
 
