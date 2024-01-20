@@ -16,18 +16,14 @@ export default function Login() {
         }
 
         getToken(username, password).then((res:any) => {
-            debugger
             if(res.code !== 0) {
                 Toast.error(res.message);
                 return;
             }
             Toast.success('登录成功');
-            localStorage.setItem('token', res.data.token);
+            localStorage.setItem('access_token', res.data);
 
-            // 等待1秒后跳转到首页
-            setTimeout(() => {
-                navigate('/')
-            }, 1000);
+            navigate('/');
         })
     };
 

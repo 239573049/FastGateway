@@ -11,7 +11,7 @@ export default function MainLayout() {
 
     useEffect(() => {
 
-        localStorage.getItem('token') || navigate('/login');
+        localStorage.getItem('access_token') || navigate('/login');
     }, []);
 
     useEffect(() => {
