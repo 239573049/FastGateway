@@ -17,8 +17,10 @@ export default function CreateRouter({ visible, onCancel, onSusccess }: IProps) 
     const [clusterIds, setClusterIds] = useState<ClusterEntity[]>([]);
 
     useEffect(() => {
-        loadingCluster()
-    }, [])
+        if (visible) {
+            loadingCluster()
+        }
+    }, [visible])
 
 
     function handleSubmit(values: RouteEntity) {

@@ -25,3 +25,22 @@ export interface DestinationsEntity {
     address: string;
     host: string | null;
 }
+
+export interface CertificateEntity {
+    id: string;
+    name: string;
+    description: string | null;
+    host: string;
+    password: string;
+    path: string;
+    createTime: string;
+    updateTime: string | null;
+    expirationTime: string | null;
+    type: CertificateType;
+}
+
+export enum CertificateType {
+    Pfx,
+    Pem
+}
+

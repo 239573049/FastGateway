@@ -4,7 +4,9 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "USER": "root",
+        "PASS": "Aa010426."
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://*:5048"
@@ -13,7 +15,9 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "USER": "root",
+        "PASS": "Aa010426."
       },
       "dotnetRunMessages": true,
       "applicationUrl": "https://*:7104;http://*:5048"

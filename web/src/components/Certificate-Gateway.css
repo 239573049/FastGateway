@@ -1,0 +1,13 @@
+.certificate-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    box-shadow: 0 0 5px #eee;
+}
+
+.certificate-item :hover {
+    transition: 0.3s;
+}

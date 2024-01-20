@@ -1,13 +1,32 @@
-import React from 'react';
-import { Layout, Nav, Button, Avatar } from '@douyinfe/semi-ui';
-import { IconGithubLogo, IconHome, IconServerStroked, IconLive, IconSetting, } from '@douyinfe/semi-icons';
-import { Outlet,useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Layout, Nav, Button, Avatar, Dropdown } from '@douyinfe/semi-ui';
+import { IconGithubLogo, IconHome, IconServerStroked, IconFile, IconSetting, } from '@douyinfe/semi-icons';
+import { Outlet, useNavigate } from 'react-router-dom';
 
 export default function MainLayout() {
     const [selectedKeys, setSelectedKeys] = React.useState(['Home']);
 
     const { Header, Footer, Sider, Content } = Layout;
     const navigate = useNavigate();
+
+    useEffect(() => {
+
+        localStorage.getItem('token') || navigate('/login');
+    }, []);
+
+    useEffect(() => {
+        // 根据当前路由设置选中的菜单
+        const path = window.location.pathname;
+        if (path === '/') {
+            setSelectedKeys(['Home']);
+        } else if (path === '/Gateway') {
+            setSelectedKeys(['Gateway']);
+        } else if (path === '/Logger') {
+            setSelectedKeys(['Logger']);
+        } else if (path === '/Setting') {
+            setSelectedKeys(['Setting']);
+        }
+    }, []);
 
     return (
         <Layout style={{ border: '1px solid var(--semi-color-border)', height: '100vh' }}>
@@ -30,7 +49,7 @@ export default function MainLayout() {
                     items={[
                         { itemKey: 'Home', text: '首页', icon: <IconHome size="large" /> },
                         { itemKey: 'Gateway', text: '代理设置', icon: <IconServerStroked /> },
-                        { itemKey: 'Logger', text: '日志', icon: <IconLive size="large" /> },
+                        { itemKey: 'Logger', text: '日志', icon: <IconFile size="large" /> },
                         { itemKey: 'Setting', text: '设置', icon: <IconSetting size="large" /> },
                     ]}
                     header={{
@@ -48,10 +67,20 @@ export default function MainLayout() {
                         mode="horizontal"
                         footer={
                             <>
-
-                                <Avatar color="orange" size="small">
-                                    Gateway
-                                </Avatar>
+                                <Dropdown
+                                    position='left'
+                                    render={
+                                        <Dropdown.Menu>
+                                            <Dropdown.Item onClick={()=>{
+                                                localStorage.removeItem('token');
+                                                navigate('/login');
+                                            }}>退出登录</Dropdown.Item>
+                                        </Dropdown.Menu>
+                                    }
+                                >
+                                    <Avatar src='./favicon.png' color="orange" size="small">
+                                    </Avatar>
+                                </Dropdown>
                             </>
                         }
                     ></Nav>

@@ -5,7 +5,11 @@ import { ClusterEntity, DestinationsEntity } from "../index.d";
 import CreateCluster from "./Create-Cluster";
 import UpdateCluster from "./Update-Cluster";
 
-export default function ClusterGateway() {
+interface IProps {
+    activeKey: string;
+}
+
+export default function ClusterGateway({ activeKey }: IProps) {
     const [data, setData] = useState<any[]>([]);
     const [createClusterVisible, setCreateClusterVisible] = useState<boolean>(false);
     const [updateClusterVisible, setUpdateClusterVisible] = useState<boolean>(false);
@@ -28,7 +32,7 @@ export default function ClusterGateway() {
     function deleteClusterById(id: string) {
         deleteCluster(id).then(() => {
             loadingCluster();
-        }).catch(()=>{
+        }).catch(() => {
             Toast.error('删除失败');
         })
     }
@@ -50,12 +54,12 @@ export default function ClusterGateway() {
                 }
                 bordered
                 style={{
-                    height: 'calc(100vh - 210px)',
+                    height: 'calc(100vh - 280px)',
                     overflow: 'auto',
                     padding: '10px',
                 }}
                 dataSource={data}
-                renderItem={(item: ClusterEntity,index) =>
+                renderItem={(item: ClusterEntity, index) =>
                     <Collapse key={index}>
                         <Collapse.Panel
                             header={item.clusterName}
@@ -90,7 +94,7 @@ export default function ClusterGateway() {
                                     justifyContent: 'center',
 
                                 }}>
-                                    <Button theme='solid' onClick={()=>{
+                                    <Button theme='solid' onClick={() => {
                                         setUpdateCluster(item);
                                         setUpdateClusterVisible(true);
                                     }} style={{
@@ -98,7 +102,7 @@ export default function ClusterGateway() {
                                         width: '60px',
                                         marginBottom: '5px',
                                     }}>编辑</Button>
-                                    <Button theme='solid' type='danger' onClick={()=>deleteClusterById(item.clusterId)} style={{
+                                    <Button theme='solid' type='danger' onClick={() => deleteClusterById(item.clusterId)} style={{
                                         marginRight: '10px',
                                         width: '60px',
                                     }}>删除</Button>
@@ -107,11 +111,11 @@ export default function ClusterGateway() {
                         </Collapse.Panel>
                     </Collapse>}
             />
-            <CreateCluster visible={createClusterVisible} onSusccess={()=>{
+            <CreateCluster visible={createClusterVisible} onSusccess={() => {
                 loadingCluster()
                 setCreateClusterVisible(false)
             }} onCancel={() => setCreateClusterVisible(false)} />
-            <UpdateCluster cluster={updateCluster} visible={updateClusterVisible} onSusccess={()=>{
+            <UpdateCluster cluster={updateCluster} visible={updateClusterVisible} onSusccess={() => {
                 loadingCluster()
                 setUpdateClusterVisible(false)
             }} onCancel={() => setUpdateClusterVisible(false)} />

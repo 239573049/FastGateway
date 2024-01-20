@@ -7,6 +7,7 @@ import 'reset-css';
 import Gateway from './pages/gateway';
 import Logger from './pages/logger';
 import Setting from './pages/settings';
+import Login from './pages/login';
 
 const router = createBrowserRouter([{
   path: "/",
@@ -28,7 +29,10 @@ const router = createBrowserRouter([{
       path: "Setting",
       element: <Setting />
     }
-  ]
+  ],
+}, {
+  path: "/login",
+  element: <Login />
 }]);
 
 function App() {

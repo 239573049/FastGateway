@@ -33,6 +33,31 @@ public class RequestLogService
         }
     }
 
+    public async Task<PageResultDto<RequestLog>> GetListAsync(string keyword, int page, int pageSize,
+        DateTime? startTime, DateTime? endTime)
+    {
+        var query = _freeSql.Select<RequestLog>()
+            .WhereIf(!string.IsNullOrEmpty(keyword), x => x.Path.Contains(keyword));
+        if (startTime != null)
+        {
+            query = query.Where(x => x.CreatedTime >= startTime);
+        }
+
+        if (endTime != null)
+        {
+            query = query.Where(x => x.CreatedTime <= endTime);
+        }
+
+        var total = await query.CountAsync();
+
+        var list = await query
+            .OrderByDescending(x => x.CreatedTime)
+            .Page(page, pageSize)
+            .ToListAsync();
+
+        return new PageResultDto<RequestLog>(total, list);
+    }
+
     public async ValueTask LogAsync(RequestLog requestLog)
     {
         await _channel.Writer.WriteAsync(requestLog);
@@ -46,7 +71,7 @@ public class RequestLogService
             return ResultDto<RequestLogPanel>.Success(result);
 
         result = new RequestLogPanel();
-        
+
         // hours是传递的多少小时，查询每小时的请求量，返回一个数组
         var requestSizePanels = (await _freeSql.Ado.QueryAsync<RequestSizePanel>(
             $"""

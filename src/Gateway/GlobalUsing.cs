@@ -14,3 +14,4 @@ global using Gateway.Dto;
 global using Microsoft.Extensions.Caching.Memory;
 global using Yarp.ReverseProxy.Configuration;
 global using Gateway;
+global using System.Security.Cryptography.X509Certificates;

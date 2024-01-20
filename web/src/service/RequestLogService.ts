@@ -12,3 +12,14 @@ export function Panel(hours:number){
         }
     });
 }
+
+/**
+ * 获取请求日志列表
+ * @param params 
+ * @returns 
+ */
+export function RequestLog(params:any){
+    return request.get("/api/gateway/request-log",{
+        params
+    });
+}

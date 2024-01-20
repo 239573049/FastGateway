@@ -5,7 +5,12 @@ import CreateRouter from "./Create-Router";
 import { getRoutes, deleteRoute } from "../service/GatewayService";
 import UpdateRoute from "./Update-Route";
 
-export default function RouterGateway() {
+interface IProps {
+    activeKey: string;
+}
+
+
+export default function RouterGateway({ activeKey }: IProps) {
 
     const [updateRouterVisible, setUpdateRouterVisible] = useState<boolean>(false);
     const [createRouterVisible, setCreateRouterVisible] = useState<boolean>(false);
@@ -21,10 +26,15 @@ export default function RouterGateway() {
         setData(routers.data);
     }
 
+    // 如果activeKey不是2，不加载数据
     useEffect(() => {
-        loadingRoute();
-    }, []);
-
+        if (activeKey === '2') {
+            loadingRoute();
+        }
+    }, [
+        activeKey
+    ]);
+    
     return (
         <>
             <List
@@ -41,7 +51,7 @@ export default function RouterGateway() {
                 }
                 bordered
                 style={{
-                    height: 'calc(100vh - 210px)',
+                    height: 'calc(100vh - 280px)',
                     overflow: 'auto',
                     padding: '10px',
                 }}
@@ -102,7 +112,7 @@ export default function RouterGateway() {
                                     justifyContent: 'center',
 
                                 }}>
-                                    <Button theme='solid' onClick={()=>{
+                                    <Button theme='solid' onClick={() => {
                                         setUpdateRouterVisible(true);
                                         setUpdateRoute(item);
                                     }} style={{
@@ -124,13 +134,13 @@ export default function RouterGateway() {
                 loadingRoute();
             }} />
 
-            <UpdateRoute router={updateRoute} visible={updateRouterVisible} onCancel={()=>{
+            <UpdateRoute router={updateRoute} visible={updateRouterVisible} onCancel={() => {
                 setUpdateRouterVisible(false);
                 loadingRoute();
-            }} onSusccess={()=>{
+            }} onSusccess={() => {
                 setUpdateRouterVisible(false);
                 loadingRoute();
-            }}/>
+            }} />
         </>
     )
 }
