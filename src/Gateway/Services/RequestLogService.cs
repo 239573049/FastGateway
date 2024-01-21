@@ -138,21 +138,21 @@ ORDER BY
         {
             requestStatusCode.Add(new
             {
-                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd"),
+                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd HH"),
                 country = "正常请求",
                 value = statusCodePanel.NormalRequests
             });
 
             requestStatusCode.Add(new
             {
-                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd"),
+                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd HH"),
                 country = "特殊请求",
                 value = statusCodePanel.ExceptionalRequests
             });
 
             requestStatusCode.Add(new
             {
-                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd"),
+                Type = statusCodePanel.CreatedTime.ToString("yyyy-MM-dd HH"),
                 country = "异常请求",
                 value = statusCodePanel.ErrorRequests
             });
