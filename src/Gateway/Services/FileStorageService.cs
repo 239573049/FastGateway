@@ -12,7 +12,9 @@ public class FileStorageService
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         }
 
-        await using var stream = new FileStream(path, FileMode.Create);
+        // 使用管理员权限创建文件
+        await using var stream = new FileStream(path + filePath, FileMode.Create, FileAccess.Write, FileShare.Write,
+            4096, true);
         await file.CopyToAsync(stream);
 
         return ResultDto<string>.Success(filePath);
