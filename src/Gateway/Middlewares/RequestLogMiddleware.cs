@@ -7,6 +7,7 @@ public class RequestLogMiddleware : IMiddleware
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        // 在这里过滤掉不需要记录的请求，默认忽略api/gateway开头的请求应为他是系统内部请求
         if (RequestOptions.FilterSuffixes.Any(x => context.Request.Path.Value?.EndsWith(x) == true) ||
             context.Request.Path.Value?.Contains("/api/gateway") == true)
         {
@@ -15,7 +16,7 @@ public class RequestLogMiddleware : IMiddleware
         }
 
         var requestLogService = context.RequestServices.GetRequiredService<RequestLogService>();
-        var ip = context.Connection.RemoteIpAddress?.ToString();
+        var ip = context.Connection.RemoteIpAddress?.MapToIPv4()?.ToString();
 
         var requestLog = new RequestLog
         {

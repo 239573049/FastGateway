@@ -120,7 +120,7 @@ export default function Home() {
             }
         });
 
-        debugger
+        
         setRequestStatusCode({
             spec: {
                 type: 'bar',

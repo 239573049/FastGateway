@@ -1,5 +1,9 @@
 #region FreeSql类型转换
 
+using System.ComponentModel;
+using System.Text.Encodings.Web;
+using System.Text.Json.Serialization;
+
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
@@ -46,6 +50,12 @@ builder.Services
     .AddJwtBearerAuthentication();
 
 #endregion
+
+
+builder.Services.ConfigureHttpJsonOptions(options => {
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.Converters.Add(new JsonDateTimeConverter());
+});
 
 builder.Services.AddHostedService<GatewayBackgroundService>();
 

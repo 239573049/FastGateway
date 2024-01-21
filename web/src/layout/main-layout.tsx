@@ -10,11 +10,7 @@ export default function MainLayout() {
     const navigate = useNavigate();
 
     useEffect(() => {
-
         localStorage.getItem('access_token') || navigate('/login');
-    }, []);
-
-    useEffect(() => {
         // 根据当前路由设置选中的菜单
         const path = window.location.pathname;
         if (path === '/') {
