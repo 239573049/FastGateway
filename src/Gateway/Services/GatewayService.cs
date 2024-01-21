@@ -17,6 +17,7 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         Clusters.Clear();
         Routes.Clear();
         
+        // 路由支持多个集群
         Routes = routes.Select(route => new RouteConfig
         {
             RouteId = route.RouteId,

@@ -5,8 +5,8 @@ public class FileStorageService
     public async Task<ResultDto<string>> UploadAsync(HttpContext context)
     {
         var file = context.Request.Form.Files.FirstOrDefault();
-        var filePath = $"certificates/{DateTime.Now:HHmmss}" + file.FileName;
-        var path = Path.Combine(Directory.GetCurrentDirectory(), filePath);
+        var filePath = $"{DateTime.Now:HHmmss}" + file!.FileName;
+        var path = "/data/";
         if (!Directory.Exists(Path.GetDirectoryName(path)))
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -17,5 +17,4 @@ public class FileStorageService
 
         return ResultDto<string>.Success(filePath);
     }
-    
 }

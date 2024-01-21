@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Gateway;
+﻿namespace Gateway;
 
 public class JsonDateTimeConverter : JsonConverter<DateTime>
 {

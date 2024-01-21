@@ -1,8 +1,7 @@
 #region FreeSql类型转换
 
-using System.ComponentModel;
-using System.Text.Encodings.Web;
-using System.Text.Json.Serialization;
+using System.Security.Authentication;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
@@ -18,14 +17,18 @@ builder.Configuration.GetSection(nameof(JwtOptions))
 builder.WebHost.UseKestrel(options =>
 {
     // 配置多个域名证书
-    options.ConfigureHttpsDefaults(httpsOptions =>
+    options.ConfigureHttpsDefaults(adapterOptions =>
     {
-        httpsOptions.ServerCertificateSelector = (_, name) =>
+        // 配置http3
+        adapterOptions.SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12;
+
+
+        adapterOptions.ServerCertificateSelector = (_, name) =>
         {
             // 从Certificate服务中获取
             if (CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
             {
-                var path = Path.Combine(Directory.GetCurrentDirectory(), certificate.Path);
+                var path = Path.Combine("/data/", certificate.Path);
 
                 if (File.Exists(path) == false)
                 {
@@ -41,7 +44,19 @@ builder.WebHost.UseKestrel(options =>
             return null;
         };
     });
+
+    options.Limits.MaxConcurrentConnections = null;
 });
+
+builder.WebHost.ConfigureKestrel(((context, options) =>
+{
+    // TODO: 测试http3
+    options.ListenAnyIP(8081, listenOptions =>
+    {
+        listenOptions.Protocols = HttpProtocols.Http3;
+        listenOptions.UseHttps();
+    });
+}));
 
 #region Jwt
 
@@ -52,7 +67,8 @@ builder.Services
 #endregion
 
 
-builder.Services.ConfigureHttpJsonOptions(options => {
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
     options.SerializerOptions.Converters.Add(new JsonDateTimeConverter());
 });
@@ -100,34 +116,35 @@ app.UseCors("AllowAll");
 app.UseMiddleware<RequestLogMiddleware>();
 
 app.MapGet("/api/gateway/panel", async (RequestLogService requestLogService, int hours) =>
-    await requestLogService.PanelAsync(hours))
+        await requestLogService.PanelAsync(hours))
     .RequireAuthorization();
 
-app.MapGet("/api/gateway/request-log", async (RequestLogService requestLogService, string keyword, int page, int pageSize,
-        DateTime? startTime, DateTime? endTime) =>
-    await requestLogService.GetListAsync(keyword, page, pageSize, startTime, endTime))
+app.MapGet("/api/gateway/request-log", async (RequestLogService requestLogService, string keyword, int page,
+            int pageSize,
+            DateTime? startTime, DateTime? endTime) =>
+        await requestLogService.GetListAsync(keyword, page, pageSize, startTime, endTime))
     .RequireAuthorization();
 
 app.MapPut("/api/gateway/refresh-config", async (GatewayService gatewayService) =>
-    await gatewayService.RefreshConfig())
+        await gatewayService.RefreshConfig())
     .RequireAuthorization();
 
 #region Router
 
 app.MapGet("/api/gateway/routes", async (GatewayService gatewayService) =>
-    await gatewayService.GetRouteAsync())
+        await gatewayService.GetRouteAsync())
     .RequireAuthorization();
 
 app.MapPost("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
-    await gatewayService.CreateRouteAsync(routeEntity))
+        await gatewayService.CreateRouteAsync(routeEntity))
     .RequireAuthorization();
 
 app.MapPut("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
-    await gatewayService.UpdateRouteAsync(routeEntity))
+        await gatewayService.UpdateRouteAsync(routeEntity))
     .RequireAuthorization();
 
 app.MapDelete("/api/gateway/routes/{routeId}", async (GatewayService gatewayService, string routeId) =>
-    await gatewayService.DeleteRouteAsync(routeId))
+        await gatewayService.DeleteRouteAsync(routeId))
     .RequireAuthorization();
 
 #endregion
@@ -135,19 +152,19 @@ app.MapDelete("/api/gateway/routes/{routeId}", async (GatewayService gatewayServ
 #region Clusters
 
 app.MapGet("/api/gateway/clusters", async (GatewayService gatewayService) =>
-    await gatewayService.GetClusterAsync())
+        await gatewayService.GetClusterAsync())
     .RequireAuthorization();
 
 app.MapPost("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
-    await gatewayService.CreateClusterAsync(clusterEntity))
+        await gatewayService.CreateClusterAsync(clusterEntity))
     .RequireAuthorization();
 
 app.MapPut("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
-    await gatewayService.UpdateClusterAsync(clusterEntity))
+        await gatewayService.UpdateClusterAsync(clusterEntity))
     .RequireAuthorization();
 
 app.MapDelete("/api/gateway/clusters/{clusterId}", async (GatewayService gatewayService, string clusterId) =>
-    await gatewayService.DeleteClusterAsync(clusterId))
+        await gatewayService.DeleteClusterAsync(clusterId))
     .RequireAuthorization();
 
 #endregion
@@ -155,7 +172,7 @@ app.MapDelete("/api/gateway/clusters/{clusterId}", async (GatewayService gateway
 #region FileStorage
 
 app.MapPost("/api/gateway/file-storage", async (FileStorageService fileStorageService, HttpContext context) =>
-    await fileStorageService.UploadAsync(context))
+        await fileStorageService.UploadAsync(context))
     .RequireAuthorization();
 
 #endregion
@@ -163,25 +180,25 @@ app.MapPost("/api/gateway/file-storage", async (FileStorageService fileStorageSe
 #region Certificate
 
 app.MapGet("/api/gateway/certificates", async (CertificateService certificateService) =>
-    await certificateService.GetAsync())
+        await certificateService.GetAsync())
     .RequireAuthorization();
 
 app.MapPost("/api/gateway/certificates",
-    async (CertificateService certificateService, CertificateEntity certificateEntity) =>
-        await certificateService.CreateAsync(certificateEntity))
+        async (CertificateService certificateService, CertificateEntity certificateEntity) =>
+            await certificateService.CreateAsync(certificateEntity))
     .RequireAuthorization();
 
 app.MapPut("/api/gateway/certificates",
-    async (CertificateService certificateService, CertificateEntity certificateEntity) =>
-        await certificateService.UpdateAsync(certificateEntity))
+        async (CertificateService certificateService, CertificateEntity certificateEntity) =>
+            await certificateService.UpdateAsync(certificateEntity))
     .RequireAuthorization();
 
 app.MapDelete("/api/gateway/certificates/{id}", async (CertificateService certificateService, string id) =>
-    await certificateService.DeleteAsync(id))
+        await certificateService.DeleteAsync(id))
     .RequireAuthorization();
 
 app.MapPut("/api/gateway/certificates/{id}", async (string id, string path, CertificateService certificateService) =>
-    await certificateService.UpdateCertificateAsync(id, path))
+        await certificateService.UpdateCertificateAsync(id, path))
     .RequireAuthorization();
 
 #endregion
