@@ -48,16 +48,6 @@ builder.WebHost.UseKestrel(options =>
     options.Limits.MaxConcurrentConnections = null;
 });
 
-builder.WebHost.ConfigureKestrel(((context, options) =>
-{
-    // TODO: 测试http3
-    options.ListenAnyIP(8081, listenOptions =>
-    {
-        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-        listenOptions.UseHttps();
-    });
-}));
-
 #region Jwt
 
 builder.Services
