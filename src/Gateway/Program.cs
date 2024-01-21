@@ -53,7 +53,7 @@ builder.WebHost.ConfigureKestrel(((context, options) =>
     // TODO: 测试http3
     options.ListenAnyIP(8081, listenOptions =>
     {
-        listenOptions.Protocols = HttpProtocols.Http3;
+        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         listenOptions.UseHttps();
     });
 }));
