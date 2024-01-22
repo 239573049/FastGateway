@@ -22,7 +22,7 @@ COPY .env .
  
 RUN echo http://mirrors.aliyun.com/alpine/v3.7/main/ >> /etc/apk/repositories
 RUN apk add --no-cache bash
- 
+
 RUN chmod +x env.sh
  
 CMD ["/bin/bash", "-c", "/usr/share/nginx/html/env.sh && nginx -g \"daemon off;\""]

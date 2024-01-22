@@ -9,27 +9,18 @@ services:
       dockerfile: Gateway/Dockerfile
     ports:
       - 8200:8080
-    networks:
-      - token
+      - 8300:8081
     volumes:
-      - ./Gateway.db:/app/Gateway.db
+      - ./data:/data/
 
   gateway-web:
     image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
     restart: always
-    container_name: gateway-web
     build:
       context: ./web
       dockerfile: Dockerfile
     privileged: true
     environment:
-      api_url: http://token-ai.cn:8200
+      api_url: http://localhost:8200
     ports:
       - 10800:80
-    networks:
-      - token
-
-
-networks:
-  token:
-    driver: bridge

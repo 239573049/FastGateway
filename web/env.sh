@@ -20,7 +20,7 @@ do
   # Otherwise use value from .env file
   [[ -z $value ]] && value=${varvalue}
   
-  # Append configuration property to JS file
+  # 添加配置到 env-config.js 文件
   echo "  $varname: \"$value\"," >> ./env-config.js
 done < .env
  

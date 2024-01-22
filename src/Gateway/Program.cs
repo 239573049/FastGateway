@@ -1,8 +1,4 @@
 #region FreeSql类型转换
-
-using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.StaticFiles;
-
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
@@ -23,21 +19,27 @@ builder.WebHost.UseKestrel(options =>
         adapterOptions.ServerCertificateSelector = (_, name) =>
         {
             // 从Certificate服务中获取
-            if (!string.IsNullOrEmpty(name) &&
-                CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
-            {
-                var path = Path.Combine("/data/", certificate.Path);
+            if (string.IsNullOrEmpty(name) ||
+                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate)) return null;
 
-                if (File.Exists(path)) return new X509Certificate2(path, certificate.Password);
+            var path = Path.Combine("/data/", certificate.Path);
 
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"证书文件不存在：{path}");
-                Console.ResetColor();
-                throw new Exception($"证书文件不存在：{path}");
-            }
+            if (File.Exists(path)) return new X509Certificate2(path, certificate.Password);
 
-            return null;
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"证书文件不存在：{path}");
+            Console.ResetColor();
+            throw new Exception($"证书文件不存在：{path}");
         };
+    });
+});
+
+builder.WebHost.ConfigureKestrel(kestrel =>
+{
+    kestrel.ListenAnyIP(8081, portOptions =>
+    {
+        portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+        portOptions.UseHttps();
     });
 });
 

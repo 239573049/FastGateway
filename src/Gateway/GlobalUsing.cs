@@ -20,6 +20,7 @@ global using Microsoft.AspNetCore.StaticFiles;
 global using System.Text.Json.Serialization;
 global using System.IdentityModel.Tokens.Jwt;
 global using System.Security.Claims;
+global using Microsoft.AspNetCore.Server.Kestrel.Core;
 global using System.Text;
 global using Microsoft.IdentityModel.Tokens;
 global using System.Collections.Concurrent;
