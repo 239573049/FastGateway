@@ -29,16 +29,12 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
             }
         }).ToList();
 
-        foreach (var item in clusters)
+        foreach (var cluster in from item in clusters let items = item.DestinationsEntities.ToDictionary(entity => entity.Id, entity => new DestinationConfig() { Address = entity.Address, Host = entity.Host, }) select new ClusterConfig()
+                 {
+                     ClusterId = item.ClusterId,
+                     Destinations = items
+                 })
         {
-            var items = item.DestinationsEntities.ToDictionary(entity => entity.Id, entity => new DestinationConfig() { Address = entity.Address, Host = entity.Host, });
-
-            var cluster = new ClusterConfig()
-            {
-                ClusterId = item.ClusterId,
-                Destinations = items
-            };
-            
             Clusters.Add(cluster);
         }
 

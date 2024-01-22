@@ -87,6 +87,12 @@ builder.Services.AddSingleton<AuthorityService>();
 
 builder.Services.AddSingleton<IFreeSql>(_ =>
 {
+    var directory = new DirectoryInfo("/data");
+    if (!directory.Exists)
+    {
+        directory.Create();
+    }
+
     var freeSql = new FreeSqlBuilder()
         .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("DefaultConnection"))
         .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) //监听SQL语句
