@@ -41,6 +41,11 @@ builder.WebHost.ConfigureKestrel(kestrel =>
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         portOptions.UseHttps();
     });
+    
+    kestrel.ListenAnyIP(8080, portOptions =>
+    {
+        portOptions.Protocols = HttpProtocols.Http1AndHttp2;
+    });
 });
 
 #region Jwt
