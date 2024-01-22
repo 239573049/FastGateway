@@ -1,4 +1,4 @@
 window._env_ = {
-    api_url: "http://localhost:5048",
+    api_url: "http://localhost:8080",
   }
   
