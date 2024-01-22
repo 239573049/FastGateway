@@ -29,8 +29,6 @@ services:
       PASS: Aa010426.
     ports:
       - 8200:8080
-    networks:
-      - token
     volumes:
       - ./Gateway.db:/app/Gateway.db
 
@@ -43,12 +41,7 @@ services:
       api_url: http://token-ai.cn:8200
     ports:
       - 10800:80
-    networks:
-      - token
 
-networks:
-  token:
-    driver: bridge
 ```
 
 如果并没有提供账号密码则默认 
