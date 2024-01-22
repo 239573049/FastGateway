@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
+Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
 
 #endregion
 
@@ -19,10 +20,6 @@ builder.WebHost.UseKestrel(options =>
     // 配置多个域名证书
     options.ConfigureHttpsDefaults(adapterOptions =>
     {
-        // 配置http3
-        adapterOptions.SslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12;
-
-
         adapterOptions.ServerCertificateSelector = (_, name) =>
         {
             // 从Certificate服务中获取
@@ -44,8 +41,6 @@ builder.WebHost.UseKestrel(options =>
             return null;
         };
     });
-
-    options.Limits.MaxConcurrentConnections = null;
 });
 
 #region Jwt

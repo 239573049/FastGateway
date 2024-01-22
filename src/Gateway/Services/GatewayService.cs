@@ -25,7 +25,8 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
             MaxRequestBodySize = route.MaxRequestBodySize,
             Match = new RouteMatch()
             {
-                Path = route.MatchEntities.Path
+                Path = route.MatchEntities.Path,
+                Hosts = route.MatchEntities.Hosts
             }
         }).ToList();
 
