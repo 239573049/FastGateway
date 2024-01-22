@@ -43,4 +43,19 @@ export enum CertificateType {
     Pfx,
     Pem
 }
+export interface StaticFileProxyEntity extends Entity {
+    name: string;
+    root: string;
+    description: string | null;
+    path: string;
+    hosts: string[];
+    gZip: boolean;
+    responseHeaders: { [key: string]: string; };
+    index: string | null;
+    tryFiles: string[];
+}
 
+export interface Entity {
+    id: string;
+    createdTime: string;
+}

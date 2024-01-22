@@ -1,6 +1,6 @@
 ﻿namespace Gateway.Entities;
 
-public class ClusterEntity
+public sealed class ClusterEntity : Entity
 {
     [Column(IsIdentity = true, IsPrimary = true)]
     public string ClusterId { get; set; }
@@ -19,7 +19,7 @@ public class ClusterEntity
     public List<DestinationsEntity> DestinationsEntities { get; set; } = new();
 }
 
-public class DestinationsEntity
+public sealed class DestinationsEntity
 {
     public string Id { get; set; }
     

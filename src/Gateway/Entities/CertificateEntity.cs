@@ -1,10 +1,7 @@
 ﻿namespace Gateway.Entities;
 
-public class CertificateEntity
+public sealed class CertificateEntity : Entity
 {
-    [Column(IsIdentity = true, IsPrimary = true)]
-    public string Id { get; set; }
-
     /// <summary>
     /// 证书名称
     /// </summary>
@@ -31,15 +28,10 @@ public class CertificateEntity
     public string Path { get; set; }
 
     /// <summary>
-    /// 创建时间
-    /// </summary>
-    public DateTime CreateTime { get; set; }
-
-    /// <summary>
     /// 更新时间
     /// </summary>
     public DateTime? UpdateTime { get; set; }
-    
+
     /// <summary>
     /// 过期时间
     /// </summary>

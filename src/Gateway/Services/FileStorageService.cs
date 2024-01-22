@@ -20,3 +20,13 @@ public class FileStorageService
         return ResultDto<string>.Success(filePath);
     }
 }
+
+public static class FileStorageExtension
+{
+    public static void MapFileStorage(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/api/gateway/file-storage", async (FileStorageService fileStorageService, HttpContext context) =>
+                await fileStorageService.UploadAsync(context))
+            .RequireAuthorization();
+    }
+}

@@ -166,3 +166,20 @@ ORDER BY
         return ResultDto<RequestLogPanel>.Success(result);
     }
 }
+
+
+public static class RequestLogExtension
+{
+    public static void MapRequestLog(this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/gateway/panel", async (RequestLogService requestLogService, int hours) =>
+                await requestLogService.PanelAsync(hours))
+            .RequireAuthorization();
+
+        app.MapGet("/api/gateway/request-log", async (RequestLogService requestLogService, string keyword, int page,
+                    int pageSize,
+                    DateTime? startTime, DateTime? endTime) =>
+                await requestLogService.GetListAsync(keyword, page, pageSize, startTime, endTime))
+            .RequireAuthorization();
+    }
+}

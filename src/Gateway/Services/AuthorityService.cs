@@ -1,9 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
-
-namespace Gateway.Services;
+﻿namespace Gateway.Services;
 
 public class AuthorityService
 {
@@ -44,5 +39,14 @@ public class AuthorityService
         var token = tokenHandler.CreateToken(tokenDescriptor);
 
         return ResultDto<string>.Success(tokenHandler.WriteToken(token));
+    }
+}
+
+public static class AuthorityExtension
+{
+    public static void MapAuthority(this IEndpointRouteBuilder app)
+    {
+        app.MapPost("/api/gateway/token", async (AuthorityService authorityService, string username, string password) =>
+            await authorityService.GetTokenAsync(username, password));
     }
 }

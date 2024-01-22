@@ -1,6 +1,4 @@
-﻿using System.Collections.Concurrent;
-
-namespace Gateway.Services;
+﻿namespace Gateway.Services;
 
 public class CertificateService(IFreeSql freeSql)
 {
@@ -19,7 +17,7 @@ public class CertificateService(IFreeSql freeSql)
     public async Task<ResultDto> CreateAsync(CertificateEntity certificateEntity)
     {
         certificateEntity.Id = Guid.NewGuid().ToString();
-        certificateEntity.CreateTime = DateTime.Now;
+        certificateEntity.CreatedTime = DateTime.Now;
 
 
         if (await freeSql.Select<CertificateEntity>().AnyAsync(x => x.Host == certificateEntity.Host))
@@ -37,7 +35,7 @@ public class CertificateService(IFreeSql freeSql)
     public async Task<ResultDto> UpdateAsync(CertificateEntity certificateEntity)
     {
         var entity = await freeSql.Select<CertificateEntity>().Where(x => x.Id == certificateEntity.Id).FirstAsync();
-        
+
         if (entity == null)
         {
             return ResultDto.Error("证书不存在");
@@ -48,7 +46,7 @@ public class CertificateService(IFreeSql freeSql)
         entity.Host = certificateEntity.Host;
         entity.Password = certificateEntity.Password;
         entity.UpdateTime = DateTime.Now;
-        
+
         await freeSql.Update<CertificateEntity>().SetSource(entity).ExecuteAffrowsAsync();
 
         CertificateEntityDict[certificateEntity.Host] = certificateEntity;
@@ -94,5 +92,34 @@ public class CertificateService(IFreeSql freeSql)
         await freeSql.Update<CertificateEntity>().SetSource(certificateEntity).ExecuteAffrowsAsync();
 
         CertificateEntityDict[certificateEntity.Host] = certificateEntity;
+    }
+}
+
+public static class CertificateExtension
+{
+    public static void MapCertificate(this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/gateway/certificates", async (CertificateService certificateService) =>
+                await certificateService.GetAsync())
+            .RequireAuthorization();
+
+        app.MapPost("/api/gateway/certificates",
+                async (CertificateService certificateService, CertificateEntity certificateEntity) =>
+                    await certificateService.CreateAsync(certificateEntity))
+            .RequireAuthorization();
+
+        app.MapPut("/api/gateway/certificates",
+                async (CertificateService certificateService, CertificateEntity certificateEntity) =>
+                    await certificateService.UpdateAsync(certificateEntity))
+            .RequireAuthorization();
+
+        app.MapDelete("/api/gateway/certificates/{id}", async (CertificateService certificateService, string id) =>
+                await certificateService.DeleteAsync(id))
+            .RequireAuthorization();
+
+        app.MapPut("/api/gateway/certificates/{id}",
+                async (string id, string path, CertificateService certificateService) =>
+                    await certificateService.UpdateCertificateAsync(id, path))
+            .RequireAuthorization();
     }
 }

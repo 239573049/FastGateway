@@ -1,6 +1,6 @@
 ﻿namespace Gateway.Entities;
 
-public class RouteEntity
+public sealed class RouteEntity : Entity
 {
     [Column(IsIdentity = true, IsPrimary = true)]
     public string RouteId { get; set; } = null!;
@@ -29,7 +29,7 @@ public class RouteEntity
     public RouteMatchEntity MatchEntities { get; set; } = new();
 }
 
-public class RouteMatchEntity
+public sealed class RouteMatchEntity
 {
     /// <summary>
     /// 路由配置

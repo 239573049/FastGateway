@@ -1,6 +1,9 @@
 ﻿namespace Gateway.Services;
 
-public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryConfigProvider)
+public class GatewayService(
+    IFreeSql freeSql,
+    InMemoryConfigProvider inMemoryConfigProvider,
+    StaticFileProxyService staticFileProxyService)
 {
     public static List<RouteConfig> Routes { get; private set; } = [];
 
@@ -13,10 +16,10 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
     {
         var routes = await freeSql.Select<RouteEntity>().ToListAsync();
         var clusters = await freeSql.Select<ClusterEntity>().ToListAsync();
-        
+
         Clusters.Clear();
         Routes.Clear();
-        
+
         // 路由支持多个集群
         Routes = routes.Select(route => new RouteConfig
         {
@@ -30,7 +33,10 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
             }
         }).ToList();
 
-        foreach (var cluster in from item in clusters let items = item.DestinationsEntities.ToDictionary(entity => entity.Id, entity => new DestinationConfig() { Address = entity.Address, Host = entity.Host, }) select new ClusterConfig()
+        foreach (var cluster in from item in clusters
+                 let items = item.DestinationsEntities.ToDictionary(entity => entity.Id,
+                     entity => new DestinationConfig() { Address = entity.Address, Host = entity.Host, })
+                 select new ClusterConfig()
                  {
                      ClusterId = item.ClusterId,
                      Destinations = items
@@ -40,6 +46,9 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         }
 
         inMemoryConfigProvider.Update(Routes, Clusters);
+
+        // 刷新静态文件代理配置
+        await staticFileProxyService.RefreshConfig();
     }
 
     /// <summary>
@@ -53,8 +62,9 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         {
             return ResultDto.Error("路由Id已存在");
         }
-        
+
         routeEntity.RouteId = Guid.NewGuid().ToString("N");
+        routeEntity.CreatedTime = DateTime.Now;
 
         await freeSql.Insert(routeEntity).ExecuteAffrowsAsync();
 
@@ -91,7 +101,7 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         }
 
         await freeSql.Delete<RouteEntity>().Where(x => x.RouteId == routeId).ExecuteAffrowsAsync();
-        
+
         return ResultDto.Success();
     }
 
@@ -101,14 +111,16 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
     /// <returns></returns>
     public async Task<ResultDto<List<RouteDto>>> GetRouteAsync()
     {
-        var routeEntity = await freeSql.Select<RouteEntity>().ToListAsync();
+        var routeEntity = await freeSql.Select<RouteEntity>()
+            .OrderByDescending(x => x.CreatedTime)
+            .ToListAsync();
         if (routeEntity == null)
         {
             return ResultDto<List<RouteDto>>.Error("路由Id不存在");
         }
-        
+
         var ids = routeEntity.Select(x => x.ClusterId).ToList();
-        
+
         var clusterEntity = await freeSql.Select<ClusterEntity>().Where(x => ids.Contains(x.ClusterId)).ToListAsync();
 
         var result = routeEntity.Select(x => new RouteDto(x.RouteId, x.RouteName, x.Description, x.ClusterId,
@@ -117,7 +129,7 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
                 Path = x.MatchEntities.Path,
                 Hosts = x.MatchEntities.Hosts
             }, null)).ToList();
-        
+
         foreach (var entity in result)
         {
             entity.ClusterEntity = clusterEntity.FirstOrDefault(x => x.ClusterId == entity.ClusterId);
@@ -137,7 +149,7 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
         {
             return ResultDto.Error("集群Id已存在");
         }
-        
+
         clusterEntity.ClusterId = Guid.NewGuid().ToString("N");
 
         foreach (var destinationsEntity in clusterEntity.DestinationsEntities)
@@ -145,8 +157,10 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
             destinationsEntity.Id = Guid.NewGuid().ToString("N");
         }
 
+        clusterEntity.CreatedTime = DateTime.Now;
+
         await freeSql.Insert(clusterEntity).ExecuteAffrowsAsync();
-        
+
         return ResultDto.Success();
     }
 
@@ -190,12 +204,53 @@ public class GatewayService(IFreeSql freeSql, InMemoryConfigProvider inMemoryCon
     /// <returns></returns>
     public async Task<ResultDto<List<ClusterEntity>>> GetClusterAsync()
     {
-        var clusterEntity = await freeSql.Select<ClusterEntity>().ToListAsync();
-        if (clusterEntity == null)
-        {
-            return ResultDto<List<ClusterEntity>>.Error("集群Id不存在");
-        }
+        var clusterEntity = await freeSql.Select<ClusterEntity>()
+            .OrderByDescending(x => x.CreatedTime)
+            .ToListAsync();
+        return clusterEntity == null
+            ? ResultDto<List<ClusterEntity>>.Error("集群Id不存在")
+            : ResultDto<List<ClusterEntity>>.Success(clusterEntity);
+    }
+}
 
-        return ResultDto<List<ClusterEntity>>.Success(clusterEntity);
+public static class GatewayExtension
+{
+    public static void MapGateway(this IEndpointRouteBuilder app)
+    {
+        app.MapPut("/api/gateway/refresh-config", async (GatewayService gatewayService) =>
+                await gatewayService.RefreshConfig())
+            .RequireAuthorization();
+
+        app.MapGet("/api/gateway/routes", async (GatewayService gatewayService) =>
+                await gatewayService.GetRouteAsync())
+            .RequireAuthorization();
+
+        app.MapPost("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
+                await gatewayService.CreateRouteAsync(routeEntity))
+            .RequireAuthorization();
+
+        app.MapPut("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
+                await gatewayService.UpdateRouteAsync(routeEntity))
+            .RequireAuthorization();
+
+        app.MapDelete("/api/gateway/routes/{routeId}", async (GatewayService gatewayService, string routeId) =>
+                await gatewayService.DeleteRouteAsync(routeId))
+            .RequireAuthorization();
+
+        app.MapGet("/api/gateway/clusters", async (GatewayService gatewayService) =>
+                await gatewayService.GetClusterAsync())
+            .RequireAuthorization();
+
+        app.MapPost("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
+                await gatewayService.CreateClusterAsync(clusterEntity))
+            .RequireAuthorization();
+
+        app.MapPut("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
+                await gatewayService.UpdateClusterAsync(clusterEntity))
+            .RequireAuthorization();
+
+        app.MapDelete("/api/gateway/clusters/{clusterId}", async (GatewayService gatewayService, string clusterId) =>
+                await gatewayService.DeleteClusterAsync(clusterId))
+            .RequireAuthorization();
     }
 }

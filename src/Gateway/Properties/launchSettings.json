@@ -9,7 +9,7 @@
         "PASS": "Aa010426."
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "http://*:5048"
+      "applicationUrl": "http://localhost:5048"
     },
     "https": {
       "commandName": "Project",
@@ -20,7 +20,7 @@
         "PASS": "Aa010426."
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "https://*:7104;http://*:5048"
+      "applicationUrl": "https://localhost:7104;http://localhost:5048"
     },
     "IIS Express": {
       "commandName": "IISExpress",

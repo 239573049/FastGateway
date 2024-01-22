@@ -4,6 +4,7 @@ import RouterGateway from "../../components/Router-Gateway";
 import { RefreshConfig } from "../../service/GatewayService";
 import CertificateGateway from "../../components/Certificate-Gateway";
 import { useState } from "react";
+import StaticFileProxy from "../../components/Static-File-Proxy";
 
 export default function Gateway() {
     const [activeKey, setActiveKey] = useState<string>('1');
@@ -59,10 +60,22 @@ export default function Gateway() {
                 <TabPane
                     tab={
                         <span>
-                            证书管理
+                            静态文件代理
                         </span>
                     }
                     itemKey="3"
+                >
+                    <div style={{ padding: '0 24px' }}>
+                        <StaticFileProxy activeKey={activeKey}/>
+                    </div>
+                </TabPane>
+                <TabPane
+                    tab={
+                        <span>
+                            证书管理
+                        </span>
+                    }
+                    itemKey="4"
                 >
                     <div style={{ padding: '0 24px' }}>
                         <CertificateGateway activeKey={activeKey}/>

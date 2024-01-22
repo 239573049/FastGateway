@@ -2,21 +2,13 @@
 
 [Index("uk_path", nameof(Path), false)]
 [Index("uk_ip", nameof(Ip), false)]
-public class RequestLog
+public sealed class RequestLog : Entity
 {
-    [Column(IsIdentity = true, IsPrimary = true)]
-    public int Id { get; set; }
-
     public string Path { get; set; }
     
     public string Method { get; set; }
     
     public string QueryString { get; set; }
-
-    /// <summary>
-    /// 创建时间
-    /// </summary>
-    public DateTime CreatedTime { get; set; }
 
     /// <summary>
     /// 请求IP

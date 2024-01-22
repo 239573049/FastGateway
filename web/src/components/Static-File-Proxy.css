@@ -1,0 +1,8 @@
+.static-file-proxy-item{
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    box-shadow: 0 0 5px #eee;
+}
