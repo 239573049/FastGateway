@@ -8,11 +8,13 @@ public class RequestLogService
     private readonly Channel<RequestLog> _channel;
     private readonly IFreeSql _freeSql;
     private readonly IMemoryCache _memoryCache;
+    private readonly SettingService _settingService;
 
-    public RequestLogService(IFreeSql freeSql, IMemoryCache memoryCache)
+    public RequestLogService(IFreeSql freeSql, IMemoryCache memoryCache, SettingService settingService)
     {
         _freeSql = freeSql;
         _memoryCache = memoryCache;
+        _settingService = settingService;
         _channel = Channel.CreateUnbounded<RequestLog>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -31,6 +33,18 @@ public class RequestLogService
                 await _freeSql.Insert(requestLog).ExecuteAffrowsAsync();
             }
         }
+    }
+
+    public async Task<int> ClearLogAsync()
+    {
+        // 获取系统配置
+        var day = await _settingService.GetAsync<int>(Constant.Setting.LogRetentionTime);
+        
+        // 计算时间差
+        var startTime = DateTime.Now.AddDays(-day);
+        
+        // 删除数据
+        return await _freeSql.Delete<RequestLog>().Where(x => x.CreatedTime <= startTime).ExecuteAffrowsAsync();
     }
 
     public async Task<PageResultDto<RequestLog>> GetListAsync(string keyword, int page, int pageSize,
@@ -166,7 +180,6 @@ ORDER BY
         return ResultDto<RequestLogPanel>.Success(result);
     }
 }
-
 
 public static class RequestLogExtension
 {

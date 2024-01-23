@@ -85,8 +85,7 @@ export default function CreateCertificate({ visible, onCancel, onSusccess }: IPr
                 {({ formState, values, formApi }) => (
                     <>
                         <Input rules={[
-                            { required: true, message: '证书名称是必填的' },
-                            { validator: (rule, value) => value.length < 10, message: '证书名称长度不能超过10位' },
+                            { required: true, message: '证书名称是必填的' }
                         ]} field='name' size='large' label='证书名称' style={{ width: '100%' }} placeholder='请输入证书名称'></Input>
                         <Input field='description' label='证书描述' size='large' style={{ width: '100%' }} placeholder='请输入证书描述'></Input>
                         <Input rules={[

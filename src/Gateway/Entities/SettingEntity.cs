@@ -10,7 +10,7 @@ public sealed class SettingEntity : Entity
     /// <summary>
     /// 显示名称
     /// </summary>
-    public string DisplayName { get; set; } = null!;
+    public string? DisplayName { get; set; } = null!;
 
     /// <summary>
     /// 设置描述

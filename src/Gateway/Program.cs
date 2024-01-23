@@ -1,4 +1,7 @@
 #region FreeSql类型转换
+
+using Microsoft.AspNetCore.Http.Features;
+
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
@@ -36,6 +39,8 @@ builder.WebHost.UseKestrel(options =>
 
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
+    kestrel.Limits.MaxRequestBodySize = null;
+    
     kestrel.ListenAnyIP(8081, portOptions =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
@@ -56,6 +61,17 @@ builder.Services
 
 #endregion
 
+builder.Services.Configure<KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = int.MaxValue; 
+});
+
+builder.Services.Configure<FormOptions>(x =>
+{
+    x.ValueLengthLimit = int.MaxValue;
+    x.MultipartBodyLengthLimit = int.MaxValue; // if don't set default value is: 128 MB
+    x.MultipartHeadersLengthLimit = int.MaxValue;
+});
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -87,6 +103,7 @@ builder.Services.AddSingleton<CertificateService>();
 builder.Services.AddSingleton<FileStorageService>();
 builder.Services.AddSingleton<StaticFileProxyService>();
 builder.Services.AddSingleton<TestService>();
+builder.Services.AddSingleton<SettingService>();
 builder.Services.AddSingleton<AuthorityService>();
 
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
@@ -124,6 +141,7 @@ app.MapFileStorage();
 app.MapGateway();
 app.MapAuthority();
 app.MapCertificate();
+app.MapSetting();
 
 app.UseAuthentication();
 app.UseAuthorization();

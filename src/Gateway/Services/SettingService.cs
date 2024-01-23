@@ -89,7 +89,12 @@ public class SettingService(IFreeSql freeSql)
         return default;
     }
 
-    public async Task SetAsync(string name, string value)
+    public async Task<bool> AnyAsync(string name)
+    {
+        return await freeSql.Select<SettingEntity>().AnyAsync(x => x.Name == name);
+    }
+
+    public async Task SetAsync(string name, string value, string? displayName = null, string? description = null)
     {
         var setting = await freeSql.Select<SettingEntity>().Where(x => x.Name == name).FirstAsync();
 
@@ -97,8 +102,12 @@ public class SettingService(IFreeSql freeSql)
         {
             setting = new SettingEntity
             {
+                Id = Guid.NewGuid().ToString("N"),
                 Name = name,
-                DefaultValue = value
+                DefaultValue = value,
+                DisplayName = displayName,
+                Description = description,
+                CreatedTime = DateTime.Now
             };
             await freeSql.Insert(setting).ExecuteAffrowsAsync();
         }
@@ -109,7 +118,7 @@ public class SettingService(IFreeSql freeSql)
         }
     }
 
-    public async Task SetAsync<T>(string name, T value)
+    public async Task SetAsync<T>(string name, T value, string? displayName = null, string? description = null)
     {
         var setting = await freeSql.Select<SettingEntity>().Where(x => x.Name == name).FirstAsync();
 
@@ -143,6 +152,9 @@ public class SettingService(IFreeSql freeSql)
             setting = new SettingEntity
             {
                 Name = name,
+                Id = Guid.NewGuid().ToString("N"),
+                DisplayName = displayName,
+                Description = description,
                 DefaultValue = defaultValue
             };
             await freeSql.Insert(setting).ExecuteAffrowsAsync();
@@ -152,5 +164,24 @@ public class SettingService(IFreeSql freeSql)
             setting.DefaultValue = defaultValue;
             await freeSql.Update<SettingEntity>().SetSource(setting).ExecuteAffrowsAsync();
         }
+    }
+
+    public async Task<List<SettingEntity>> GetListAsync()
+    {
+        return await freeSql.Select<SettingEntity>()
+            .OrderByDescending(x => x.CreatedTime)
+            .ToListAsync();
+    }
+}
+
+public static class SettingExtension
+{
+    public static void MapSetting(this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/gateway/setting", async (SettingService settingService) =>
+            await settingService.GetListAsync());
+
+        app.MapPut("/api/gateway/setting/{name}", async (SettingService settingService, string name, string value) =>
+            await settingService.SetAsync(name, value));
     }
 }
