@@ -108,8 +108,6 @@ public class StaticFileProxyService(IFreeSql freeSql)
     /// 获取静态文件代理配置
     /// </summary>
     /// <param name="keyword"></param>
-    /// <param name="page"></param>
-    /// <param name="pageSize"></param>
     /// <returns></returns>
     public async Task<PageResultDto<StaticFileProxyEntity>> GetListAsync(string keyword)
     {

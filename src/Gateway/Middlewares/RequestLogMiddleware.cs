@@ -30,6 +30,12 @@ public class RequestLogMiddleware : IMiddleware
         var stopwatch = Stopwatch.StartNew();
         await next(context);
         stopwatch.Stop();
+        
+        // 忽略掉204的请求
+        if (context.Response.StatusCode == 204)
+        {
+            return;
+        }
 
         // 过滤Content-Type
         if (RequestOptions.FilterContentTypes.Any(x => context.Response.ContentType?.Contains(x) == true))
