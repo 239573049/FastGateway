@@ -30,7 +30,15 @@ public class RequestLogService
         {
             while (_channel.Reader.TryRead(out var requestLog))
             {
-                await _freeSql.Insert(requestLog).ExecuteAffrowsAsync();
+                try
+                {
+                    requestLog.Id = Guid.NewGuid().ToString("N");
+                    await _freeSql.Insert(requestLog).ExecuteAffrowsAsync();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
             }
         }
     }
@@ -39,10 +47,10 @@ public class RequestLogService
     {
         // 获取系统配置
         var day = await _settingService.GetAsync<int>(Constant.Setting.LogRetentionTime);
-        
+
         // 计算时间差
         var startTime = DateTime.Now.AddDays(-day);
-        
+
         // 删除数据
         return await _freeSql.Delete<RequestLog>().Where(x => x.CreatedTime <= startTime).ExecuteAffrowsAsync();
     }
