@@ -1,0 +1,26 @@
+
+services:
+  gateway-api:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
+    restart: always
+    container_name: gateway-api
+    build:
+      context: ../src
+      dockerfile: Gateway/Dockerfile
+    ports:
+      - 8200:8080
+      - 8300:8081
+    volumes:
+      - ./data:/data/
+
+  gateway-web:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
+    restart: always
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    privileged: true
+    environment:
+      api_url: http://localhost:8200
+    ports:
+      - 10800:80
