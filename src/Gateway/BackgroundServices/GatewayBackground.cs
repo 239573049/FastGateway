@@ -1,4 +1,6 @@
-﻿namespace Gateway;
+﻿using System.Net.NetworkInformation;
+
+namespace Gateway.BackgroundServices;
 
 public class GatewayBackgroundService(
     GatewayService gatewayService,
@@ -52,4 +54,5 @@ public class GatewayBackgroundService(
             Console.WriteLine($"日志清理完成，耗时：{sw.ElapsedMilliseconds} ms; 删除日志：{result} 条;");
         }
     }
+
 }

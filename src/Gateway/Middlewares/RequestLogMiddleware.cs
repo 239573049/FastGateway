@@ -24,6 +24,7 @@ public class RequestLogMiddleware : IMiddleware
             Method = context.Request.Method,
             QueryString = context.Request.QueryString.ToString(),
             CreatedTime = DateTime.Now,
+            Host = context.Request.Host.Host,
             Ip = ip,
             BrowserInfo = context.Request.Headers.UserAgent.ToString(),
         };

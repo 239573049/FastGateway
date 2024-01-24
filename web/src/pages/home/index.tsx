@@ -2,6 +2,7 @@ import { Panel } from '../../service/RequestLogService';
 import { useEffect, useState } from "react";
 import { VChart } from "@visactor/react-vchart";
 import { Col, Row } from '@douyinfe/semi-ui';
+import { stream } from '../../service/NetWorkService';
 
 export default function Home() {
     const [hours, setHours] = useState<number>(24);
@@ -151,7 +152,16 @@ export default function Home() {
 
     useEffect(() => {
         loadingPanel();
+        onstream();
     }, [hours]);
+
+    async function onstream(){
+        const response = await stream();
+
+        for await(let item of response){
+            console.log(item);
+        }
+    }
 
     return (
         <div className="App">
