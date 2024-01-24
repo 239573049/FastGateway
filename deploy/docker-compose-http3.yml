@@ -5,11 +5,12 @@ services:
     restart: always
     container_name: gateway-api
     build:
-      context: ./src
-      dockerfile: Gateway/Dockerfile
+      context: ../src
+      dockerfile: Gateway/Dockerfile-http3
     ports:
       - 8200:8080
-      - 8300:8081
+      - 8300:8081/udp
+      - 8300:8081/tcp
     volumes:
       - ./data:/data/
 
@@ -17,7 +18,7 @@ services:
     image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
     restart: always
     build:
-      context: ./web
+      context: ../web
       dockerfile: Dockerfile
     privileged: true
     environment:
