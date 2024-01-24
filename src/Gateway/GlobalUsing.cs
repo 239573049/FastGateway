@@ -24,3 +24,4 @@ global using Microsoft.AspNetCore.Server.Kestrel.Core;
 global using System.Text;
 global using Microsoft.IdentityModel.Tokens;
 global using System.Collections.Concurrent;
+global using Microsoft.AspNetCore.Http.Features;

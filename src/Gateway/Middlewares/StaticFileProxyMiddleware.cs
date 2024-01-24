@@ -4,6 +4,7 @@ public class StaticFileProxyMiddleware(IContentTypeProvider contentTypeProvider)
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        context.Response.Headers["Alt-Svc"] = "h3=\":" + context.Request.Host.Port + "\"";
         // 如果是非GET请求，则直接跳过, /api/gateway/开头的请求也跳过 这个是属于系统内置的接口
         if ((context.Request.Method != "GET" && StaticFileProxyService.StaticFileProxyEntityList.Count == 0) ||
             context.Request.Path.Value?.StartsWith("/api/gateway/") == true)
@@ -72,7 +73,7 @@ public class StaticFileProxyMiddleware(IContentTypeProvider contentTypeProvider)
                 return;
             }
 
-            readfile:
+        readfile:
 
             // 获取文件的ContentType
             context.Response.ContentType = contentTypeProvider.TryGetContentType(filePath, out var contentType)

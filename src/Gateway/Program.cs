@@ -1,7 +1,5 @@
 #region FreeSql类型转换
 
-using Microsoft.AspNetCore.Http.Features;
-
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
@@ -23,7 +21,7 @@ builder.WebHost.UseKestrel(options =>
         {
             // 从Certificate服务中获取
             if (string.IsNullOrEmpty(name) ||
-                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate)) return null;
+                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate)) return new X509Certificate2();
 
             var path = Path.Combine("/data/", certificate.Path);
 
@@ -46,7 +44,7 @@ builder.WebHost.ConfigureKestrel(kestrel =>
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         portOptions.UseHttps();
     });
-    
+
     kestrel.ListenAnyIP(8080, portOptions =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2;
