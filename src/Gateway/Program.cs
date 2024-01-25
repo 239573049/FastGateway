@@ -28,6 +28,10 @@ var freeSql = new FreeSqlBuilder()
 builder.Configuration.GetSection(nameof(JwtOptions))
     .Get<JwtOptions>();
 
+// 获取环境变量
+var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
+var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
+
 builder.WebHost.UseKestrel(options =>
 {
     // 配置多个域名证书
@@ -40,8 +44,8 @@ builder.WebHost.UseKestrel(options =>
                 !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
             {
                 // 创建一个默认的证书
-                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", "gateway.pfx"),
-                    "dd666666");
+                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                    https_password);
             }
 
             var path = Path.Combine("/data/", certificate.Path);
@@ -52,8 +56,8 @@ builder.WebHost.UseKestrel(options =>
             Console.WriteLine($"证书文件不存在：{path}");
             Console.ResetColor();
 
-            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", "gateway.pfx"),
-                "dd666666");
+            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                https_password);
         };
     });
 });
