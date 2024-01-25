@@ -19,7 +19,22 @@ public sealed class RouteEntity : Entity
     /// 绑定集群Id可空
     /// </summary>
     public string? ClusterId { get; set; }
-    
+
+    /// <summary>
+    /// 授权策略
+    /// </summary>
+    public string? AuthorizationPolicy { get; set; }
+
+    /// <summary>
+    /// 认证中心否需要https
+    /// </summary>
+    public bool? RequireHttpsMetadata { get; set; }
+
+    /// <summary>
+    /// 授权认证中心地址
+    /// </summary>
+    public string? AuthorizationPolicyAddress { get; set; }
+
     /// <summary>
     /// 请求Body最大长度
     /// </summary>

@@ -26,6 +26,7 @@ public class GatewayService(
             RouteId = route.RouteId,
             ClusterId = route.ClusterId,
             MaxRequestBodySize = route.MaxRequestBodySize,
+            AuthorizationPolicy = route.AuthorizationPolicy,
             Match = new RouteMatch()
             {
                 Path = route.MatchEntities.Path,

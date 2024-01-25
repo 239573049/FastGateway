@@ -1,5 +1,6 @@
 #region FreeSql类型转换
 
+using Microsoft.Extensions.DependencyInjection;
 using Gateway.BackgroundServices;
 
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
@@ -10,6 +11,19 @@ Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
 #endregion
 
 var builder = WebApplication.CreateBuilder(args);
+
+var directory = new DirectoryInfo("/data");
+if (!directory.Exists)
+{
+    directory.Create();
+}
+
+var freeSql = new FreeSqlBuilder()
+    .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("DefaultConnection"))
+    .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) //监听SQL语句
+    .UseAutoSyncStructure(true) //自动同步实体结构到数据库，FreeSql不会扫描程序集，只有CRUD时才会生成表。
+    .Build();
+
 
 builder.Configuration.GetSection(nameof(JwtOptions))
     .Get<JwtOptions>();
@@ -40,7 +54,7 @@ builder.WebHost.UseKestrel(options =>
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
     kestrel.Limits.MaxRequestBodySize = null;
-    
+
     kestrel.ListenAnyIP(8081, portOptions =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
@@ -55,15 +69,25 @@ builder.WebHost.ConfigureKestrel(kestrel =>
 
 #region Jwt
 
+
+var policies = freeSql.Select<RouteEntity>().Where(a => a.AuthorizationPolicy != null).Distinct().ToList();
+
 builder.Services
-    .AddAuthorization()
-    .AddJwtBearerAuthentication();
+    .AddAuthorization(options =>
+    {
+        // 添加授权策略
+        foreach (var policy in policies)
+        {
+            options.AddPolicy(policy.AuthorizationPolicy!, policy => policy.RequireAuthenticatedUser());
+        }
+    })
+    .AddJwtBearerAuthentication(policies);
 
 #endregion
 
 builder.Services.Configure<KestrelServerOptions>(options =>
 {
-    options.Limits.MaxRequestBodySize = int.MaxValue; 
+    options.Limits.MaxRequestBodySize = int.MaxValue;
 });
 
 builder.Services.Configure<FormOptions>(x =>
@@ -110,20 +134,7 @@ builder.Services.AddSingleton<NetWorkService>();
 
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
-builder.Services.AddSingleton<IFreeSql>(_ =>
-{
-    var directory = new DirectoryInfo("/data");
-    if (!directory.Exists)
-    {
-        directory.Create();
-    }
-
-    return new FreeSqlBuilder()
-        .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("DefaultConnection"))
-        .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) //监听SQL语句
-        .UseAutoSyncStructure(true) //自动同步实体结构到数据库，FreeSql不会扫描程序集，只有CRUD时才会生成表。
-        .Build();
-});
+builder.Services.AddSingleton<IFreeSql>(freeSql);
 
 // 使用内存加载配置 
 builder.Services.AddReverseProxy()
@@ -146,6 +157,9 @@ app.MapAuthority();
 app.MapCertificate();
 app.MapSetting();
 app.MapNetWork();
+
+// 添加自定义授权
+app.UseCustomAuthentication();
 
 app.UseAuthentication();
 app.UseAuthorization();
