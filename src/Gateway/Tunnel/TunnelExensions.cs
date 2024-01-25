@@ -27,10 +27,13 @@ public static class TunnelExensions
                 // 获取环境变量的password
                 var password = Environment.GetEnvironmentVariable("TUNNEL_PASSWORD");
 
-                if (!string.IsNullOrEmpty(password) && password != context.Request.Headers["Tunnel-Password"])
+                if (!string.IsNullOrEmpty(password) && context.Request.Query.TryGetValue("password", out var value))
                 {
-                    Console.WriteLine("Password not match");
-                    return Results.BadRequest();
+                    if (value != password)
+                    {
+                        Console.WriteLine("Password not match");
+                        return Results.BadRequest();
+                    }
                 }
 
                 Console.WriteLine($"Host:{host} 加入链接");
