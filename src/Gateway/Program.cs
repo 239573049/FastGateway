@@ -28,6 +28,10 @@ var freeSql = new FreeSqlBuilder()
 builder.Configuration.GetSection(nameof(JwtOptions))
     .Get<JwtOptions>();
 
+// 获取环境变量
+var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
+var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
+
 builder.WebHost.UseKestrel(options =>
 {
     // 配置多个域名证书
@@ -37,7 +41,12 @@ builder.WebHost.UseKestrel(options =>
         {
             // 从Certificate服务中获取
             if (string.IsNullOrEmpty(name) ||
-                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate)) return new X509Certificate2();
+                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
+            {
+                // 创建一个默认的证书
+                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                    https_password);
+            }
 
             var path = Path.Combine("/data/", certificate.Path);
 
@@ -46,7 +55,9 @@ builder.WebHost.UseKestrel(options =>
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"证书文件不存在：{path}");
             Console.ResetColor();
-            throw new Exception($"证书文件不存在：{path}");
+
+            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                https_password);
         };
     });
 });
@@ -61,14 +72,10 @@ builder.WebHost.ConfigureKestrel(kestrel =>
         portOptions.UseHttps();
     });
 
-    kestrel.ListenAnyIP(8080, portOptions =>
-    {
-        portOptions.Protocols = HttpProtocols.Http1AndHttp2;
-    });
+    kestrel.ListenAnyIP(8080, portOptions => { portOptions.Protocols = HttpProtocols.Http1AndHttp2; });
 });
 
 #region Jwt
-
 
 var policies = freeSql.Select<RouteEntity>().Where(a => a.AuthorizationPolicy != null).Distinct().ToList();
 
@@ -85,10 +92,7 @@ builder.Services
 
 #endregion
 
-builder.Services.Configure<KestrelServerOptions>(options =>
-{
-    options.Limits.MaxRequestBodySize = int.MaxValue;
-});
+builder.Services.Configure<KestrelServerOptions>(options => { options.Limits.MaxRequestBodySize = int.MaxValue; });
 
 builder.Services.Configure<FormOptions>(x =>
 {
@@ -140,6 +144,9 @@ builder.Services.AddSingleton<IFreeSql>(freeSql);
 builder.Services.AddReverseProxy()
     .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters);
 
+
+builder.Services.AddTunnelServices();
+
 var app = builder.Build();
 
 app.UseCors("AllowAll");
@@ -160,6 +167,12 @@ app.MapNetWork();
 
 // 添加自定义授权
 app.UseCustomAuthentication();
+
+app.MapWebSocketTunnel("/api/gateway/connect-ws");
+
+// Auth可以添加到这个端点，我们可以将它限制在某些点上
+// 避免外部流量撞击它
+app.MapHttp2Tunnel("/api/gateway/connect-h2");
 
 app.UseAuthentication();
 app.UseAuthorization();
