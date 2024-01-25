@@ -13,7 +13,7 @@ public class NetWorkDto(long received, long sent)
     /// 接收流量字符串
     /// </summary>
     public string ReceivedStr => StringHelper.FormatBytes(Received);
-    
+
     /// <summary>
     /// 发送流量
     /// </summary>
@@ -23,4 +23,9 @@ public class NetWorkDto(long received, long sent)
     /// 发送流量字符串
     /// </summary>
     public string SentStr => StringHelper.FormatBytes(Sent);
+
+    /// <summary>
+    /// 当前时间
+    /// </summary>
+    public string Time => DateTime.Now.ToString("HH:mm:ss");
 }

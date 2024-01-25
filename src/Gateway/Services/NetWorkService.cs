@@ -2,10 +2,12 @@
 
 public class NetWorkService
 {
-    public async Task StreamAsync(HttpContext context)
+    public static async Task StreamAsync(HttpContext context)
     {
         // 使用sse，返回响应头
         context.Response.Headers.ContentType = "text/event-stream";
+
+        int i = 0;
 
         while (!context.RequestAborted.IsCancellationRequested)
         {
@@ -55,6 +57,14 @@ public class NetWorkService
             // 将数据写入到响应流中
             await context.Response.WriteAsync(data, context.RequestAborted);
             await context.Response.Body.FlushAsync(context.RequestAborted);
+
+            i++;
+
+            // 只维持10秒的连接
+            if (i > 5)
+            {
+                break;
+            }
         }
     }
 }
@@ -64,6 +74,6 @@ public static class NetWorkExtension
     public static void MapNetWork(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/gateway/network", async (NetWorkService netWorkService, HttpContext context) =>
-            await netWorkService.StreamAsync(context));
+            await NetWorkService.StreamAsync(context));
     }
 }
