@@ -1,6 +1,7 @@
 #region FreeSql类型转换
 
 using Microsoft.Extensions.DependencyInjection;
+using Gateway.BackgroundServices;
 
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
@@ -119,6 +120,7 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddSingleton<RequestLogMiddleware>();
 builder.Services.AddSingleton<StaticFileProxyMiddleware>();
+builder.Services.AddSingleton<GatewayMiddleware>();
 
 builder.Services.AddSingleton<RequestLogService>();
 builder.Services.AddSingleton<GatewayService>();
@@ -128,6 +130,7 @@ builder.Services.AddSingleton<StaticFileProxyService>();
 builder.Services.AddSingleton<TestService>();
 builder.Services.AddSingleton<SettingService>();
 builder.Services.AddSingleton<AuthorityService>();
+builder.Services.AddSingleton<NetWorkService>();
 
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
@@ -142,6 +145,7 @@ var app = builder.Build();
 app.UseCors("AllowAll");
 
 app.UseMiddleware<RequestLogMiddleware>();
+app.UseMiddleware<GatewayMiddleware>();
 app.UseMiddleware<StaticFileProxyMiddleware>();
 
 // 配置MiniApis服务
@@ -152,6 +156,7 @@ app.MapGateway();
 app.MapAuthority();
 app.MapCertificate();
 app.MapSetting();
+app.MapNetWork();
 
 // 添加自定义授权
 app.UseCustomAuthentication();

@@ -31,6 +31,11 @@ public sealed class RequestLog : Entity
     public double ExecutionDuration { get; set; }
 
     /// <summary>
+    /// 请求域名
+    /// </summary>
+    public string? Host { get; set; }
+    
+    /// <summary>
     /// 浏览器信息
     /// </summary>
     public string BrowserInfo { get; set; }
