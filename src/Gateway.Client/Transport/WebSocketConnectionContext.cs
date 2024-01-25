@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Http.Connections.Client;
 
+namespace Gateway.Client.Transport;
+
 internal class WebSocketConnectionContext : HttpConnection
 {
     private readonly CancellationTokenSource _cts = new();

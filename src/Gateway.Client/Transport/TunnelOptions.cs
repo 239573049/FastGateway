@@ -1,4 +1,6 @@
-﻿public class TunnelOptions
+﻿namespace Gateway.Client.Transport;
+
+public class TunnelOptions
 {
     public int MaxConnectionCount { get; set; } = 10;
 

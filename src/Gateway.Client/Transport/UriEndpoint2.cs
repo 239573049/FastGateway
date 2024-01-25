@@ -1,6 +1,8 @@
 ﻿using System.Net;
 
 // This is a .NET 6 workaround for https://github.com/dotnet/aspnetcore/pull/40003 (it's fixed in .NET 7)
+namespace Gateway.Client.Transport;
+
 internal class UriEndPoint2 : IPEndPoint
 {
     public Uri? Uri { get; }

@@ -3,6 +3,8 @@ using System.Net;
 using System.Net.Security;
 using Microsoft.AspNetCore.Connections;
 
+namespace Gateway.Client.Transport;
+
 /// <summary>
 /// This has the core logic that creates and maintains connections to the proxy.
 /// </summary>

@@ -172,7 +172,7 @@ app.MapWebSocketTunnel("/api/gateway/connect-ws");
 
 // Auth可以添加到这个端点，我们可以将它限制在某些点上
 // 避免外部流量撞击它
-app.MapHttp2Tunnel("/connect-h2");
+app.MapHttp2Tunnel("/api/gateway/connect-h2");
 
 app.UseAuthentication();
 app.UseAuthorization();

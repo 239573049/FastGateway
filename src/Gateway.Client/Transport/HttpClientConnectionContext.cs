@@ -87,36 +87,29 @@ internal class HttpClientConnectionContext : ConnectionContext,
         return connection;
     }
 
-    private class HttpClientConnectionContextContent : HttpContent
+    private class HttpClientConnectionContextContent(HttpClientConnectionContext connectionContext) : HttpContent
     {
-        private readonly HttpClientConnectionContext _connectionContext;
-
-        public HttpClientConnectionContextContent(HttpClientConnectionContext connectionContext)
-        {
-            _connectionContext = connectionContext;
-        }
-
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context,
             CancellationToken cancellationToken)
         {
-            _connectionContext.Output = PipeWriter.Create(stream);
+            connectionContext.Output = PipeWriter.Create(stream);
 
             // Immediately flush request stream to send headers
             // https://github.com/dotnet/corefx/issues/39586#issuecomment-516210081
             await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
 
-            await _connectionContext.ExecutionTask.ConfigureAwait(false);
+            await connectionContext.ExecutionTask.ConfigureAwait(false);
         }
 
         protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {
-            _connectionContext.Output = PipeWriter.Create(stream);
+            connectionContext.Output = PipeWriter.Create(stream);
 
             // Immediately flush request stream to send headers
             // https://github.com/dotnet/corefx/issues/39586#issuecomment-516210081
             await stream.FlushAsync().ConfigureAwait(false);
 
-            await _connectionContext.ExecutionTask.ConfigureAwait(false);
+            await connectionContext.ExecutionTask.ConfigureAwait(false);
         }
 
         protected override bool TryComputeLength(out long length)

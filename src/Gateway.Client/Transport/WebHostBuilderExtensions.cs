@@ -1,16 +1,17 @@
-﻿
-using System;
+﻿using Gateway.Client.Options;
 using Microsoft.AspNetCore.Connections;
+
+namespace Gateway.Client.Transport;
 
 public static class WebHostBuilderExtensions
 {
-    public static IWebHostBuilder UseTunnelTransport(this IWebHostBuilder hostBuilder, string url, Action<TunnelOptions>? configure = null)
+    public static IWebHostBuilder UseTunnelTransport(this IWebHostBuilder hostBuilder, Action<TunnelOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(url);
+        ArgumentNullException.ThrowIfNull(TunnelClientOptions.Url);
 
         hostBuilder.ConfigureKestrel(options =>
         {
-            options.Listen(new UriEndPoint2(new Uri(url)));
+            options.Listen(new UriEndPoint2(new Uri(TunnelClientOptions.Url)));
         });
 
         return hostBuilder.ConfigureServices(services =>

@@ -9,12 +9,13 @@ Gateway提供了基本的管理服务，提供简单的登录授权，和实时�
 - [x] 动态配置证书管理
 - [x] dashboard监控
 - [x] 静态文件服务代理
+- [x] 穿透隧道功能
 - [x] 请求日志记录监控
 - [ ] 动态插件管理
 
 ## 技术栈
 
-## 后端技术栈
+### 后端技术栈
 
 - Asp.Net 8.0 用于提供基础服务
 - Yarp 用于提供反向代理服务
@@ -70,3 +71,52 @@ services:
 账号：root
 
 密码：Aa010426.
+
+## 替换默认的https证书
+
+由于需要使用https，为了方便系统默认提供了一个pfx证书，如果你需要提供的话可以按照以下操作进行，如果是Docker执行的话证书的目录则是 `/app/certificates/gateway.pfx`
+
+```yml
+
+services:
+  gateway-api:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
+    restart: always
+    container_name: gateway-api
+    environment:
+      USER: root
+      PASS: Aa010426.
+      HTTPS_PASSWORD: dd666666
+      HTTPS_FILE: gateway.pfx
+    ports:
+      - 8200:8080
+    volumes:
+      - ./data:/data/
+      - ./app/certificates:/app/certificates
+
+  gateway-web:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
+    restart: always
+    container_name: gateway-web
+    privileged: true
+    environment:
+      api_url: http://token-ai.cn:8200
+    ports:
+      - 10800:80
+
+```
+
+参考上面的docker-compose文件，我们提供了俩个环境变量`HTTPS_PASSWORD`，`HTTPS_FILE`，
+
+`HTTPS_FILE`：
+
+- 在系统中已经指定了容器的`/app/certificates`目录，你只想要挂在目录中的文件名即可
+
+`HTTPS_PASSWORD`：
+
+- Pfx证书的密码，如果修改了证书请填写证书的密码。
+
+`/app/certificates`：
+
+- 这个是系统证书默认存放目录，如果映射了目录则需要提供自己的证书。
+
