@@ -135,6 +135,7 @@ builder.Services.AddSingleton<NetWorkService>();
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
 builder.Services.AddSingleton<IFreeSql>(freeSql);
+builder.Services.AddTunnelServices();
 
 // 使用内存加载配置 
 builder.Services.AddReverseProxy()
@@ -160,6 +161,13 @@ app.MapNetWork();
 
 // 添加自定义授权
 app.UseCustomAuthentication();
+
+// Uncomment to support websocket connections
+app.MapWebSocketTunnel("/connect-ws");
+
+// Auth can be added to this endpoint and we can restrict it to certain points
+// to avoid exteranl traffic hitting it
+app.MapHttp2Tunnel("/connect-h2");
 
 app.UseAuthentication();
 app.UseAuthorization();

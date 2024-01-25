@@ -20,4 +20,8 @@
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Tunnel.Server\Tunnel.Server.csproj" />
+  </ItemGroup>
+
 </Project>
