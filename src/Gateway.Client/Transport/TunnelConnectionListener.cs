@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Security;
 using Microsoft.AspNetCore.Connections;
 
 /// <summary>
@@ -11,11 +12,16 @@ internal class TunnelConnectionListener : IConnectionListener
     private readonly ConcurrentDictionary<ConnectionContext, ConnectionContext> _connections = new();
     private readonly TunnelOptions _options;
     private readonly CancellationTokenSource _closedCts = new();
+
     private readonly HttpMessageInvoker _httpMessageInvoker = new(new SocketsHttpHandler
     {
         EnableMultipleHttp2Connections = true,
         PooledConnectionLifetime = Timeout.InfiniteTimeSpan,
-        PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan
+        PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+        SslOptions = new SslClientAuthenticationOptions()
+        {
+            RemoteCertificateValidationCallback = (sender, certificate, chain, errors) => true
+        }
     });
 
     public TunnelConnectionListener(TunnelOptions options, EndPoint endpoint)
@@ -38,7 +44,8 @@ internal class TunnelConnectionListener : IConnectionListener
     {
         try
         {
-            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_closedCts.Token, cancellationToken).Token;
+            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_closedCts.Token, cancellationToken)
+                .Token;
 
             // Kestrel will keep an active accept call open as long as the transport is active
             await _connectionLock.WaitAsync(cancellationToken);
@@ -51,8 +58,10 @@ internal class TunnelConnectionListener : IConnectionListener
                 {
                     var connection = new TrackLifetimeConnectionContext(_options.Transport switch
                     {
-                        TransportType.WebSockets => await WebSocketConnectionContext.ConnectAsync(Uri, cancellationToken),
-                        TransportType.HTTP2 => await HttpClientConnectionContext.ConnectAsync(_httpMessageInvoker, Uri, cancellationToken),
+                        TransportType.WebSockets => await WebSocketConnectionContext.ConnectAsync(Uri,
+                            cancellationToken),
+                        TransportType.HTTP2 => await HttpClientConnectionContext.ConnectAsync(_httpMessageInvoker, Uri,
+                            cancellationToken),
                         _ => throw new NotSupportedException(),
                     });
 
@@ -60,21 +69,22 @@ internal class TunnelConnectionListener : IConnectionListener
                     _connections.TryAdd(connection, connection);
 
                     _ = Task.Run(async () =>
-                    {
-                        // When the connection is disposed, release it
-                        await connection.ExecutionTask;
+                        {
+                            // When the connection is disposed, release it
+                            await connection.ExecutionTask;
 
-                        _connections.TryRemove(connection, out _);
+                            _connections.TryRemove(connection, out _);
 
-                        // Allow more connections in
-                        _connectionLock.Release();
-                    },
-                    cancellationToken);
+                            // Allow more connections in
+                            _connectionLock.Release();
+                        },
+                        cancellationToken);
 
                     return connection;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
+                    Console.WriteLine(ex);
                     // TODO: More sophisticated backoff and retry
                     await Task.Delay(5000, cancellationToken);
                 }
@@ -85,6 +95,7 @@ internal class TunnelConnectionListener : IConnectionListener
             return null;
         }
     }
+
     public async ValueTask DisposeAsync()
     {
         List<Task>? tasks = null;

@@ -43,6 +43,11 @@ public class GatewayBackgroundService(
             // 将时间差转换成总毫秒
             var totalSeconds = timeDifference.TotalMilliseconds;
 
+            if (totalSeconds < 0)
+            {
+                totalSeconds = 5000;
+            }
+            
             Console.WriteLine($"距离今天23:59还有：{totalSeconds} ms");
 
             await Task.Delay((int)totalSeconds, stoppingToken);

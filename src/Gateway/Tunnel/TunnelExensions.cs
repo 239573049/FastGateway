@@ -21,6 +21,8 @@ public static class TunnelExensions
                 Console.WriteLine("Not HTTP/2");
                 return Results.BadRequest();
             }
+            
+            Console.WriteLine($"Host:{host} 加入链接");
 
             var (requests, responses) = tunnelFactory.GetConnectionChannel(host);
 

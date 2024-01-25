@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Http.Features;
 
 internal class HttpClientConnectionContext : ConnectionContext,
-                IConnectionLifetimeFeature,
-                IConnectionEndPointFeature,
-                IConnectionItemsFeature,
-                IConnectionIdFeature,
-                IConnectionTransportFeature,
-                IDuplexPipe
+    IConnectionLifetimeFeature,
+    IConnectionEndPointFeature,
+    IConnectionItemsFeature,
+    IConnectionIdFeature,
+    IConnectionTransportFeature,
+    IDuplexPipe
 {
     private readonly TaskCompletionSource _executionTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -68,17 +68,20 @@ internal class HttpClientConnectionContext : ConnectionContext,
         return base.DisposeAsync();
     }
 
-    public static async ValueTask<ConnectionContext> ConnectAsync(HttpMessageInvoker invoker, Uri uri, CancellationToken cancellationToken)
+    public static async ValueTask<ConnectionContext> ConnectAsync(HttpMessageInvoker invoker, Uri uri,
+        CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, uri)
         {
-            Version = new Version(2, 0)
+            Version = new Version(2, 0),
         };
+
+        
         var connection = new HttpClientConnectionContext();
         request.Content = new HttpClientConnectionContextContent(connection);
         var response = await invoker.SendAsync(request, cancellationToken).ConfigureAwait(false);
         connection.HttpResponseMessage = response;
-        var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+        var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         connection.Input = PipeReader.Create(responseStream);
 
         return connection;
@@ -93,7 +96,8 @@ internal class HttpClientConnectionContext : ConnectionContext,
             _connectionContext = connectionContext;
         }
 
-        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context,
+            CancellationToken cancellationToken)
         {
             _connectionContext.Output = PipeWriter.Create(stream);
 
