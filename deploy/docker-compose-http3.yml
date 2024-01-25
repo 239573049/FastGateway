@@ -1,7 +1,7 @@
 
 services:
   gateway-api:
-    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:8.0-http3
     restart: always
     container_name: gateway-api
     build:
