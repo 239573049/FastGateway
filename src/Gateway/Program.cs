@@ -168,12 +168,11 @@ app.MapNetWork();
 // 添加自定义授权
 app.UseCustomAuthentication();
 
-// Uncomment to support websocket connections
-app.MapWebSocketTunnel("/connect-ws");
+app.MapWebSocketTunnel("/api/gateway/connect-ws");
 
-// Auth can be added to this endpoint and we can restrict it to certain points
-// to avoid exteranl traffic hitting it
-app.MapHttp2Tunnel("/connect-h2");
+// Auth可以添加到这个端点，我们可以将它限制在某些点上
+// 避免外部流量撞击它
+app.MapHttp2Tunnel("/api/gateway/connect-h2");
 
 app.UseAuthentication();
 app.UseAuthorization();
