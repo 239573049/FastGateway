@@ -1,9 +1,4 @@
 ﻿using System.Net.WebSockets;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Yarp.ReverseProxy.Forwarder;
 
 public static class TunnelExensions
@@ -23,6 +18,7 @@ public static class TunnelExensions
             // HTTP/2 duplex stream
             if (context.Request.Protocol != HttpProtocol.Http2)
             {
+                Console.WriteLine("Not HTTP/2");
                 return Results.BadRequest();
             }
 
@@ -67,7 +63,7 @@ public static class TunnelExensions
             var stream = new WebSocketStream(ws);
 
             // We should make this more graceful
-            using var reg = lifetime.ApplicationStopping.Register(() => stream.Abort());
+            await using var reg = lifetime.ApplicationStopping.Register(() => stream.Abort());
 
             // Keep reusing this connection while, it's still open on the backend
             while (ws.State == WebSocketState.Open)

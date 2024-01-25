@@ -9,11 +9,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Tunnel.Client\Tunnel.Client.csproj" />
+        <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Client" Version="8.0.1" />
     </ItemGroup>
 
 </Project>

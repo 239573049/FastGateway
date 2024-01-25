@@ -37,7 +37,12 @@ builder.WebHost.UseKestrel(options =>
         {
             // 从Certificate服务中获取
             if (string.IsNullOrEmpty(name) ||
-                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate)) return new X509Certificate2();
+                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
+            {
+                // 创建一个默认的证书
+                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", "gateway.pfx"),
+                    "dd666666");
+            }
 
             var path = Path.Combine("/data/", certificate.Path);
 
@@ -46,7 +51,9 @@ builder.WebHost.UseKestrel(options =>
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"证书文件不存在：{path}");
             Console.ResetColor();
-            throw new Exception($"证书文件不存在：{path}");
+
+            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", "gateway.pfx"),
+                "dd666666");
         };
     });
 });
@@ -61,14 +68,10 @@ builder.WebHost.ConfigureKestrel(kestrel =>
         portOptions.UseHttps();
     });
 
-    kestrel.ListenAnyIP(8080, portOptions =>
-    {
-        portOptions.Protocols = HttpProtocols.Http1AndHttp2;
-    });
+    kestrel.ListenAnyIP(8080, portOptions => { portOptions.Protocols = HttpProtocols.Http1AndHttp2; });
 });
 
 #region Jwt
-
 
 var policies = freeSql.Select<RouteEntity>().Where(a => a.AuthorizationPolicy != null).Distinct().ToList();
 
@@ -85,10 +88,7 @@ builder.Services
 
 #endregion
 
-builder.Services.Configure<KestrelServerOptions>(options =>
-{
-    options.Limits.MaxRequestBodySize = int.MaxValue;
-});
+builder.Services.Configure<KestrelServerOptions>(options => { options.Limits.MaxRequestBodySize = int.MaxValue; });
 
 builder.Services.Configure<FormOptions>(x =>
 {
@@ -135,11 +135,13 @@ builder.Services.AddSingleton<NetWorkService>();
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
 builder.Services.AddSingleton<IFreeSql>(freeSql);
-builder.Services.AddTunnelServices();
 
 // 使用内存加载配置 
 builder.Services.AddReverseProxy()
     .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters);
+
+
+builder.Services.AddTunnelServices();
 
 var app = builder.Build();
 

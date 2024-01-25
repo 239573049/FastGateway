@@ -1,5 +1,4 @@
 ﻿using System.Threading.Tasks.Sources;
-using Microsoft.AspNetCore.Http;
 
 internal class DuplexHttpStream : Stream, IValueTaskSource<object?>, ICloseable
 {
