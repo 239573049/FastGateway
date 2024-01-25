@@ -1,4 +1,3 @@
-import React from 'react';
 import './App.css';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import MainLayout from './layout/main-layout';
