@@ -44,7 +44,7 @@ public static class TunnelExensions
 
                 var stream = new DuplexHttpStream(context);
 
-                using var reg = lifetime.ApplicationStopping.Register(() => stream.Abort());
+                await using var reg = lifetime.ApplicationStopping.Register(() => stream.Abort());
 
                 // Keep reusing this connection while, it's still open on the backend
                 while (!context.RequestAborted.IsCancellationRequested)

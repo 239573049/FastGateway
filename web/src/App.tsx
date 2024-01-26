@@ -4,7 +4,6 @@ import MainLayout from './layout/main-layout';
 import Home from './pages/home';
 import 'reset-css';
 import Gateway from './pages/gateway';
-import Logger from './pages/logger';
 import Setting from './pages/settings';
 import Login from './pages/login';
 
@@ -19,10 +18,6 @@ const router = createBrowserRouter([{
     {
       path: "Gateway",
       element: <Gateway />
-    },
-    {
-      path: "Logger",
-      element: <Logger />
     },
     {
       path: "Setting",

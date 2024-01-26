@@ -17,8 +17,6 @@ export default function MainLayout() {
             setSelectedKeys(['Home']);
         } else if (path === '/Gateway') {
             setSelectedKeys(['Gateway']);
-        } else if (path === '/Logger') {
-            setSelectedKeys(['Logger']);
         } else if (path === '/Setting') {
             setSelectedKeys(['Setting']);
         }
@@ -35,8 +33,6 @@ export default function MainLayout() {
                             navigate('/');
                         } else if (key.itemKey === 'Gateway') {
                             navigate('/Gateway');
-                        } else if (key.itemKey === 'Logger') {
-                            navigate('/Logger');
                         } else if (key.itemKey === 'Setting') {
                             navigate('/Setting');
                         }
@@ -45,7 +41,6 @@ export default function MainLayout() {
                     items={[
                         { itemKey: 'Home', text: '首页', icon: <IconHome size="large" /> },
                         { itemKey: 'Gateway', text: '代理设置', icon: <IconServerStroked /> },
-                        { itemKey: 'Logger', text: '日志', icon: <IconFile size="large" /> },
                         { itemKey: 'Setting', text: '设置', icon: <IconSetting size="large" /> },
                     ]}
                     header={{
