@@ -12,10 +12,5 @@ public static class Constant
         /// 最大请求Body的大小（MB）
         /// </summary>
         public const string MaxRequestBodySize = Default + ":MaxRequestBodySize";
-
-        /// <summary>
-        /// 日志保留最大天数
-        /// </summary>
-        public const string LogRetentionTime = Default + ":LogRetentionTime";
     }
 }
