@@ -1,6 +1,5 @@
 #region FreeSql类型转换
 
-using Microsoft.Extensions.DependencyInjection;
 using Gateway.BackgroundServices;
 
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
@@ -122,11 +121,9 @@ builder.Services.AddCors(options =>
 builder.Configuration.GetSection(nameof(RequestOptions)).Get<RequestOptions>();
 builder.Services.AddMemoryCache();
 
-builder.Services.AddSingleton<RequestLogMiddleware>();
 builder.Services.AddSingleton<StaticFileProxyMiddleware>();
 builder.Services.AddSingleton<GatewayMiddleware>();
 
-builder.Services.AddSingleton<RequestLogService>();
 builder.Services.AddSingleton<GatewayService>();
 builder.Services.AddSingleton<CertificateService>();
 builder.Services.AddSingleton<FileStorageService>();
@@ -152,12 +149,10 @@ var app = builder.Build();
 
 app.UseCors("AllowAll");
 
-app.UseMiddleware<RequestLogMiddleware>();
 app.UseMiddleware<GatewayMiddleware>();
 app.UseMiddleware<StaticFileProxyMiddleware>();
 
 // 配置MiniApis服务
-app.MapRequestLog();
 app.MapStaticFileProxy();
 app.MapFileStorage();
 app.MapGateway();
