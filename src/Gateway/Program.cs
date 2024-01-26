@@ -142,7 +142,8 @@ builder.Services.AddSingleton<IFreeSql>(freeSql);
 
 // 使用内存加载配置 
 builder.Services.AddReverseProxy()
-    .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters);
+    .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters)
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 
 builder.Services.AddTunnelServices();
