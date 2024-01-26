@@ -73,10 +73,10 @@ export default function UpdateCluster({ visible, onCancel, onSusccess, router }:
                                 return (<Option value={x.clusterId}>{x.clusterName}</Option>)
                             })}
                         </Select>
-                        <Input initValue={router?.matchEntities.path} rules={[
+                        <Input initValue={router?.path} rules={[
                             { required: true, message: '路由匹配路径是必填的' },
-                        ]} field='matchEntities.path' label='路由匹配路径' size='large' style={{ width: '100%' }} placeholder='请输入匹配路径'></Input>
-                        <TagInput initValue={router?.matchEntities.hosts} field="matchEntities.hosts" label='路由匹配域名' placeholder="请输入匹配域名（支持多个）" />
+                        ]} field='path' label='路由匹配路径' size='large' style={{ width: '100%' }} placeholder='请输入匹配路径'></Input>
+                        <TagInput initValue={router?.hosts} field="hosts" label='路由匹配域名' placeholder="请输入匹配域名（支持多个）" />
                         <Button size='large' block style={{
                             marginTop: '20px',
                         }} htmlType='submit' type="secondary" theme='solid'>提交</Button>

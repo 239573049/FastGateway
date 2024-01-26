@@ -1,9 +1,9 @@
 #region FreeSql类型转换
 
 using Gateway.BackgroundServices;
+using Gateway.Tunnel;
 
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
-Utils.TypeHandlers.TryAdd(typeof(RouteMatchEntity), new StringJsonHandler<RouteMatchEntity>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
 Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
 
@@ -131,7 +131,7 @@ builder.Services.AddSingleton<StaticFileProxyService>();
 builder.Services.AddSingleton<TestService>();
 builder.Services.AddSingleton<SettingService>();
 builder.Services.AddSingleton<AuthorityService>();
-builder.Services.AddSingleton<NetWorkService>();
+builder.Services.AddSingleton<SystemService>();
 
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 

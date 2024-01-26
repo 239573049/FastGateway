@@ -1,6 +1,6 @@
-﻿using System.Diagnostics;
-using System.Net.WebSockets;
+﻿using System.Net.WebSockets;
 using System.Threading.Tasks.Sources;
+using Gateway.Tunnel;
 
 internal class WebSocketStream : Stream, IValueTaskSource<object?>, ICloseable
 {

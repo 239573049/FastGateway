@@ -4,13 +4,9 @@ export interface RouteEntity {
     description: string;
     clusterId: string | null;
     maxRequestBodySize: number | null;
-    matchEntities: RouteMatchEntity;
-    clusterEntity: ClusterEntity | null;
-}
-
-export interface RouteMatchEntity {
     path: string;
     hosts: string[];
+    clusterEntity: ClusterEntity | null;
 }
 
 export interface ClusterEntity {

@@ -19,6 +19,7 @@ export default function RouterGateway({ activeKey }: IProps) {
 
     async function deleteRouterById(id: string) {
         await deleteRoute(id);
+        loadingRoute();
     }
 
     async function loadingRoute() {
@@ -83,8 +84,8 @@ export default function RouterGateway({ activeKey }: IProps) {
                                         <span>路由：</span>
                                         <Tag style={{
                                             marginRight: '5px',
-                                        }} size="small" shape='circle' color='amber'>{item.matchEntities.path}</Tag>
-                                        {item.matchEntities?.hosts && item.matchEntities.hosts.map((x: string) => {
+                                        }} size="small" shape='circle' color='amber'>{item.path}</Tag>
+                                        {item?.hosts && item.hosts.map((x: string) => {
                                             return (<Tag size="small" shape='circle' color='amber'>
                                                 {x}
                                             </Tag>)

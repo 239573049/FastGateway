@@ -1,13 +1,13 @@
 ﻿namespace Gateway.Services;
 
-public class NetWorkService
+public class SystemService
 {
     public static async Task StreamAsync(HttpContext context)
     {
         // 使用sse，返回响应头
         context.Response.Headers.ContentType = "text/event-stream";
 
-        int i = 0;
+        var i = 0;
 
         while (!context.RequestAborted.IsCancellationRequested)
         {
@@ -21,14 +21,13 @@ public class NetWorkService
             // 只考虑活动的和支持IPv4的网络接口
             foreach (var ni in networkInterfaces)
             {
-                if (ni.OperationalStatus == OperationalStatus.Up && ni.Supports(NetworkInterfaceComponent.IPv4))
-                {
-                    var interfaceStats = ni.GetIPv4Statistics();
-                    initialBytesSent += interfaceStats.BytesSent;
-                    initialBytesReceived += interfaceStats.BytesReceived;
-                }
+                if (ni.OperationalStatus != OperationalStatus.Up ||
+                    !ni.Supports(NetworkInterfaceComponent.IPv4)) continue;
+                var interfaceStats = ni.GetIPv4Statistics();
+                initialBytesSent += interfaceStats.BytesSent;
+                initialBytesReceived += interfaceStats.BytesReceived;
             }
-
+            
             // 等待1秒钟
             await Task.Delay(1000, context.RequestAborted);
 
@@ -39,12 +38,11 @@ public class NetWorkService
             // 再次遍历网络接口
             foreach (var ni in networkInterfaces)
             {
-                if (ni.OperationalStatus == OperationalStatus.Up && ni.Supports(NetworkInterfaceComponent.IPv4))
-                {
-                    var interfaceStats = ni.GetIPv4Statistics();
-                    bytesSentAfter1Sec += interfaceStats.BytesSent;
-                    bytesReceivedAfter1Sec += interfaceStats.BytesReceived;
-                }
+                if (ni.OperationalStatus != OperationalStatus.Up ||
+                    !ni.Supports(NetworkInterfaceComponent.IPv4)) continue;
+                var interfaceStats = ni.GetIPv4Statistics();
+                bytesSentAfter1Sec += interfaceStats.BytesSent;
+                bytesReceivedAfter1Sec += interfaceStats.BytesReceived;
             }
 
             // 计算1秒内发送和接收的总字节
@@ -60,7 +58,7 @@ public class NetWorkService
 
             i++;
 
-            // 只维持10秒的连接
+            // 只维持5秒的连接
             if (i > 5)
             {
                 break;
@@ -69,11 +67,11 @@ public class NetWorkService
     }
 }
 
-public static class NetWorkExtension
+public static class SystemExtension
 {
     public static void MapNetWork(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/gateway/network", async (NetWorkService netWorkService, HttpContext context) =>
-            await NetWorkService.StreamAsync(context));
+        app.MapGet("/api/gateway/system", async context =>
+            await SystemService.StreamAsync(context));
     }
 }

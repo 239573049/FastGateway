@@ -71,8 +71,8 @@ export default function CreateRouter({ visible, onCancel, onSusccess }: IProps) 
                         </Select>
                         <Input rules={[
                             { required: true, message: '路由匹配路径是必填的' },
-                        ]} field='matchEntities.path' label='路由匹配路径' size='large' style={{ width: '100%' }} placeholder='请输入匹配路径'></Input>
-                        <TagInput field="matchEntities.hosts" label='路由匹配域名' placeholder="请输入匹配域名（支持多个）" />
+                        ]} field='path' label='路由匹配路径' size='large' style={{ width: '100%' }} placeholder='请输入匹配路径'></Input>
+                        <TagInput field="hosts" label='路由匹配域名' placeholder="请输入匹配域名（支持多个）" />
                         <Button size='large' block style={{
                             marginTop: '20px',
                         }} htmlType='submit' type="secondary" theme='solid'>提交</Button>

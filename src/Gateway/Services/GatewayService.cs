@@ -29,8 +29,8 @@ public class GatewayService(
             AuthorizationPolicy = route.AuthorizationPolicy,
             Match = new RouteMatch()
             {
-                Path = route.MatchEntities.Path,
-                Hosts = route.MatchEntities.Hosts
+                Path = route.Path,
+                Hosts = route.Hosts
             }
         }).ToList();
 
@@ -64,6 +64,27 @@ public class GatewayService(
             return ResultDto.Error("路由Id已存在");
         }
 
+        if (routeEntity.Hosts == null || routeEntity.Hosts.Length == 0)
+        {
+            // 如果没有Host则判断Path是否存在，如果Path存在则不允许创建
+            if (await freeSql.Select<RouteEntity>()
+                    .AnyAsync(x => x.Path == routeEntity.Path))
+            {
+                return ResultDto.Error("路由Path已存在");
+            }
+        }
+        else
+        {
+            var routes = await freeSql.Select<RouteEntity>()
+                .Where(x => x.Path == routeEntity.Path).ToListAsync();
+
+            // 如果有Host则判断Path是否存在，如果Path存在则判断Host是否存在，如果Host存在则不允许创建
+            if (routes.Any(x => x.Hosts.Any(y => routeEntity.Hosts.Contains(y))))
+            {
+                return ResultDto.Error("路由Host已存在");
+            }
+        }
+
         routeEntity.RouteId = Guid.NewGuid().ToString("N");
         routeEntity.CreatedTime = DateTime.Now;
 
@@ -79,12 +100,45 @@ public class GatewayService(
     /// <returns></returns>
     public async Task<ResultDto> UpdateRouteAsync(RouteEntity routeEntity)
     {
-        if (!await freeSql.Select<RouteEntity>().AnyAsync(x => x.RouteId == routeEntity.RouteId))
+        var entity = await freeSql.Select<RouteEntity>().Where(x => x.RouteId == routeEntity.RouteId).FirstAsync();
+
+        if (entity == null)
         {
             return ResultDto.Error("路由Id不存在");
         }
 
-        await freeSql.Update<RouteEntity>().SetSource(routeEntity).ExecuteAffrowsAsync();
+        if (routeEntity.Hosts == null || routeEntity.Hosts.Length == 0)
+        {
+            // 如果没有Host则判断Path是否存在，如果Path存在则不允许创建
+            if (await freeSql.Select<RouteEntity>()
+                    .AnyAsync(x => x.Path == routeEntity.Path && x.RouteId != routeEntity.RouteId))
+            {
+                return ResultDto.Error("路由Path已存在");
+            }
+        }
+        else
+        {
+            var routes = await freeSql.Select<RouteEntity>()
+                .Where(x => x.Path == routeEntity.Path && x.RouteId != routeEntity.RouteId).ToListAsync();
+
+            // 如果有Host则判断Path是否存在，如果Path存在则判断Host是否存在，如果Host存在则不允许创建
+            if (routes.Any(x => x.Hosts.Any(y => routeEntity.Hosts.Contains(y))))
+            {
+                return ResultDto.Error("路由Host已存在");
+            }
+        }
+
+        entity.RouteName = routeEntity.RouteName;
+        entity.Description = routeEntity.Description;
+        entity.ClusterId = routeEntity.ClusterId;
+        entity.AuthorizationPolicy = routeEntity.AuthorizationPolicy;
+        entity.RequireHttpsMetadata = routeEntity.RequireHttpsMetadata;
+        entity.AuthorizationPolicyAddress = routeEntity.AuthorizationPolicyAddress;
+        entity.MaxRequestBodySize = routeEntity.MaxRequestBodySize;
+        entity.Path = routeEntity.Path;
+        entity.Hosts = routeEntity.Hosts;
+        
+        await freeSql.Update<RouteEntity>().SetSource(entity).ExecuteAffrowsAsync();
 
         return ResultDto.Success();
     }
@@ -125,11 +179,7 @@ public class GatewayService(
         var clusterEntity = await freeSql.Select<ClusterEntity>().Where(x => ids.Contains(x.ClusterId)).ToListAsync();
 
         var result = routeEntity.Select(x => new RouteDto(x.RouteId, x.RouteName, x.Description, x.ClusterId,
-            x.MaxRequestBodySize, new RouteMatchDto()
-            {
-                Path = x.MatchEntities.Path,
-                Hosts = x.MatchEntities.Hosts
-            }, null)).ToList();
+            x.MaxRequestBodySize, x.Path, x.Hosts, null)).ToList();
 
         foreach (var entity in result)
         {
@@ -172,12 +222,19 @@ public class GatewayService(
     /// <returns></returns>
     public async Task<ResultDto> UpdateClusterAsync(ClusterEntity clusterEntity)
     {
-        if (!await freeSql.Select<ClusterEntity>().AnyAsync(x => x.ClusterId == clusterEntity.ClusterId))
+        var entity = await freeSql.Select<ClusterEntity>().Where(x => x.ClusterId == clusterEntity.ClusterId)
+            .FirstAsync();
+        
+        if (entity == null)
         {
             return ResultDto.Error("集群Id不存在");
         }
-
-        await freeSql.Update<ClusterEntity>().SetSource(clusterEntity).ExecuteAffrowsAsync();
+        
+        entity.ClusterName = clusterEntity.ClusterName;
+        entity.Description = clusterEntity.Description;
+        entity.DestinationsEntities = clusterEntity.DestinationsEntities;
+        
+        await freeSql.Update<ClusterEntity>().SetSource(entity).ExecuteAffrowsAsync();
 
         return ResultDto.Success();
     }

@@ -72,7 +72,7 @@ public class StaticFileProxyMiddleware(IContentTypeProvider contentTypeProvider)
                 return;
             }
 
-        readfile:
+            readfile:
 
             // 获取文件的ContentType
             context.Response.ContentType = contentTypeProvider.TryGetContentType(filePath, out var contentType)

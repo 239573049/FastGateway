@@ -1,6 +1,6 @@
 ﻿namespace Gateway.TypeHandlers;
 
-public class StringJsonHandler<T> : TypeHandler<T>
+public sealed class StringJsonHandler<T> : TypeHandler<T>
 {
     public override T Deserialize(object value)
     {

@@ -38,14 +38,8 @@ public sealed class RouteEntity : Entity
     /// <summary>
     /// 请求Body最大长度
     /// </summary>
-    public long? MaxRequestBodySize { get; init; }
+    public long? MaxRequestBodySize { get; set; }
 
-    [Column(MapType = typeof(string), StringLength = -1)]
-    public RouteMatchEntity MatchEntities { get; set; } = new();
-}
-
-public sealed class RouteMatchEntity
-{
     /// <summary>
     /// 路由配置
     /// </summary>

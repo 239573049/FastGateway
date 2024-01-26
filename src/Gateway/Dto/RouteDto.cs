@@ -24,28 +24,11 @@ public class RouteDto
     /// </summary>
     public long? MaxRequestBodySize { get; init; }
 
-    public RouteMatchDto MatchEntities { get; set; } = new();
-
     /// <summary>
     /// 绑定集群
     /// </summary>
     public ClusterEntity? ClusterEntity { get; set; }
 
-    public RouteDto(string routeId, string routeName, string? description, string? clusterId, long? maxRequestBodySize,
-        RouteMatchDto matchEntities, ClusterEntity? clusterEntity)
-    {
-        RouteId = routeId;
-        RouteName = routeName;
-        Description = description;
-        ClusterId = clusterId;
-        MaxRequestBodySize = maxRequestBodySize;
-        MatchEntities = matchEntities;
-        ClusterEntity = clusterEntity;
-    }
-}
-
-public class RouteMatchDto
-{
     /// <summary>
     /// 路由配置
     /// </summary>
@@ -55,4 +38,18 @@ public class RouteMatchDto
     /// 匹配域名
     /// </summary>
     public string[] Hosts { get; set; }
+
+    public RouteDto(string routeId, string routeName, string? description, string? clusterId, long? maxRequestBodySize,
+        string path, string[] hosts,
+        ClusterEntity? clusterEntity)
+    {
+        RouteId = routeId;
+        RouteName = routeName;
+        Path = path;
+        Hosts = hosts;
+        Description = description;
+        ClusterId = clusterId;
+        MaxRequestBodySize = maxRequestBodySize;
+        ClusterEntity = clusterEntity;
+    }
 }

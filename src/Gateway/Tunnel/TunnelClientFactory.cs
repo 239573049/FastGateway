@@ -1,8 +1,7 @@
-﻿using System.Collections.Concurrent;
-using System.IO;
-using System.Net.Sockets;
-using System.Threading.Channels;
+﻿using System.Net.Sockets;
 using Yarp.ReverseProxy.Forwarder;
+
+namespace Gateway.Tunnel;
 
 /// <summary>
 /// The factory that YARP will use the create outbound connections by host name.

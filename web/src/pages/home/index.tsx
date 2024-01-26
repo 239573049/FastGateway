@@ -125,6 +125,9 @@ export default function Home() {
                     option.series[0].data.push(chunk.Sent);
                     option.series[1].data.push(chunk.Received);
                     option && myChart.setOption(option);
+
+                    myChart.resize();
+
                 }
             } catch (error) {
                 console.error('获取数据失败:', error);
@@ -144,7 +147,9 @@ export default function Home() {
 
 
     return (
-        <div className="App">
+        <div className="App" style={{
+            width: '100%',
+        }}>
             <h2 style={{
                 textAlign: 'center',
                 margin: '10px 0',
@@ -155,9 +160,7 @@ export default function Home() {
             </h2>
             <Row>
                 <div id='network' style={{
-                    width: '100%',
                     height: '300px',
-
                 }}>
                 </div>
             </Row>

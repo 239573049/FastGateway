@@ -1,23 +1,18 @@
 ﻿using System.Threading.Tasks.Sources;
 
-internal class DuplexHttpStream : Stream, IValueTaskSource<object?>, ICloseable
+namespace Gateway.Tunnel;
+
+internal class DuplexHttpStream(HttpContext context) : Stream, IValueTaskSource<object?>, ICloseable
 {
     private ManualResetValueTaskSourceCore<object?> _tcs = new() { RunContinuationsAsynchronously = true };
     private readonly object _sync = new();
 
-    private readonly HttpContext _context;
-
-    public DuplexHttpStream(HttpContext context)
-    {
-        _context = context;
-    }
-
-    private Stream RequestBody => _context.Request.Body;
-    private Stream ResponseBody => _context.Response.Body;
+    private Stream RequestBody => context.Request.Body;
+    private Stream ResponseBody => context.Response.Body;
 
     internal ValueTask<object?> StreamCompleteTask => new(this, _tcs.Version);
 
-    public bool IsClosed => _context.RequestAborted.IsCancellationRequested;
+    public bool IsClosed => context.RequestAborted.IsCancellationRequested;
 
     public override bool CanRead => true;
 
@@ -35,10 +30,10 @@ internal class DuplexHttpStream : Stream, IValueTaskSource<object?>, ICloseable
     }
 
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-     => ResponseBody.WriteAsync(buffer, cancellationToken);
+        => ResponseBody.WriteAsync(buffer, cancellationToken);
 
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-     => RequestBody.ReadAsync(buffer, cancellationToken);
+        => RequestBody.ReadAsync(buffer, cancellationToken);
 
     public object? GetResult(short token) => _tcs.GetResult(token);
 
@@ -50,7 +45,7 @@ internal class DuplexHttpStream : Stream, IValueTaskSource<object?>, ICloseable
 
     public void Abort()
     {
-        _context.Abort();
+        context.Abort();
 
         lock (_sync)
         {

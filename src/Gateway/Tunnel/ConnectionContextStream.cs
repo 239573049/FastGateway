@@ -3,16 +3,12 @@ using System.IO.Pipelines;
 using System.Threading.Tasks.Sources;
 using Microsoft.AspNetCore.Connections;
 
-internal class ConnectionContextStream : Stream, IValueTaskSource<object?>
+namespace Gateway.Tunnel;
+
+internal class ConnectionContextStream(ConnectionContext connectionContext) : Stream, IValueTaskSource<object?>
 {
-    private readonly ConnectionContext _connectionContext;
     private ManualResetValueTaskSourceCore<object?> _tcs = new() { RunContinuationsAsynchronously = true };
     private readonly object _sync = new();
-
-    public ConnectionContextStream(ConnectionContext connectionContext)
-    {
-        _connectionContext = connectionContext;
-    }
 
     internal ValueTask<object?> StreamCompleteTask => new(this, _tcs.Version);
 
@@ -29,12 +25,12 @@ internal class ConnectionContextStream : Stream, IValueTaskSource<object?>
 
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        await _connectionContext.Transport.Output.WriteAsync(buffer, cancellationToken);
+        await connectionContext.Transport.Output.WriteAsync(buffer, cancellationToken);
     }
 
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        ReadResult result = await _connectionContext.Transport.Input.ReadAsync(cancellationToken).ConfigureAwait(false);
+        ReadResult result = await connectionContext.Transport.Input.ReadAsync(cancellationToken).ConfigureAwait(false);
         return HandleReadResult(result, buffer.Span);
     }
 
@@ -69,7 +65,7 @@ internal class ConnectionContextStream : Stream, IValueTaskSource<object?>
         }
         finally
         {
-            _connectionContext.Transport.Input.AdvanceTo(consumed);
+            connectionContext.Transport.Input.AdvanceTo(consumed);
         }
 
         return 0;
@@ -78,12 +74,12 @@ internal class ConnectionContextStream : Stream, IValueTaskSource<object?>
     public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
     {
         // Delegate to CopyToAsync on the PipeReader
-        return _connectionContext.Transport.Input.CopyToAsync(destination, cancellationToken);
+        return connectionContext.Transport.Input.CopyToAsync(destination, cancellationToken);
     }
 
     internal void Shutdown()
     {
-        _connectionContext.Abort();
+        connectionContext.Abort();
 
         lock (_sync)
         {

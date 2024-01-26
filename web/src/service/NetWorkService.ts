@@ -3,7 +3,12 @@ window._env_ = window._env_ || {};
 
 export async function stream() {
     // @ts-ignore
-    const response = await fetch(window._env_.api_url + "/api/gateway/network", {
+    if (window._env_.api_url.endsWith("/")) {
+        // @ts-ignore
+        window._env_.api_url = window._env_.api_url.substring(0, window._env_.api_url.length - 1);
+    }
+    // @ts-ignore
+    const response = await fetch(window._env_.api_url + "/api/gateway/system", {
         method: "GET",
         headers: {
             "Authorization": "Bearer " + localStorage.getItem("access_token")
