@@ -38,7 +38,7 @@ export default function CreateCluster({ visible, onCancel, onSusccess }: IProps)
     }
 
     return (
-        <SideSheet width={500} title="创建集群" visible={visible} onCancel={onCancel}>
+        <SideSheet width={650} title="创建集群" visible={visible} onCancel={onCancel}>
             <Form style={{
                 overflowX: 'hidden',
                 overflowY: 'auto',
@@ -74,6 +74,13 @@ export default function CreateCluster({ visible, onCancel, onSusccess }: IProps)
                                                     size='large'
                                                     label={`集群Host`}
                                                     style={{ width: 170, marginRight: 16 }}
+                                                >
+                                                </Input>
+                                                <Input
+                                                    field={`${field}[health]`}
+                                                    size='large'
+                                                    label={`状况检查探测的端点`}
+                                                    style={{ width: 200, marginRight: 16 }}
                                                 >
                                                 </Input>
                                                 <Button

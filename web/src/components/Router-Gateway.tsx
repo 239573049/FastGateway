@@ -35,7 +35,7 @@ export default function RouterGateway({ activeKey }: IProps) {
     }, [
         activeKey
     ]);
-    
+
     return (
         <>
             <List
@@ -105,6 +105,32 @@ export default function RouterGateway({ activeKey }: IProps) {
                                             </Tag>)
                                         })}</span>
                                     </div>
+                                    <div style={{
+                                        marginTop: '5px',
+                                    }}>
+                                        <span>授权策略：</span>
+                                        <span>{item.authorizationPolicy}</span>
+                                    </div>
+                                    <div style={{
+                                        marginTop: '5px',
+                                    }}>
+                                        <span>授权认证中心地址：</span>
+                                        <span>{item.authorizationPolicyAddress}</span>
+                                    </div>
+                                    <div style={{
+                                        marginTop: '5px',
+                                    }}>
+                                        <span>认证中心是否需要https：</span>
+                                        <span>{item.requireHttpsMetadata ? '是' : '否'}</span>
+                                    </div>
+
+                                    <div style={{
+                                        marginTop: '5px',
+                                    }}>
+                                        <span>请求Body最大长度：</span>
+                                        <span>{item.maxRequestBodySize}</span>
+                                    </div>
+
                                 </div>
                                 <div style={{
                                     float: 'right',

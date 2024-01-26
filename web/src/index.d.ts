@@ -4,6 +4,9 @@ export interface RouteEntity {
     description: string;
     clusterId: string | null;
     maxRequestBodySize: number | null;
+    authorizationPolicy:string | null;
+    requireHttpsMetadata:boolean | null;
+    authorizationPolicyAddress:string | null;
     path: string;
     hosts: string[];
     clusterEntity: ClusterEntity | null;
@@ -19,6 +22,7 @@ export interface ClusterEntity {
 export interface DestinationsEntity {
     id: string;
     address: string;
+    health:string | null;
     host: string | null;
 }
 

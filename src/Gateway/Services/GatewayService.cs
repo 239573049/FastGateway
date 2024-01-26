@@ -36,8 +36,9 @@ public class GatewayService(
 
         foreach (var cluster in from item in clusters
                  let items = item.DestinationsEntities.ToDictionary(entity => entity.Id,
-                     entity => new DestinationConfig() { Address = entity.Address, Host = entity.Host, })
-                 select new ClusterConfig()
+                     entity => new DestinationConfig
+                         { Address = entity.Address, Host = entity.Host, Health = entity.Health })
+                 select new ClusterConfig
                  {
                      ClusterId = item.ClusterId,
                      Destinations = items
@@ -137,7 +138,7 @@ public class GatewayService(
         entity.MaxRequestBodySize = routeEntity.MaxRequestBodySize;
         entity.Path = routeEntity.Path;
         entity.Hosts = routeEntity.Hosts;
-        
+
         await freeSql.Update<RouteEntity>().SetSource(entity).ExecuteAffrowsAsync();
 
         return ResultDto.Success();
@@ -224,16 +225,16 @@ public class GatewayService(
     {
         var entity = await freeSql.Select<ClusterEntity>().Where(x => x.ClusterId == clusterEntity.ClusterId)
             .FirstAsync();
-        
+
         if (entity == null)
         {
             return ResultDto.Error("集群Id不存在");
         }
-        
+
         entity.ClusterName = clusterEntity.ClusterName;
         entity.Description = clusterEntity.Description;
         entity.DestinationsEntities = clusterEntity.DestinationsEntities;
-        
+
         await freeSql.Update<ClusterEntity>().SetSource(entity).ExecuteAffrowsAsync();
 
         return ResultDto.Success();

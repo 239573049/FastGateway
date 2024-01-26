@@ -11,7 +11,7 @@ interface IProps {
 }
 
 const { Option } = Form.Select;
-const { Select, Input, TagInput } = Form;
+const { Select, Input, TagInput, Checkbox } = Form;
 
 export default function CreateRouter({ visible, onCancel, onSusccess }: IProps) {
     const [clusterIds, setClusterIds] = useState<ClusterEntity[]>([]);
@@ -59,6 +59,10 @@ export default function CreateRouter({ visible, onCancel, onSusccess }: IProps) 
                                 { validator: (rule, value) => value.length < 10, message: '路由名称长度不能超过10位' },
                             ]} field='routeName' required={true} size='large' label='路由名称' style={{ width: '100%' }} placeholder='请输入路由名称'></Input>
                         <Input field='description' label='路由描述' size='large' style={{ width: '100%' }} placeholder='请输入路由描述'></Input>
+                        <Input field='authorizationPolicy' label='授权策略' size='large' style={{ width: '100%' }} placeholder='请输入授权策略'></Input>
+                        <Checkbox field='requireHttpsMetadata' label='认证中心是否需要https' style={{ width: '100%' }}></Checkbox>
+                        <Input field='authorizationPolicyAddress' placeholder='请输入授权认证中心地址' size='large' label='授权认证中心地址' style={{ width: '100%' }}></Input>
+                        <Input field='maxRequestBodySize' min={16777216} max={999999999} placeholder='请输入请求Body最大长度' type='number' size='large' label='请求Body最大长度' style={{ width: '100%' }}></Input>
                         <Select field='clusterId' rules={[
                             {
                                 required: true,

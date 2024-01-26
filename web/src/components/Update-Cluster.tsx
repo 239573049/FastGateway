@@ -85,6 +85,14 @@ export default function UpdateCluster({ visible, onCancel, onSusccess, cluster }
                                                     style={{ width: 170, marginRight: 16 }}
                                                 >
                                                 </Input>
+                                                <Input
+                                                    field={`${field}[health]`}
+                                                    size='large'
+                                                    initValue={cluster?.destinationsEntities[i]?.health}
+                                                    label={`状况检查探测的端点`}
+                                                    style={{ width: 200, marginRight: 16 }}
+                                                >
+                                                </Input>
                                                 <Button
                                                     type='danger'
                                                     theme='borderless'

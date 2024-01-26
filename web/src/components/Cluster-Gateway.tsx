@@ -65,7 +65,6 @@ export default function ClusterGateway({ activeKey }: IProps) {
                             header={item.clusterName}
                             itemKey={item.clusterId}>
                             <>
-
                                 <div style={{
                                     float: 'left',
                                     marginBottom: '20px',
@@ -79,11 +78,20 @@ export default function ClusterGateway({ activeKey }: IProps) {
                                         <span>{item.description}</span>
                                     </div>
                                     <div>
-                                        <span>集群地址：</span>
-                                        <span>{item.destinationsEntities.map((x: DestinationsEntity) => {
-                                            return (<Tag style={{
-                                                marginRight: '5px',
-                                            }} size="small" shape='circle' color='amber'>{x.address}</Tag>)
+                                        <div style={{
+                                            marginTop: '5px',
+                                            fontWeight: 'bold',
+                                            fontSize: '18px',
+                                        }}>集群列表</div>
+                                        <span>{item.destinationsEntities.map((x: DestinationsEntity, i: number) => {
+                                            return (<div key={i}>
+                                                集群地址：<Tag style={{
+                                                    marginRight: '5px',
+                                                }} size="small" shape='circle' color='amber'>{x.address}</Tag>
+                                                集群health：<Tag style={{
+                                                    marginRight: '5px',
+                                                }} size="small" shape='circle' color='amber'>{x.health}</Tag>
+                                            </div>)
                                         })}</span>
                                     </div>
                                 </div>
