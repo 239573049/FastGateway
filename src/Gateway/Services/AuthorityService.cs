@@ -8,7 +8,7 @@ public class AuthorityService
     /// <param name="username"></param>
     /// <param name="password"></param>
     /// <returns></returns>
-    public async Task<ResultDto<string>> GetTokenAsync(string username, string password)
+    public static async Task<ResultDto<string>> GetTokenAsync(string username, string password)
     {
         // 获取环境变量中的用户名和密码
         var envUsername = Environment.GetEnvironmentVariable("USER") ?? "root";
@@ -46,7 +46,7 @@ public static class AuthorityExtension
 {
     public static void MapAuthority(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/gateway/token", async (AuthorityService authorityService, string username, string password) =>
-            await authorityService.GetTokenAsync(username, password));
+        app.MapPost("/api/gateway/token", async (string username, string password) =>
+            await AuthorityService.GetTokenAsync(username, password));
     }
 }

@@ -69,7 +69,7 @@ public class SystemService
 
 public static class SystemExtension
 {
-    public static void MapNetWork(this IEndpointRouteBuilder app)
+    public static void MapSystem(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/gateway/system", async context =>
             await SystemService.StreamAsync(context));

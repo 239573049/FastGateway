@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Layout, Nav, Button, Avatar, Dropdown } from '@douyinfe/semi-ui';
-import { IconGithubLogo, IconHome, IconServerStroked, IconFile, IconSetting, } from '@douyinfe/semi-icons';
+import { IconGithubLogo, IconHome, IconServerStroked,IconSetting, } from '@douyinfe/semi-icons';
 import { Outlet, useNavigate } from 'react-router-dom';
 
 export default function MainLayout() {

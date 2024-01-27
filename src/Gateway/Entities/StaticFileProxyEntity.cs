@@ -47,5 +47,6 @@ public sealed class StaticFileProxyEntity : Entity
     /// <summary>
     /// 此参数用于尝试的文件列表，如果找不到请求的文件，则会尝试下一个。
     /// </summary>
+    [Column(MapType = typeof(string), StringLength = -1)]
     public string[] TryFiles { get; set; }
 }

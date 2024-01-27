@@ -118,20 +118,13 @@ builder.Services.AddCors(options =>
             .AllowCredentials());
 });
 
-builder.Configuration.GetSection(nameof(RequestOptions)).Get<RequestOptions>();
-builder.Services.AddMemoryCache();
-
 builder.Services.AddSingleton<StaticFileProxyMiddleware>();
 builder.Services.AddSingleton<GatewayMiddleware>();
 
 builder.Services.AddSingleton<GatewayService>();
 builder.Services.AddSingleton<CertificateService>();
-builder.Services.AddSingleton<FileStorageService>();
 builder.Services.AddSingleton<StaticFileProxyService>();
 builder.Services.AddSingleton<TestService>();
-builder.Services.AddSingleton<SettingService>();
-builder.Services.AddSingleton<AuthorityService>();
-builder.Services.AddSingleton<SystemService>();
 
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
@@ -141,7 +134,6 @@ builder.Services.AddSingleton<IFreeSql>(freeSql);
 builder.Services.AddReverseProxy()
     .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters)
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
-
 
 builder.Services.AddTunnelServices();
 
@@ -158,9 +150,7 @@ app.MapFileStorage();
 app.MapGateway();
 app.MapAuthority();
 app.MapCertificate();
-app.MapSetting();
-app.MapNetWork();
-
+app.MapSystem();
 // 添加自定义授权
 app.UseCustomAuthentication();
 

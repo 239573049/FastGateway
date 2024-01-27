@@ -50,19 +50,20 @@ public class StaticFileProxyMiddleware(IContentTypeProvider contentTypeProvider)
             }
 
             // 拼接静态文件的完整路径
-            var filePath = Path.Combine(staticFilePath, context.Request.Path.Value?.TrimStart('/') ?? string.Empty);
+            var fileInfo = new FileInfo(Path.Combine(staticFilePath,
+                context.Request.Path.Value?.TrimStart('/') ?? string.Empty));
 
             // 如果文件不存在，则404
-            if (!File.Exists(filePath))
+            if (!fileInfo.Exists)
             {
                 // 尝试TryFiles
-                if (staticFileProxyEntity.TryFiles.Length != 0)
+                if (staticFileProxyEntity.TryFiles?.Length > 0)
                 {
                     foreach (var tryFile in staticFileProxyEntity.TryFiles)
                     {
                         var tryFilePath = Path.Combine(staticFilePath, tryFile);
                         if (!File.Exists(tryFilePath)) continue;
-                        filePath = tryFilePath;
+                        fileInfo = new FileInfo(tryFilePath);
                         // 跳出循环指向读取文件
                         goto readfile;
                     }
@@ -75,31 +76,26 @@ public class StaticFileProxyMiddleware(IContentTypeProvider contentTypeProvider)
             readfile:
 
             // 获取文件的ContentType
-            context.Response.ContentType = contentTypeProvider.TryGetContentType(filePath, out var contentType)
-                ? contentType
-                : "application/octet-stream";
+            context.Response.ContentType =
+                contentTypeProvider.TryGetContentType(fileInfo.Extension, out var contentType)
+                    ? contentType
+                    : "application/octet-stream";
 
+            // 判断当前是否使用压缩
+            var acceptEncoding = context.Request.Headers.AcceptEncoding.ToString();
             // 是否使用gzip压缩
-            if (staticFileProxyEntity.GZip)
+            if (staticFileProxyEntity.GZip && acceptEncoding.Contains("gzip"))
             {
-                // 判断当前是否使用压缩
-                var acceptEncoding = context.Request.Headers["Accept-Encoding"].ToString();
-                if (!acceptEncoding.Contains("gzip"))
-                {
-                    await context.Response.SendFileAsync(filePath);
-                    return;
-                }
-
                 context.Response.Headers.ContentEncoding = "gzip";
 
-                // 使用压缩gzip的Stream返回
+                // 将文件流转换为gzip流
                 await using var gzipStream = new GZipStream(context.Response.Body, CompressionMode.Compress);
-                await using var fileStream = File.OpenRead(filePath);
-                await fileStream.CopyToAsync(gzipStream);
+                await using var fileStream = File.OpenRead(fileInfo.FullName);
+                await fileStream.CopyToAsync(gzipStream, 81920);
                 return;
             }
 
-            await context.Response.SendFileAsync(filePath);
+            await context.Response.SendFileAsync(fileInfo.FullName, 0, fileInfo.Length, context.RequestAborted);
         }
     }
 }

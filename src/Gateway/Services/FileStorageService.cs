@@ -2,11 +2,11 @@
 
 public class FileStorageService
 {
-    public async Task<ResultDto<string>> UploadAsync(HttpContext context)
+    public static async Task<ResultDto<string>> UploadAsync(HttpContext context)
     {
         var file = context.Request.Form.Files.FirstOrDefault();
         var filePath = $"{DateTime.Now:HHmmss}" + file!.FileName;
-        var path = "/data/";
+        const string path = "/data/";
         if (!Directory.Exists(Path.GetDirectoryName(path)))
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -25,8 +25,8 @@ public static class FileStorageExtension
 {
     public static void MapFileStorage(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/gateway/file-storage", async (FileStorageService fileStorageService, HttpContext context) =>
-                await fileStorageService.UploadAsync(context))
+        app.MapPost("/api/gateway/file-storage", async (HttpContext context) =>
+                await FileStorageService.UploadAsync(context))
             .RequireAuthorization();
     }
 }

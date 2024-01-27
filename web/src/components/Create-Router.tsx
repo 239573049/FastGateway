@@ -62,7 +62,7 @@ export default function CreateRouter({ visible, onCancel, onSusccess }: IProps) 
                         <Input field='authorizationPolicy' label='授权策略' size='large' style={{ width: '100%' }} placeholder='请输入授权策略'></Input>
                         <Checkbox field='requireHttpsMetadata' label='认证中心是否需要https' style={{ width: '100%' }}></Checkbox>
                         <Input field='authorizationPolicyAddress' placeholder='请输入授权认证中心地址' size='large' label='授权认证中心地址' style={{ width: '100%' }}></Input>
-                        <Input field='maxRequestBodySize' min={16777216} max={999999999} placeholder='请输入请求Body最大长度' type='number' size='large' label='请求Body最大长度' style={{ width: '100%' }}></Input>
+                        <Input field='maxRequestBodySize' min={16777216} placeholder='请输入请求Body最大长度' type='number' size='large' label='请求Body最大长度' style={{ width: '100%' }}></Input>
                         <Select field='clusterId' rules={[
                             {
                                 required: true,

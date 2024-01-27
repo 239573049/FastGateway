@@ -56,7 +56,9 @@ public class StaticFileProxyService(IFreeSql freeSql)
     /// <returns></returns>
     public async Task<ResultDto> UpdateAsync(StaticFileProxyEntity entity)
     {
-        if (!await freeSql.Select<StaticFileProxyEntity>().AnyAsync(x => x.Id == entity.Id))
+        var value = await freeSql.Select<StaticFileProxyEntity>().Where(x => x.Id == entity.Id).FirstAsync();
+
+        if (value == null)
         {
             return ResultDto.Error("不存在");
         }
@@ -76,13 +78,23 @@ public class StaticFileProxyService(IFreeSql freeSql)
         }
         else
         {
-            if (await freeSql.Select<StaticFileProxyEntity>().AnyAsync(x => x.Path == entity.Path))
+            if (await freeSql.Select<StaticFileProxyEntity>().AnyAsync(x => x.Id != entity.Id && x.Path == entity.Path))
             {
                 return ResultDto.Error("已存在相同的路径");
             }
         }
 
-        await freeSql.Update<StaticFileProxyEntity>().SetSource(entity).ExecuteAffrowsAsync();
+        value.Description = entity.Description;
+        value.GZip = entity.GZip;
+        value.Hosts = entity.Hosts;
+        value.Index = entity.Index;
+        value.Name = entity.Name;
+        value.ResponseHeaders = entity.ResponseHeaders;
+        value.Path = entity.Path;
+        value.TryFiles = entity.TryFiles;
+        value.Root = entity.Root;
+
+        await freeSql.Update<StaticFileProxyEntity>().SetSource(value).ExecuteAffrowsAsync();
 
         return ResultDto.Success();
     }

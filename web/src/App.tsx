@@ -1,32 +1,45 @@
 import './App.css';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
-import MainLayout from './layout/main-layout';
-import Home from './pages/home';
 import 'reset-css';
-import Gateway from './pages/gateway';
-import Setting from './pages/settings';
-import Login from './pages/login';
+import { Suspense, lazy } from 'react';
+
+const MainLayout = lazy(() => import('./layout/main-layout'));
+const Home = lazy(() => import('./pages/home'));
+const Gateway = lazy(() => import('./pages/gateway'));
+const Setting = lazy(() => import('./pages/settings'));
+const Login = lazy(() => import('./pages/login'));
+
 
 const router = createBrowserRouter([{
   path: "/",
-  element: <MainLayout />,
+  element: <Suspense fallback={'加载中'}>
+    <MainLayout />
+  </Suspense>,
   children: [
     {
       path: "",
-      element: <Home />
+      element: <Suspense fallback={'加载中'}>
+        <Home />
+      </Suspense>
     },
     {
       path: "Gateway",
-      element: <Gateway />
+      element: <Suspense fallback={'加载中'}>
+        <Gateway />
+      </Suspense>
     },
     {
       path: "Setting",
-      element: <Setting />
+      element: <Suspense fallback={'加载中'}>
+        <Setting />
+      </Suspense>
     }
   ],
 }, {
   path: "/login",
-  element: <Login />
+  element: <Suspense fallback={'加载中'}>
+    <Login />
+  </Suspense>
 }]);
 
 function App() {

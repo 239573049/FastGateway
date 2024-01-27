@@ -1,14 +1,13 @@
-// @ts-ignore
-window._env_ = window._env_ || {};
+import { API_URL } from "../store/config";
 
 export async function stream() {
     // @ts-ignore
-    if (window._env_.api_url.endsWith("/")) {
+    if (API_URL.endsWith("/")) {
         // @ts-ignore
-        window._env_.api_url = window._env_.api_url.substring(0, window._env_.api_url.length - 1);
+        API_URL = API_URL.substring(0, API_URL.length - 1);
     }
     // @ts-ignore
-    const response = await fetch(window._env_.api_url + "/api/gateway/system", {
+    const response = await fetch(API_URL + "/api/gateway/system", {
         method: "GET",
         headers: {
             "Authorization": "Bearer " + localStorage.getItem("access_token")
