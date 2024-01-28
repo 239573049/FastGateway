@@ -30,7 +30,7 @@ namespace Gateway.Middlewares
         /// <summary>
         /// Gets or sets the <see cref="IAuthenticationSchemeProvider"/>.
         /// </summary>
-        public IAuthenticationSchemeProvider Schemes { get; set; }
+        private IAuthenticationSchemeProvider Schemes { get; set; }
 
         /// <summary>
         /// Invokes the middleware performing authentication.
