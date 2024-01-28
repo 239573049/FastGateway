@@ -26,3 +26,5 @@ global using Microsoft.IdentityModel.Tokens;
 global using System.Collections.Concurrent;
 global using Microsoft.AspNetCore.Http.Features;
 global using System.Net.NetworkInformation;
+global using Gateway.BackgroundServices;
+global using Gateway.Tunnel;

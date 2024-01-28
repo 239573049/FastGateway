@@ -13,7 +13,7 @@ public static class StringHelper
         string[] units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]; 
 
         double formattedSize = bytes;
-        int unitIndex = 0;
+        var unitIndex = 0;
 
         while (formattedSize >= scale && unitIndex < units.Length - 1)
         {

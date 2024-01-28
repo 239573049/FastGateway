@@ -48,5 +48,6 @@ public sealed class RouteEntity : Entity
     /// <summary>
     /// 匹配域名
     /// </summary>
+    [Column(MapType = typeof(string), StringLength = -1)]
     public string[] Hosts { get; set; }
 }

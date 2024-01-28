@@ -1,8 +1,5 @@
 #region FreeSql类型转换
 
-using Gateway.BackgroundServices;
-using Gateway.Tunnel;
-
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
 Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
@@ -26,6 +23,9 @@ var freeSql = new FreeSqlBuilder()
 
 builder.Configuration.GetSection(nameof(JwtOptions))
     .Get<JwtOptions>();
+
+builder.Configuration.GetSection(GatewayOptions.Name)
+    .Get<GatewayOptions>();
 
 // 获取环境变量
 var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
