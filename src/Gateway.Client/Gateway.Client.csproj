@@ -4,19 +4,6 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <InvariantGlobalization>true</InvariantGlobalization>
-    <PublishAot>false</PublishAot>
-
-    <StackTraceSupport>false</StackTraceSupport>
-    <OptimizationPreference>Size</OptimizationPreference>
-    <PublishTrimmed>true</PublishTrimmed>
-    <BlazorEnableTimeZoneSupport>false</BlazorEnableTimeZoneSupport>
-    <EventSourceSupport>false</EventSourceSupport>
-    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
-    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
-    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
-    <UseNativeHttpHandler>true</UseNativeHttpHandler>
-    <TrimMode>link</TrimMode>
   </PropertyGroup>
 
   <ItemGroup>

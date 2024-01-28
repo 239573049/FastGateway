@@ -1,2 +1,2 @@
-cd src\Gateway.Client
-dotnet publish -c Release -r linux-x64  /p:DebugType=None /p:DebugSymbols=false -o ../../output/linux64
+cd src\Gateway
+dotnet publish -c Release -r linux-x64  -o ../../output/linux64  /p:UseAppHost=false

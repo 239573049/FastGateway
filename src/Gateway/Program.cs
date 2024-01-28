@@ -102,7 +102,6 @@ builder.Services.Configure<FormOptions>(x =>
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
     options.SerializerOptions.Converters.Add(new JsonDateTimeConverter());
 });
 
