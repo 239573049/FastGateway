@@ -50,11 +50,13 @@ public class StaticFileProxyMiddleware(IContentTypeProvider contentTypeProvider)
                 context.Request.Path = "/" + staticFileProxyEntity.Index;
             }
 
-            Console.WriteLine($"静态文件代理：{staticFileProxyEntity.Path} -> {staticFileProxyEntity.Root}  Path > {context.Request.Path} ");
-            
+
             // 拼接静态文件的完整路径
             var fileInfo = new FileInfo(Path.Combine(staticFilePath,
                 context.Request.Path.Value?.TrimStart('/') ?? string.Empty));
+
+            Console.WriteLine(
+                $"静态文件代理：{staticFileProxyEntity.Path} -> {staticFileProxyEntity.Root}  Path > {context.Request.Path} FilePath > {fileInfo.FullName} 文件是否存在：{fileInfo.Exists}");
 
             // 如果文件不存在，则404
             if (!fileInfo.Exists)
