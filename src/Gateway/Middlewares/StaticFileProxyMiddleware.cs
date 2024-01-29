@@ -50,6 +50,9 @@ public class StaticFileProxyMiddleware(IContentTypeProvider contentTypeProvider)
                 context.Request.Path = "/" + staticFileProxyEntity.Index;
             }
 
+            // 将路由前缀替换为空，只替换前缀不适用Replace方法，因为可能会出现多个相同的前缀
+            context.Request.Path = context.Request.Path.Value?.TrimStart(staticFileProxyEntity.Path.ToArray());
+
 
             // 拼接静态文件的完整路径
             var fileInfo = new FileInfo(Path.Combine(staticFilePath,
