@@ -23,4 +23,25 @@ public static class StringHelper
 
         return $"{formattedSize:0.##} {units[unitIndex]}";
     }
+    
+    public static string TrimStart(this string str, string trimStr)
+    {
+        if (str == null)
+        {
+            throw new ArgumentNullException(nameof(str));
+        }
+
+        if (trimStr == null || trimStr.Length == 0)
+        {
+            return str;
+        }
+
+        var result = str;
+        while (result.Length > 0 && result.StartsWith(trimStr))
+        {
+            result = result[trimStr.Length..];
+        }
+
+        return result;
+    }
 }
