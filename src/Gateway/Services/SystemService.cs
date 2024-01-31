@@ -1,8 +1,6 @@
-﻿using Gateway.Middlewares.FlowAnalytics;
+﻿namespace Gateway.Services;
 
-namespace Gateway.Services;
-
-public class SystemService(IFlowAnalyzer flowAnalyzer)
+public class SystemService
 {
     public static async Task StreamAsync(HttpContext context)
     {
@@ -29,7 +27,7 @@ public class SystemService(IFlowAnalyzer flowAnalyzer)
                 initialBytesSent += interfaceStats.BytesSent;
                 initialBytesReceived += interfaceStats.BytesReceived;
             }
-
+            
             // 等待1秒钟
             await Task.Delay(1000, context.RequestAborted);
 
@@ -66,11 +64,6 @@ public class SystemService(IFlowAnalyzer flowAnalyzer)
                 break;
             }
         }
-    }
-
-    public FlowStatisticsDto FlowStatistics()
-    {
-        return flowAnalyzer.GetFlowStatistics();
     }
 }
 

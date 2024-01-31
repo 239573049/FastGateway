@@ -1,14 +1,12 @@
 #region FreeSql类型转换
 
-using Gateway.Middlewares.FlowAnalytics;
-
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
 Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
 
 #endregion
 
-var builder = WebApplication.CreateSlimBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 var directory = new DirectoryInfo("/data");
 if (!directory.Exists)
@@ -63,8 +61,6 @@ builder.WebHost.UseKestrel(options =>
     });
 });
 
-builder.Services.AddSingleton<IFlowAnalyzer, FlowAnalyzer>();
-
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
     kestrel.Limits.MaxRequestBodySize = null;
@@ -73,7 +69,6 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         portOptions.UseHttps();
-        portOptions.Use<FlowAnalyzeMiddleware>();
     });
 
     kestrel.ListenAnyIP(8080, portOptions =>
@@ -133,7 +128,6 @@ builder.Services.AddSingleton<GatewayService>();
 builder.Services.AddSingleton<CertificateService>();
 builder.Services.AddSingleton<StaticFileProxyService>();
 builder.Services.AddSingleton<TestService>();
-builder.Services.AddSingleton<SystemService>();
 
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
