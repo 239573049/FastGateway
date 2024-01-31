@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
-import { Col, Row } from '@douyinfe/semi-ui';
+import { Card, Col, Row } from '@douyinfe/semi-ui';
 import { stream } from '../../service/NetWorkService';
 import * as echarts from 'echarts';
 
 export default function Home() {
+    const [totalRequestCount, setTotalRequestCount] = useState(0);
+    const [totalErrorCount, setTotalErrorCount] = useState(0);
+    const [currentRequestCount, setCurrentRequestCount] = useState(0);
+    const [currentErrorCount, setCurrentErrorCount] = useState(0);
+
     useEffect(() => {
         var chartDom = document.getElementById('network')!;
         var myChart = echarts.init(chartDom);
@@ -124,6 +129,12 @@ export default function Home() {
                     option.xAxis.data.push(chunk.Time);
                     option.series[0].data.push(chunk.Sent);
                     option.series[1].data.push(chunk.Received);
+
+                    setCurrentErrorCount(chunk.CurrentErrorCount);
+                    setCurrentRequestCount(chunk.CurrentRequestCount);
+                    setTotalErrorCount(chunk.TotalErrorCount);
+                    setTotalRequestCount(chunk.TotalRequestCount);
+
                     option && myChart.setOption(option);
 
                     myChart.resize();
@@ -137,7 +148,7 @@ export default function Home() {
         fetchData();
 
         // 设置定时器，每隔一段时间调用获取数据的函数
-        const intervalId = setInterval(fetchData, 5900); // 每5秒获取一次数据
+        const intervalId = setInterval(fetchData, 10900); // 每5秒获取一次数据
 
         // 组件卸载时清除定时器
         return () => {
@@ -158,6 +169,28 @@ export default function Home() {
             }}>
                 数据面板
             </h2>
+            <Row>
+                <Col span={6}>
+                    <Card style={{ maxWidth: 360, margin: 8 }} >
+                        总请求数：{totalRequestCount}
+                    </Card>
+                </Col>
+                <Col span={6}>
+                    <Card style={{ maxWidth: 360, margin: 8 }} >
+                        总错误数：{totalErrorCount}
+                    </Card>
+                </Col>
+                <Col span={6}>
+                    <Card style={{ maxWidth: 360, margin: 8 }} >
+                        当天请求数：{currentRequestCount}
+                    </Card>
+                </Col>
+                <Col span={6}>
+                    <Card style={{ maxWidth: 360, margin: 8 }} >
+                        当天错误数：{currentErrorCount}
+                    </Card>
+                </Col>
+            </Row>
             <Row>
                 <div id='network' style={{
                     height: '300px',
