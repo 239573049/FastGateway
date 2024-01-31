@@ -48,12 +48,11 @@ public class GatewayBackgroundService(
                 ErrorRequestCount = GatewayMiddleware.CurrentErrorCount,
                 CurrentTime = DateTime.Now.AddDays(-1)
             };
-
-            await freeSql.Insert(systemLoggerEntity).ExecuteAffrowsAsync();
-
+            
             // 清空请求计数器
             GatewayMiddleware.ClearRequestCount();
-            
+
+            await freeSql.Insert(systemLoggerEntity).ExecuteAffrowsAsync();
         }
     }
 }
