@@ -28,8 +28,8 @@ builder.Configuration.GetSection(GatewayOptions.Name)
     .Get<GatewayOptions>();
 
 // 获取环境变量
-var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
-var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
+var httpsPassword = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
+var httpsFile = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
 
 builder.WebHost.UseKestrel(options =>
 {
@@ -43,8 +43,8 @@ builder.WebHost.UseKestrel(options =>
                 !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
             {
                 // 创建一个默认的证书
-                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
-                    https_password);
+                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", httpsFile),
+                    httpsPassword);
             }
 
             var path = Path.Combine("/data/", certificate.Path);
@@ -55,8 +55,8 @@ builder.WebHost.UseKestrel(options =>
             Console.WriteLine($"证书文件不存在：{path}");
             Console.ResetColor();
 
-            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
-                https_password);
+            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", httpsFile),
+                httpsPassword);
         };
     });
 });
@@ -69,6 +69,7 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         portOptions.UseHttps();
+        
     });
 
     kestrel.ListenAnyIP(8080, portOptions => { portOptions.Protocols = HttpProtocols.Http1AndHttp2; });

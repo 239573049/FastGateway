@@ -28,4 +28,36 @@ public class NetWorkDto(long received, long sent)
     /// 当前时间
     /// </summary>
     public string Time => DateTime.Now.ToString("HH:mm:ss");
+
+    /// <summary>
+    /// 当天请求数量
+    /// </summary>
+    public int CurrentRequestCount { get; set; } = GatewayMiddleware.CurrentRequestCount;
+
+    /// <summary>
+    /// 当天错误数量
+    /// </summary>
+    public int CurrentErrorCount { get; set; } = GatewayMiddleware.CurrentErrorCount;
+
+    private double _totalRequestCount;
+
+    /// <summary>
+    /// 当天错误率
+    /// </summary>
+    public double TotalRequestCount
+    {
+        get => _totalRequestCount + CurrentRequestCount;
+        set => _totalRequestCount = value;
+    }
+
+    private double _totalErrorCount;
+
+    /// <summary>
+    /// 总错误数量
+    /// </summary>
+    public double TotalErrorCount
+    {
+        get => _totalErrorCount + CurrentErrorCount;
+        set => value = _totalErrorCount;
+    }
 }
