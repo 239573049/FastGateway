@@ -1,4 +1,4 @@
-﻿namespace Gateway.Entities;
+﻿namespace Gateway.Core.Entities;
 
 public sealed class CertificateEntity : Entity
 {

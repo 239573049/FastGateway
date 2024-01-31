@@ -25,7 +25,7 @@ public static class FileStorageExtension
 {
     public static void MapFileStorage(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/gateway/file-storage", async (HttpContext context) =>
+        app.MapPost("/api/gateway/file-storage", async context =>
                 await FileStorageService.UploadAsync(context))
             .RequireAuthorization();
     }

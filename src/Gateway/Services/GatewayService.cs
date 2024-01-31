@@ -1,9 +1,12 @@
-﻿namespace Gateway.Services;
+﻿using Gateway.Core;
+using Gateway.Core.Entities;
+
+namespace Gateway.Services;
 
 public class GatewayService(
     IFreeSql freeSql,
     InMemoryConfigProvider inMemoryConfigProvider,
-    StaticFileProxyService staticFileProxyService)
+    IStaticFileProxyService staticFileProxyService) : IGatewayService
 {
     public static List<RouteConfig> Routes { get; private set; } = [];
 
@@ -276,39 +279,39 @@ public static class GatewayExtension
 {
     public static void MapGateway(this IEndpointRouteBuilder app)
     {
-        app.MapPut("/api/gateway/refresh-config", async (GatewayService gatewayService) =>
+        app.MapPut("/api/gateway/refresh-config", async (IGatewayService gatewayService) =>
                 await gatewayService.RefreshConfig())
             .RequireAuthorization();
 
-        app.MapGet("/api/gateway/routes", async (GatewayService gatewayService) =>
+        app.MapGet("/api/gateway/routes", async (IGatewayService gatewayService) =>
                 await gatewayService.GetRouteAsync())
             .RequireAuthorization();
 
-        app.MapPost("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
+        app.MapPost("/api/gateway/routes", async (IGatewayService gatewayService, RouteEntity routeEntity) =>
                 await gatewayService.CreateRouteAsync(routeEntity))
             .RequireAuthorization();
 
-        app.MapPut("/api/gateway/routes", async (GatewayService gatewayService, RouteEntity routeEntity) =>
+        app.MapPut("/api/gateway/routes", async (IGatewayService gatewayService, RouteEntity routeEntity) =>
                 await gatewayService.UpdateRouteAsync(routeEntity))
             .RequireAuthorization();
 
-        app.MapDelete("/api/gateway/routes/{routeId}", async (GatewayService gatewayService, string routeId) =>
+        app.MapDelete("/api/gateway/routes/{routeId}", async (IGatewayService gatewayService, string routeId) =>
                 await gatewayService.DeleteRouteAsync(routeId))
             .RequireAuthorization();
 
-        app.MapGet("/api/gateway/clusters", async (GatewayService gatewayService) =>
+        app.MapGet("/api/gateway/clusters", async (IGatewayService gatewayService) =>
                 await gatewayService.GetClusterAsync())
             .RequireAuthorization();
 
-        app.MapPost("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
+        app.MapPost("/api/gateway/clusters", async (IGatewayService gatewayService, ClusterEntity clusterEntity) =>
                 await gatewayService.CreateClusterAsync(clusterEntity))
             .RequireAuthorization();
 
-        app.MapPut("/api/gateway/clusters", async (GatewayService gatewayService, ClusterEntity clusterEntity) =>
+        app.MapPut("/api/gateway/clusters", async (IGatewayService gatewayService, ClusterEntity clusterEntity) =>
                 await gatewayService.UpdateClusterAsync(clusterEntity))
             .RequireAuthorization();
 
-        app.MapDelete("/api/gateway/clusters/{clusterId}", async (GatewayService gatewayService, string clusterId) =>
+        app.MapDelete("/api/gateway/clusters/{clusterId}", async (IGatewayService gatewayService, string clusterId) =>
                 await gatewayService.DeleteClusterAsync(clusterId))
             .RequireAuthorization();
     }

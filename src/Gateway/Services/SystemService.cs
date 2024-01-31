@@ -1,4 +1,5 @@
-﻿using Gateway.Middlewares.FlowAnalytics;
+﻿using Gateway.Core.Dto;
+using Gateway.Middlewares.FlowAnalytics;
 
 namespace Gateway.Services;
 
@@ -66,6 +67,8 @@ public static class SystemService
                 {
                     TotalErrorCount = totalErrorCount,
                     TotalRequestCount = totalRequestCount,
+                    CurrentRequestCount = GatewayMiddleware.CurrentRequestCount,
+                    CurrentErrorCount = GatewayMiddleware.CurrentErrorCount,
                     ReadRate = flowStatisticsDto.TotalRead,
                     WriteRate = flowStatisticsDto.TotalWrite,
                     TotalWrite = totalRead,
@@ -92,6 +95,7 @@ public static class SystemExtension
     public static void MapSystem(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/gateway/system", async (HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer) =>
-            await SystemService.StreamAsync(context, sql, flowAnalyzer));
+            await SystemService.StreamAsync(context, sql, flowAnalyzer))
+            .RequireAuthorization();
     }
 }

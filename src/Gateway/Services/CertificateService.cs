@@ -1,4 +1,6 @@
-﻿namespace Gateway.Services;
+﻿using Gateway.Core.Entities;
+
+namespace Gateway.Services;
 
 public class CertificateService(IFreeSql freeSql)
 {

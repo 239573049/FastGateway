@@ -9,9 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FreeSql" Version="3.2.810" />
-    <PackageReference Include="FreeSql.DbContext" Version="3.2.810" />
-    <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.2.810" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
@@ -25,6 +22,10 @@
     <None Update="certificates\gateway.pfx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gateway.Core\Gateway.Core.csproj" />
   </ItemGroup>
 
 </Project>

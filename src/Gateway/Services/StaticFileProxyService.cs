@@ -1,6 +1,9 @@
-﻿namespace Gateway.Services;
+﻿using Gateway.Core;
+using Gateway.Core.Entities;
 
-public class StaticFileProxyService(IFreeSql freeSql)
+namespace Gateway.Services;
+
+public class StaticFileProxyService(IFreeSql freeSql) : IStaticFileProxyService
 {
     public static IReadOnlyList<StaticFileProxyEntity> StaticFileProxyEntityList { get; private set; } = [];
 
@@ -140,20 +143,24 @@ public static class StaticFileProxyExtension
 {
     public static void MapStaticFileProxy(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/gateway/static-file-proxy", async (StaticFileProxyService staticFileProxyService,
+        app.MapGet("/api/gateway/static-file-proxy", async (IStaticFileProxyService staticFileProxyService,
                 string keyword) =>
-            await staticFileProxyService.GetListAsync(keyword));
+            await staticFileProxyService.GetListAsync(keyword))
+            .RequireAuthorization();
 
         app.MapPost("/api/gateway/static-file-proxy",
-            async (StaticFileProxyService staticFileProxyService, StaticFileProxyEntity entity) =>
-                await staticFileProxyService.CreateAsync(entity));
+            async (IStaticFileProxyService staticFileProxyService, StaticFileProxyEntity entity) =>
+                await staticFileProxyService.CreateAsync(entity))
+            .RequireAuthorization();
 
         app.MapPut("/api/gateway/static-file-proxy",
-            async (StaticFileProxyService staticFileProxyService, StaticFileProxyEntity entity) =>
-                await staticFileProxyService.UpdateAsync(entity));
+            async (IStaticFileProxyService staticFileProxyService, StaticFileProxyEntity entity) =>
+                await staticFileProxyService.UpdateAsync(entity))
+            .RequireAuthorization();
 
         app.MapDelete("/api/gateway/static-file-proxy",
-            async (StaticFileProxyService staticFileProxyService, string id) =>
-                await staticFileProxyService.DeleteAsync(id));
+            async (IStaticFileProxyService staticFileProxyService, string id) =>
+                await staticFileProxyService.DeleteAsync(id))
+            .RequireAuthorization();
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace Gateway.Entities;
+﻿using Gateway.Core.Entities;
+
+namespace Gateway.Entities;
 
 public sealed class SystemLoggerEntity : Entity
 {

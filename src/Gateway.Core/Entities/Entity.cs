@@ -1,4 +1,6 @@
-﻿namespace Gateway.Entities;
+﻿using FreeSql.DataAnnotations;
+
+namespace Gateway.Core.Entities;
 
 public abstract class Entity : CreatedEntity
 {

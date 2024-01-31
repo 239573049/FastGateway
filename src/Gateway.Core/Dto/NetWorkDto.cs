@@ -1,6 +1,4 @@
-﻿using Gateway.Helpers;
-
-namespace Gateway.Dto;
+﻿namespace Gateway.Core.Dto;
 
 public class NetWorkDto(long received, long sent)
 {
@@ -9,20 +7,12 @@ public class NetWorkDto(long received, long sent)
     /// </summary>
     public long Received { get; set; } = received;
 
-    /// <summary>
-    /// 接收流量字符串
-    /// </summary>
-    public string ReceivedStr => StringHelper.FormatBytes(Received);
 
     /// <summary>
     /// 发送流量
     /// </summary>
     public long Sent { get; set; } = sent;
 
-    /// <summary>
-    /// 发送流量字符串
-    /// </summary>
-    public string SentStr => StringHelper.FormatBytes(Sent);
 
     /// <summary>
     /// 当前时间
@@ -32,12 +22,12 @@ public class NetWorkDto(long received, long sent)
     /// <summary>
     /// 当天请求数量
     /// </summary>
-    public int CurrentRequestCount { get; set; } = GatewayMiddleware.CurrentRequestCount;
+    public int CurrentRequestCount { get; set; }
 
     /// <summary>
     /// 当天错误数量
     /// </summary>
-    public int CurrentErrorCount { get; set; } = GatewayMiddleware.CurrentErrorCount;
+    public int CurrentErrorCount { get; set; }
 
     private double _totalRequestCount;
 

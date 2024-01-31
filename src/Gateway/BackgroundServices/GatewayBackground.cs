@@ -1,4 +1,5 @@
-﻿using Gateway.Middlewares.FlowAnalytics;
+﻿using Gateway.Core.Entities;
+using Gateway.Middlewares.FlowAnalytics;
 
 namespace Gateway.BackgroundServices;
 

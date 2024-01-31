@@ -1,4 +1,4 @@
-﻿namespace Gateway;
+﻿namespace Gateway.Core;
 
 /// <summary>
 /// 证书类型

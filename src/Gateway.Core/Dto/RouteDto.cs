@@ -1,4 +1,6 @@
-﻿namespace Gateway.Dto;
+﻿using Gateway.Core.Entities;
+
+namespace Gateway.Dto;
 
 public class RouteDto
 {

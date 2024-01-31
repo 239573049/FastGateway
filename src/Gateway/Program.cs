@@ -1,5 +1,7 @@
 #region FreeSql类型转换
 
+using Gateway.Core;
+using Gateway.Core.Entities;
 using Gateway.Middlewares.FlowAnalytics;
 
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
@@ -137,9 +139,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<StaticFileProxyMiddleware>();
 builder.Services.AddSingleton<GatewayMiddleware>();
 
-builder.Services.AddSingleton<GatewayService>();
+builder.Services.AddSingleton<IGatewayService,GatewayService>();
 builder.Services.AddSingleton<CertificateService>();
-builder.Services.AddSingleton<StaticFileProxyService>();
+builder.Services.AddSingleton<IStaticFileProxyService,StaticFileProxyService>();
 builder.Services.AddSingleton<TestService>();
 
 builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
