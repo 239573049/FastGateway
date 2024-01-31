@@ -1,6 +1,8 @@
-﻿namespace Gateway.Services;
+﻿using Gateway.Middlewares.FlowAnalytics;
 
-public class SystemService
+namespace Gateway.Services;
+
+public class SystemService(IFlowAnalyzer flowAnalyzer)
 {
     public static async Task StreamAsync(HttpContext context)
     {
@@ -27,7 +29,7 @@ public class SystemService
                 initialBytesSent += interfaceStats.BytesSent;
                 initialBytesReceived += interfaceStats.BytesReceived;
             }
-            
+
             // 等待1秒钟
             await Task.Delay(1000, context.RequestAborted);
 
@@ -65,6 +67,11 @@ public class SystemService
             }
         }
     }
+
+    public FlowStatisticsDto FlowStatistics()
+    {
+        return flowAnalyzer.GetFlowStatistics();
+    }
 }
 
 public static class SystemExtension
@@ -73,5 +80,8 @@ public static class SystemExtension
     {
         app.MapGet("/api/gateway/system", async context =>
             await SystemService.StreamAsync(context));
+
+        app.MapGet("/api/gateway/system/flow-statistics",
+            (SystemService systemService) => systemService.FlowStatistics());
     }
 }
