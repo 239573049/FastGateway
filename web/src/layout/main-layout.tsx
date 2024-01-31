@@ -44,7 +44,8 @@ export default function MainLayout() {
                         { itemKey: 'Setting', text: '设置', icon: <IconSetting size="large" /> },
                     ]}
                     header={{
-                        // logo: <IconSemiLogo style={{ fontSize: 36 }} />,
+                        logo: <Avatar src='./favicon.png' color="orange" size="small">
+                        </Avatar>,
                         text: 'Gateway',
                     }}
                     footer={{
@@ -101,7 +102,7 @@ export default function MainLayout() {
                             alignItems: 'center',
                         }}
                     >
-                        <span>Token © 2023 </span>
+                        <span>Token Gateway © 2023 </span>
                     </span>
                     <span>
                         <span>
