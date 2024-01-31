@@ -49,6 +49,7 @@ public class GatewayBackgroundService(
 
             var systemLoggerEntity = new SystemLoggerEntity
             {
+                Id = Guid.NewGuid().ToString("N"),
                 RequestCount = GatewayMiddleware.CurrentRequestCount,
                 ErrorRequestCount = GatewayMiddleware.CurrentErrorCount,
                 CurrentTime = DateTime.Now.AddDays(-1),
