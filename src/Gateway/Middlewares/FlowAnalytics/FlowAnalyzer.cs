@@ -3,8 +3,8 @@ namespace Gateway.Middlewares.FlowAnalytics;
 public sealed class FlowAnalyzer : IFlowAnalyzer
 {
     private const int INTERVAL_SECONDS = 5;
-    private readonly FlowQueues readQueues = new(INTERVAL_SECONDS);
-    private readonly FlowQueues writeQueues = new(INTERVAL_SECONDS);
+    private readonly FlowQueues _readQueues = new(INTERVAL_SECONDS);
+    private readonly FlowQueues _writeQueues = new(INTERVAL_SECONDS);
 
     /// <summary>
     /// 收到数据
@@ -15,12 +15,18 @@ public sealed class FlowAnalyzer : IFlowAnalyzer
     {
         if (flowType == FlowType.Read)
         {
-            this.readQueues.OnFlow(length);
+            _readQueues.OnFlow(length);
         }
         else
         {
-            this.writeQueues.OnFlow(length);
+            _writeQueues.OnFlow(length);
         }
+    }
+
+    public void CleanRecords()
+    {
+        _readQueues.CleanRecords();
+        _writeQueues.CleanRecords();
     }
 
     /// <summary>
@@ -31,40 +37,35 @@ public sealed class FlowAnalyzer : IFlowAnalyzer
     {
         return new FlowStatisticsDto
         {
-            TotalRead = this.readQueues.TotalBytes,
-            TotalWrite = this.writeQueues.TotalBytes,
-            ReadRate = this.readQueues.GetRate(),
-            WriteRate = this.writeQueues.GetRate()
+            TotalRead = _readQueues.TotalBytes,
+            TotalWrite = _writeQueues.TotalBytes,
+            ReadRate = _readQueues.GetRate(),
+            WriteRate = _writeQueues.GetRate()
         };
     }
 
-    private class FlowQueues
+    private class FlowQueues(int intervalSeconds)
     {
-        private int cleaning = 0;
-        private long totalBytes = 0L;
+        private int _cleaning = 0;
+        private long _totalBytes = 0L;
+
         private record QueueItem(long Ticks, int Length);
-        private readonly ConcurrentQueue<QueueItem> queues = new();
 
-        private readonly int intervalSeconds;
+        private readonly ConcurrentQueue<QueueItem> _queues = new();
 
-        public long TotalBytes => this.totalBytes;
-
-        public FlowQueues(int intervalSeconds)
-        {
-            this.intervalSeconds = intervalSeconds;
-        }
+        public long TotalBytes => this._totalBytes;
 
         public void OnFlow(int length)
         {
-            Interlocked.Add(ref this.totalBytes, length);
+            Interlocked.Add(ref this._totalBytes, length);
             this.CleanInvalidRecords();
-            this.queues.Enqueue(new QueueItem(Environment.TickCount64, length));
+            this._queues.Enqueue(new QueueItem(Environment.TickCount64, length));
         }
 
         public double GetRate()
         {
-            this.CleanInvalidRecords();
-            return (double)this.queues.Sum(item => item.Length) / this.intervalSeconds;
+            CleanInvalidRecords();
+            return (double)_queues.Sum(item => item.Length) / intervalSeconds;
         }
 
         /// <summary>
@@ -73,26 +74,31 @@ public sealed class FlowAnalyzer : IFlowAnalyzer
         /// <returns></returns>
         private bool CleanInvalidRecords()
         {
-            if (Interlocked.CompareExchange(ref this.cleaning, 1, 0) != 0)
+            if (Interlocked.CompareExchange(ref this._cleaning, 1, 0) != 0)
             {
                 return false;
             }
 
             var ticks = Environment.TickCount64;
-            while (this.queues.TryPeek(out var item))
+            while (_queues.TryPeek(out var item))
             {
-                if (ticks - item.Ticks < this.intervalSeconds * 1000)
+                if (ticks - item.Ticks < intervalSeconds * 1000)
                 {
                     break;
                 }
-                else
-                {
-                    this.queues.TryDequeue(out _);
-                }
+
+                _queues.TryDequeue(out _);
             }
 
-            Interlocked.Exchange(ref this.cleaning, 0);
+            Interlocked.Exchange(ref _cleaning, 0);
             return true;
+        }
+
+
+        public void CleanRecords()
+        {
+            _queues.Clear();
+            Interlocked.Exchange(ref _cleaning, 0);
         }
     }
 }

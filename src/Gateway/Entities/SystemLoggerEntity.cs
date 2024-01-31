@@ -17,5 +17,13 @@ public sealed class SystemLoggerEntity : Entity
     /// </summary>
     public DateTime CurrentTime { get; set; }
     
-    
+    /// <summary>
+    /// 获取读取速率
+    /// </summary>
+    public double ReadRate { get; init; }
+
+    /// <summary>
+    /// 获取写入速率
+    /// </summary>
+    public double WriteRate { get; init; }
 }

@@ -8,8 +8,8 @@ namespace Gateway.Middlewares.FlowAnalytics;
 /// <typeparam name="TDelegatingStream"></typeparam>
 public class DelegatingDuplexPipe<TDelegatingStream> : IDuplexPipe, IAsyncDisposable where TDelegatingStream : DelegatingStream
 {
-    private bool disposed;
-    private readonly object syncRoot = new();
+    private bool _disposed;
+    private readonly object _syncRoot = new();
 
     /// <summary>
     /// 输入对象
@@ -52,13 +52,13 @@ public class DelegatingDuplexPipe<TDelegatingStream> : IDuplexPipe, IAsyncDispos
     /// <returns></returns>
     public virtual async ValueTask DisposeAsync()
     {
-        lock (this.syncRoot)
+        lock (this._syncRoot)
         {
-            if (this.disposed == true)
+            if (this._disposed == true)
             {
                 return;
             }
-            this.disposed = true;
+            this._disposed = true;
         }
 
         await this.Input.CompleteAsync();

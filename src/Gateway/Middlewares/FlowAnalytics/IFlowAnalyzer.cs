@@ -14,4 +14,9 @@ public interface IFlowAnalyzer
     /// </summary>
     /// <returns></returns>
     FlowStatisticsDto GetFlowStatistics();
+    
+    /// <summary>
+    /// 清楚记录
+    /// </summary>
+    void CleanRecords();
 }

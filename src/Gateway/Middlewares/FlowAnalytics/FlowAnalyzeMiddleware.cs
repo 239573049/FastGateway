@@ -2,15 +2,8 @@
 
 namespace Gateway.Middlewares.FlowAnalytics;
 
-public class FlowAnalyzeMiddleware : IKestrelMiddleware
+public sealed class FlowAnalyzeMiddleware(IFlowAnalyzer flowAnalyzer) : IKestrelMiddleware
 {
-    private readonly IFlowAnalyzer flowAnalyzer;
-
-    public FlowAnalyzeMiddleware(IFlowAnalyzer flowAnalyzer)
-    {
-        this.flowAnalyzer = flowAnalyzer;
-    }
-
     public async Task InvokeAsync(ConnectionDelegate next, ConnectionContext context)
     {
         var oldTransport = context.Transport;

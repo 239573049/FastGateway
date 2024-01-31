@@ -1,5 +1,7 @@
 #region FreeSql类型转换
 
+using Gateway.Middlewares.FlowAnalytics;
+
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
 Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
@@ -30,6 +32,8 @@ builder.Configuration.GetSection(GatewayOptions.Name)
 // 获取环境变量
 var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
 var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
+var enable_flow_monitoring = Environment.GetEnvironmentVariable("ENABLE_FLOW_MONITORING") ?? "true";
+
 
 builder.WebHost.UseKestrel(options =>
 {
@@ -69,12 +73,21 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         portOptions.UseHttps();
+
+        if (enable_flow_monitoring == "true")
+        {
+            portOptions.Use<FlowAnalyzeMiddleware>();
+        }
     });
 
     kestrel.ListenAnyIP(8080, portOptions =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2;
-        portOptions.Use<FlowAnalyzeMiddleware>();
+
+        if (enable_flow_monitoring == "true")
+        {
+            portOptions.Use<FlowAnalyzeMiddleware>();
+        }
     });
 });
 
@@ -139,6 +152,8 @@ builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 builder.Services.AddTunnelServices();
+
+builder.Services.AddSingleton<IFlowAnalyzer, FlowAnalyzer>();
 
 var app = builder.Build();
 

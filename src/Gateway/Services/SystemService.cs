@@ -1,13 +1,23 @@
-﻿namespace Gateway.Services;
+﻿using Gateway.Middlewares.FlowAnalytics;
 
-public class SystemService
+namespace Gateway.Services;
+
+/// <summary>
+/// 系统服务
+/// </summary>
+public static class SystemService
 {
-    public static async Task StreamAsync(HttpContext context)
+    public static async Task StreamAsync(HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer)
     {
         // 使用sse，返回响应头
         context.Response.Headers.ContentType = "text/event-stream";
 
         var i = 0;
+
+        var totalErrorCount = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.ErrorRequestCount);
+        var totalRequestCount = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.RequestCount);
+        var totalRead = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.ReadRate);
+        var totalWrite = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.WriteRate);
 
         while (!context.RequestAborted.IsCancellationRequested)
         {
@@ -27,7 +37,7 @@ public class SystemService
                 initialBytesSent += interfaceStats.BytesSent;
                 initialBytesReceived += interfaceStats.BytesReceived;
             }
-            
+
             // 等待1秒钟
             await Task.Delay(1000, context.RequestAborted);
 
@@ -49,8 +59,18 @@ public class SystemService
             var totalBytesSentIn1Sec = bytesSentAfter1Sec - initialBytesSent;
             var totalBytesReceivedIn1Sec = bytesReceivedAfter1Sec - initialBytesReceived;
 
+            var flowStatisticsDto = flowAnalyzer.GetFlowStatistics();
+
             var data =
-                $"data:{JsonSerializer.Serialize(new NetWorkDto(totalBytesReceivedIn1Sec, totalBytesSentIn1Sec))}\n\n";
+                $"data:{JsonSerializer.Serialize(new NetWorkDto(totalBytesReceivedIn1Sec, totalBytesSentIn1Sec)
+                {
+                    TotalErrorCount = totalErrorCount,
+                    TotalRequestCount = totalRequestCount,
+                    ReadRate = flowStatisticsDto.TotalRead,
+                    WriteRate = flowStatisticsDto.TotalWrite,
+                    TotalWrite = totalRead,
+                    TotalRead = totalWrite
+                })}\n\n";
 
             // 将数据写入到响应流中
             await context.Response.WriteAsync(data, context.RequestAborted);
@@ -58,8 +78,8 @@ public class SystemService
 
             i++;
 
-            // 只维持5秒的连接
-            if (i > 5)
+            // 只维持10秒的连接
+            if (i > 10)
             {
                 break;
             }
@@ -71,10 +91,7 @@ public static class SystemExtension
 {
     public static void MapSystem(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/gateway/system", async context =>
-            await SystemService.StreamAsync(context));
-
-        app.MapGet("/api/gateway/system/flow-statistics",
-            (SystemService systemService) => systemService.FlowStatistics());
+        app.MapGet("/api/gateway/system", async (HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer) =>
+            await SystemService.StreamAsync(context, sql, flowAnalyzer));
     }
 }
