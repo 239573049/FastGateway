@@ -10,6 +10,7 @@ Gateway提供了基本的管理服务，提供简单的登录授权，和实时�
 - [x] dashboard监控
 - [x] 静态文件服务代理
 - [x] 穿透隧道功能
+- [x] 出入口流量监控
 - [ ] 动态插件管理
 
 ## 技术栈
@@ -28,7 +29,6 @@ Gateway提供了基本的管理服务，提供简单的登录授权，和实时�
 - axios 用于发送http请求
 - semi 用于提供基础组件
 - react-router-dom 用于路由管理
-
 
 ## 镜像执行指令
 
@@ -118,6 +118,7 @@ services:
 `/app/certificates`：
 
 - 这个是系统证书默认存放目录，如果映射了目录则需要提供自己的证书。
+
 ## 使用隧道
 
 ```yml
@@ -152,7 +153,42 @@ services:
 
 增加`TUNNEL_PASSWORD`环境变量，默认为空不设置密码
 
-下载隧道客户端 https://gitee.com/hejiale010426/Gateway/releases 然后解压压缩包，打开appsettings.json文件修改Tunnel节点的Url，如果Gateway使用了TUNNEL_PASSWORD，那么你的URL应该是`https://localhost:8081/api/gateway/connect-h2?host=backend1.app&password=dd666666`，
+下载隧道客户端 <https://gitee.com/hejiale010426/Gateway/releases> 然后解压压缩包，打开appsettings.json文件修改Tunnel节点的Url，如果Gateway使用了TUNNEL_PASSWORD，那么你的URL应该是`https://localhost:8081/api/gateway/connect-h2?host=backend1.app&password=dd666666`，
 `host`是在集群中的集群端点的域名，这个域名就是定义到我们的隧道客户端的`host`的这个参数，请保证值的唯一性，当绑定集群的路由匹配成功以后则会访问图片定义的端点，如果并没有存在节点那么他会直接代理。
 
 ![输入图片说明](img/%E9%9B%86%E7%BE%A4-01.png.png)
+
+## 出入流量监控
+
+使用环境变量控制是否启用流量监控，使用环境变量`ENABLE_FLOW_MONITORING`设置我们是否启用流量监控，如果为空则默认启动流量监控，然后可以打开我们的控制面板查看流量监控的数据。
+
+```yml
+
+services:
+  gateway-api:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
+    restart: always
+    container_name: gateway-api
+    environment:
+      USER: root
+      PASS: Aa010426.
+      HTTPS_PASSWORD: dd666666
+      HTTPS_FILE: gateway.pfx
+      ENABLE_FLOW_MONITORING: true
+    ports:
+      - 8200:8080
+    volumes:
+      - ./data:/data/
+      - ./app/certificates:/app/certificates
+
+  gateway-web:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
+    restart: always
+    container_name: gateway-web
+    privileged: true
+    environment:
+      api_url: http://token-ai.cn:8200
+    ports:
+      - 10800:80
+
+```

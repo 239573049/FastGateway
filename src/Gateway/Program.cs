@@ -1,5 +1,7 @@
 #region FreeSql类型转换
 
+using Gateway.Middlewares.FlowAnalytics;
+
 Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
 Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
 Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
@@ -28,8 +30,10 @@ builder.Configuration.GetSection(GatewayOptions.Name)
     .Get<GatewayOptions>();
 
 // 获取环境变量
-var httpsPassword = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
-var httpsFile = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
+var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
+var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
+var enable_flow_monitoring = Environment.GetEnvironmentVariable("ENABLE_FLOW_MONITORING") ?? "true";
+
 
 builder.WebHost.UseKestrel(options =>
 {
@@ -43,8 +47,8 @@ builder.WebHost.UseKestrel(options =>
                 !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
             {
                 // 创建一个默认的证书
-                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", httpsFile),
-                    httpsPassword);
+                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                    https_password);
             }
 
             var path = Path.Combine("/data/", certificate.Path);
@@ -55,8 +59,8 @@ builder.WebHost.UseKestrel(options =>
             Console.WriteLine($"证书文件不存在：{path}");
             Console.ResetColor();
 
-            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", httpsFile),
-                httpsPassword);
+            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                https_password);
         };
     });
 });
@@ -69,10 +73,22 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     {
         portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
         portOptions.UseHttps();
-        
+
+        if (enable_flow_monitoring == "true")
+        {
+            portOptions.Use<FlowAnalyzeMiddleware>();
+        }
     });
 
-    kestrel.ListenAnyIP(8080, portOptions => { portOptions.Protocols = HttpProtocols.Http1AndHttp2; });
+    kestrel.ListenAnyIP(8080, portOptions =>
+    {
+        portOptions.Protocols = HttpProtocols.Http1AndHttp2;
+
+        if (enable_flow_monitoring == "true")
+        {
+            portOptions.Use<FlowAnalyzeMiddleware>();
+        }
+    });
 });
 
 #region Jwt
@@ -136,6 +152,8 @@ builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 builder.Services.AddTunnelServices();
+
+builder.Services.AddSingleton<IFlowAnalyzer, FlowAnalyzer>();
 
 var app = builder.Build();
 

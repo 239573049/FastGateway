@@ -1,8 +1,11 @@
-﻿namespace Gateway.BackgroundServices;
+﻿using Gateway.Middlewares.FlowAnalytics;
+
+namespace Gateway.BackgroundServices;
 
 public class GatewayBackgroundService(
     GatewayService gatewayService,
     CertificateService certificateService,
+    IFlowAnalyzer flowAnalyzer,
     IFreeSql freeSql) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,15 +45,20 @@ public class GatewayBackgroundService(
 
             #endregion
 
+            var flow = flowAnalyzer.GetFlowStatistics();
+
             var systemLoggerEntity = new SystemLoggerEntity
             {
                 RequestCount = GatewayMiddleware.CurrentRequestCount,
                 ErrorRequestCount = GatewayMiddleware.CurrentErrorCount,
-                CurrentTime = DateTime.Now.AddDays(-1)
+                CurrentTime = DateTime.Now.AddDays(-1),
+                ReadRate = flow.TotalRead,
+                WriteRate = flow.TotalWrite
             };
-            
+
             // 清空请求计数器
             GatewayMiddleware.ClearRequestCount();
+            flowAnalyzer.CleanRecords();
 
             await freeSql.Insert(systemLoggerEntity).ExecuteAffrowsAsync();
         }

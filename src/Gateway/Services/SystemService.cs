@@ -1,11 +1,13 @@
-﻿namespace Gateway.Services;
+﻿using Gateway.Middlewares.FlowAnalytics;
+
+namespace Gateway.Services;
 
 /// <summary>
 /// 系统服务
 /// </summary>
 public static class SystemService
 {
-    public static async Task StreamAsync(HttpContext context, IFreeSql sql)
+    public static async Task StreamAsync(HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer)
     {
         // 使用sse，返回响应头
         context.Response.Headers.ContentType = "text/event-stream";
@@ -14,6 +16,8 @@ public static class SystemService
 
         var totalErrorCount = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.ErrorRequestCount);
         var totalRequestCount = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.RequestCount);
+        var totalRead = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.ReadRate);
+        var totalWrite = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.WriteRate);
 
         while (!context.RequestAborted.IsCancellationRequested)
         {
@@ -55,11 +59,17 @@ public static class SystemService
             var totalBytesSentIn1Sec = bytesSentAfter1Sec - initialBytesSent;
             var totalBytesReceivedIn1Sec = bytesReceivedAfter1Sec - initialBytesReceived;
 
+            var flowStatisticsDto = flowAnalyzer.GetFlowStatistics();
+
             var data =
                 $"data:{JsonSerializer.Serialize(new NetWorkDto(totalBytesReceivedIn1Sec, totalBytesSentIn1Sec)
                 {
                     TotalErrorCount = totalErrorCount,
-                    TotalRequestCount = totalRequestCount
+                    TotalRequestCount = totalRequestCount,
+                    ReadRate = flowStatisticsDto.TotalRead,
+                    WriteRate = flowStatisticsDto.TotalWrite,
+                    TotalWrite = totalRead,
+                    TotalRead = totalWrite
                 })}\n\n";
 
             // 将数据写入到响应流中
@@ -81,7 +91,7 @@ public static class SystemExtension
 {
     public static void MapSystem(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/gateway/system", async (HttpContext context, IFreeSql sql) =>
-            await SystemService.StreamAsync(context, sql));
+        app.MapGet("/api/gateway/system", async (HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer) =>
+            await SystemService.StreamAsync(context, sql, flowAnalyzer));
     }
 }
