@@ -5,16 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>c5e6e718-4c1d-4bcd-8131-669c9bbea142</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    
 
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FreeSql" Version="3.2.810" />
-    <PackageReference Include="FreeSql.DbContext" Version="3.2.810" />
-    <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.2.810" />
+    <PackageReference Include="FreeSql" Version="$(FreeSqlVersion)" />
+    <PackageReference Include="FreeSql.DbContext" Version="$(FreeSqlVersion)" />
+    <PackageReference Include="FreeSql.Provider.Sqlite" Version="$(FreeSqlVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Connections.Client" Version="8.0.1" />
   </ItemGroup>
 

@@ -1,0 +1,11 @@
+﻿<Project>
+    <PropertyGroup>
+        <Authors>Token</Authors>
+        <Company>Token</Company>
+        <Product>Token Gateway</Product>
+        <Description>Token Gateway 一个更方便的代理网关，监控流量，动态配置证书，支持h3,支持隧道等功能。</Description>
+        <Version>1.0.0.0</Version>
+        <FreeSqlVersion>3.2.810</FreeSqlVersion>
+        <YarpVersion>2.1.0</YarpVersion>
+    </PropertyGroup>
+</Project>
