@@ -33,7 +33,9 @@ Gateway提供了基本的管理服务，提供简单的登录授权，和实时�
 ## 镜像执行指令
 
 ```bash
- docker run -p 1090:80 -e api_url=http://192.168.31.173:5048 -e USER=root -e PASS=Aa010426. -d --name=web gateway-web
+mkdir data
+docker run -d --restart always --name gateway-api -p 8000:8000 -p 8200:8080 -p 8300:8081 -v $(pwd)/data:/data/ registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
+docker run -d --restart always --privileged --name gateway-web -p 10800:80 -e api_url=http://localhost:8000 registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
 ```
 
 ## Docker-Compose文件
@@ -49,17 +51,21 @@ services:
       USER: root
       PASS: Aa010426.
     ports:
-      - 8200:8080
+      - 8000:8000 # 提供给web端调用的管理接口
+      - 8200:8080 # Http代理端口
+      - 8300:8081 # Https代理端口
     volumes:
-      - ./data:/data/
+      - ./data:/data/ # 请注意手动创建data目录，负责在Linux下可能出现权限问题导致无法写入
 
   gateway-web:
     image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
     restart: always
-    container_name: gateway-web
+    build:
+      context: ../web
+      dockerfile: Dockerfile
     privileged: true
     environment:
-      api_url: http://token-ai.cn:8200
+      api_url: http://localhost:8000
     ports:
       - 10800:80
 
@@ -82,6 +88,10 @@ services:
     image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api
     restart: always
     container_name: gateway-api
+    ports:
+      - 8000:8000 # 提供给web端调用的管理接口
+      - 8200:8080 # Http代理端口
+      - 8300:8081 # Https代理端口
     environment:
       USER: root
       PASS: Aa010426.
@@ -99,7 +109,7 @@ services:
     container_name: gateway-web
     privileged: true
     environment:
-      api_url: http://token-ai.cn:8200
+      api_url: http://localhost:8000
     ports:
       - 10800:80
 
@@ -134,7 +144,9 @@ services:
       TUNNEL_PASSWORD: dd666666
       HTTPS_FILE: gateway.pfx
     ports:
-      - 8200:8080
+      - 8000:8000 # 提供给web端调用的管理接口
+      - 8200:8080 # Http代理端口
+      - 8300:8081 # Https代理端口
     volumes:
       - ./data:/data/
       - ./app/certificates:/app/certificates
@@ -145,7 +157,7 @@ services:
     container_name: gateway-web
     privileged: true
     environment:
-      api_url: http://token-ai.cn:8200
+      api_url: http://localhost:8000
     ports:
       - 10800:80
 
@@ -176,7 +188,9 @@ services:
       HTTPS_FILE: gateway.pfx
       ENABLE_FLOW_MONITORING: true
     ports:
-      - 8200:8080
+      - 8000:8000 # 提供给web端调用的管理接口
+      - 8200:8080 # Http代理端口
+      - 8300:8081 # Https代理端口
     volumes:
       - ./data:/data/
       - ./app/certificates:/app/certificates
@@ -187,7 +201,7 @@ services:
     container_name: gateway-web
     privileged: true
     environment:
-      api_url: http://token-ai.cn:8200
+      api_url: http://localhost:8000
     ports:
       - 10800:80
 

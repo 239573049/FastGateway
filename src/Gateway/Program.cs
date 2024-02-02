@@ -1,186 +1,278 @@
-#region FreeSql类型转换
-
+using System.Reflection;
 using Gateway.Middlewares.FlowAnalytics;
 
-Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>), new StringJsonHandler<Dictionary<string, string>>());
-Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
-Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
+namespace Gateway;
 
-#endregion
-
-var builder = WebApplication.CreateBuilder(args);
-
-var directory = new DirectoryInfo("/data");
-if (!directory.Exists)
+internal static class Program
 {
-    directory.Create();
-}
+    private static IFreeSql _freeSql;
 
-var freeSql = new FreeSqlBuilder()
-    .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("DefaultConnection"))
-    .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) //监听SQL语句
-    .UseAutoSyncStructure(true) //自动同步实体结构到数据库，FreeSql不会扫描程序集，只有CRUD时才会生成表。
-    .Build();
-
-
-builder.Configuration.GetSection(nameof(JwtOptions))
-    .Get<JwtOptions>();
-
-builder.Configuration.GetSection(GatewayOptions.Name)
-    .Get<GatewayOptions>();
-
-// 获取环境变量
-var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
-var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
-var enable_flow_monitoring = Environment.GetEnvironmentVariable("ENABLE_FLOW_MONITORING") ?? "true";
-
-
-builder.WebHost.UseKestrel(options =>
-{
-    // 配置多个域名证书
-    options.ConfigureHttpsDefaults(adapterOptions =>
+    public static async Task Main(string[] args)
     {
-        adapterOptions.ServerCertificateSelector = (_, name) =>
+        // 获取当前程序集版本
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+
+        var title = @"
+           ______________
+       ,===:'.,            `-._
+            `:.`---.__         `-._
+              `:.     `--.         `.
+                \.        `.         `.
+        (,,(,    \.         `.   ____,-`.,
+     (,'     `/   \.   ,--.___`.'
+ ,  ,'  ,--.  `,   \.;'         `
+  `{D, {    \  :    \;
+    V,,'    /  /    //
+    j;;    /  ,' ,-//.    ,---.      ,
+    \;'   /  ,' /  _  \  /  _  \   ,'/
+          \   `'  / \  `'  / \  `.' /
+           `.___,'   `.__,'   `.__,'  
+神龙保佑,代码无BUG!
+[欢迎使用Token Gateway]
+[版本：v{version}]
+[作者：token]
+";
+        title = title.Replace("{version}", version?.ToString() ?? "1.0.0");
+
+        // 给控制台输出一个彩色的标题
+        Console.ForegroundColor = ConsoleColor.Green;
+        
+        Console.WriteLine(title);
+        
+        Console.ResetColor();
+
+        #region FreeSql类型转换
+
+        Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>),
+            new StringJsonHandler<Dictionary<string, string>>());
+        Utils.TypeHandlers.TryAdd(typeof(List<DestinationsEntity>), new StringJsonHandler<List<DestinationsEntity>>());
+        Utils.TypeHandlers.TryAdd(typeof(string[]), new StringJsonHandler<string[]>());
+
+        #endregion
+
+        var builder = WebApplication.CreateBuilder(args);
+
+        var directory = new DirectoryInfo("/data");
+        if (!directory.Exists)
         {
-            // 从Certificate服务中获取
-            if (string.IsNullOrEmpty(name) ||
-                !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
+            directory.Create();
+        }
+
+        _freeSql = new FreeSqlBuilder()
+            .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("DefaultConnection"))
+            .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) //监听SQL语句
+            .UseAutoSyncStructure(true) //自动同步实体结构到数据库，FreeSql不会扫描程序集，只有CRUD时才会生成表。
+            .Build();
+
+
+        builder.Configuration.GetSection(nameof(JwtOptions))
+            .Get<JwtOptions>();
+
+        builder.Configuration.GetSection(GatewayOptions.Name)
+            .Get<GatewayOptions>();
+
+        // 获取环境变量
+        var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
+        var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
+        var enable_flow_monitoring = Environment.GetEnvironmentVariable("ENABLE_FLOW_MONITORING") ?? "true";
+
+
+        builder.WebHost.UseKestrel(options =>
+        {
+            // 配置多个域名证书
+            options.ConfigureHttpsDefaults(adapterOptions =>
             {
-                // 创建一个默认的证书
-                return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
-                    https_password);
-            }
+                adapterOptions.ServerCertificateSelector = (_, name) =>
+                {
+                    // 从Certificate服务中获取
+                    if (string.IsNullOrEmpty(name) ||
+                        !CertificateService.CertificateEntityDict.TryGetValue(name, out var certificate))
+                    {
+                        // 创建一个默认的证书
+                        return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                            https_password);
+                    }
 
-            var path = Path.Combine("/data/", certificate.Path);
+                    var path = Path.Combine("/data/", certificate.Path);
 
-            if (File.Exists(path)) return new X509Certificate2(path, certificate.Password);
+                    if (File.Exists(path)) return new X509Certificate2(path, certificate.Password);
 
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"证书文件不存在：{path}");
-            Console.ResetColor();
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"证书文件不存在：{path}");
+                    Console.ResetColor();
 
-            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
-                https_password);
-        };
-    });
-});
+                    return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "certificates", https_file),
+                        https_password);
+                };
+            });
+        });
 
-builder.WebHost.ConfigureKestrel(kestrel =>
-{
-    kestrel.Limits.MaxRequestBodySize = null;
-
-    kestrel.ListenAnyIP(8081, portOptions =>
-    {
-        portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-        portOptions.UseHttps();
-
-        if (enable_flow_monitoring == "true")
+        builder.WebHost.ConfigureKestrel(kestrel =>
         {
-            portOptions.Use<FlowAnalyzeMiddleware>();
-        }
-    });
+            kestrel.Limits.MaxRequestBodySize = null;
 
-    kestrel.ListenAnyIP(8080, portOptions =>
-    {
-        portOptions.Protocols = HttpProtocols.Http1AndHttp2;
+            kestrel.ListenAnyIP(8081, portOptions =>
+            {
+                portOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+                portOptions.UseHttps();
 
-        if (enable_flow_monitoring == "true")
+                if (enable_flow_monitoring == "true")
+                {
+                    portOptions.Use<FlowAnalyzeMiddleware>();
+                }
+            });
+
+            kestrel.ListenAnyIP(8080, portOptions =>
+            {
+                portOptions.Protocols = HttpProtocols.Http1AndHttp2;
+
+                if (enable_flow_monitoring == "true")
+                {
+                    portOptions.Use<FlowAnalyzeMiddleware>();
+                }
+            });
+        });
+
+        #region Jwt
+
+        var policies = _freeSql.Select<RouteEntity>().Where(a => a.AuthorizationPolicy != null).Distinct().ToList();
+
+        builder.Services
+            .AddAuthorization(options =>
+            {
+                // 添加授权策略
+                foreach (var policy in policies)
+                {
+                    options.AddPolicy(policy.AuthorizationPolicy!, policy => policy.RequireAuthenticatedUser());
+                }
+            })
+            .AddJwtBearerAuthentication(policies);
+
+        #endregion
+
+        builder.Services.Configure<KestrelServerOptions>(options =>
         {
-            portOptions.Use<FlowAnalyzeMiddleware>();
-        }
-    });
-});
+            options.Limits.MaxRequestBodySize = int.MaxValue;
+        });
 
-#region Jwt
-
-var policies = freeSql.Select<RouteEntity>().Where(a => a.AuthorizationPolicy != null).Distinct().ToList();
-
-builder.Services
-    .AddAuthorization(options =>
-    {
-        // 添加授权策略
-        foreach (var policy in policies)
+        builder.Services.Configure<FormOptions>(x =>
         {
-            options.AddPolicy(policy.AuthorizationPolicy!, policy => policy.RequireAuthenticatedUser());
-        }
-    })
-    .AddJwtBearerAuthentication(policies);
+            x.ValueLengthLimit = int.MaxValue;
+            x.MultipartBodyLengthLimit = int.MaxValue; // if don't set default value is: 128 MB
+            x.MultipartHeadersLengthLimit = int.MaxValue;
+        });
 
-#endregion
+        builder.Services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.Converters.Add(new JsonDateTimeConverter());
+        });
 
-builder.Services.Configure<KestrelServerOptions>(options => { options.Limits.MaxRequestBodySize = int.MaxValue; });
+        builder.Services.AddHostedService<FlowBackgroundService>();
 
-builder.Services.Configure<FormOptions>(x =>
-{
-    x.ValueLengthLimit = int.MaxValue;
-    x.MultipartBodyLengthLimit = int.MaxValue; // if don't set default value is: 128 MB
-    x.MultipartHeadersLengthLimit = int.MaxValue;
-});
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAll",
+                builder => builder
+                    .SetIsOriginAllowed(_ => true)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+        });
 
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.Converters.Add(new JsonDateTimeConverter());
-});
+        builder.Services.AddSingleton<StaticFileProxyMiddleware>();
+        builder.Services.AddSingleton<GatewayMiddleware>();
 
-builder.Services.AddHostedService<GatewayBackgroundService>();
+        builder.Services.AddSingleton<TestService>();
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        builder => builder
-            .SetIsOriginAllowed(_ => true)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials());
-});
+        builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
-builder.Services.AddSingleton<StaticFileProxyMiddleware>();
-builder.Services.AddSingleton<GatewayMiddleware>();
+        builder.Services.AddSingleton<IFreeSql>(_freeSql);
 
-builder.Services.AddSingleton<GatewayService>();
-builder.Services.AddSingleton<CertificateService>();
-builder.Services.AddSingleton<StaticFileProxyService>();
-builder.Services.AddSingleton<TestService>();
+        // 使用内存加载配置 
+        builder.Services.AddReverseProxy()
+            .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters)
+            .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
-builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
+        builder.Services.AddTunnelServices();
 
-builder.Services.AddSingleton<IFreeSql>(freeSql);
+        builder.Services.AddSingleton<IFlowAnalyzer, FlowAnalyzer>();
 
-// 使用内存加载配置 
-builder.Services.AddReverseProxy()
-    .LoadFromMemory(GatewayService.Routes, GatewayService.Clusters)
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+        var app = builder.Build();
 
-builder.Services.AddTunnelServices();
+        app.UseCors("AllowAll");
 
-builder.Services.AddSingleton<IFlowAnalyzer, FlowAnalyzer>();
+        app.UseMiddleware<GatewayMiddleware>();
+        app.UseMiddleware<StaticFileProxyMiddleware>();
 
-var app = builder.Build();
+        // 添加自定义授权
+        app.UseCustomAuthentication();
 
-app.UseCors("AllowAll");
+        app.MapWebSocketTunnel("/api/gateway/connect-ws");
 
-app.UseMiddleware<GatewayMiddleware>();
-app.UseMiddleware<StaticFileProxyMiddleware>();
+        // Auth可以添加到这个端点，我们可以将它限制在某些点上
+        // 避免外部流量撞击它
+        app.MapHttp2Tunnel("/api/gateway/connect-h2");
 
-// 配置MiniApis服务
-app.MapStaticFileProxy();
-app.MapFileStorage();
-app.MapGateway();
-app.MapAuthority();
-app.MapCertificate();
-app.MapSystem();
-// 添加自定义授权
-app.UseCustomAuthentication();
 
-app.MapWebSocketTunnel("/api/gateway/connect-ws");
+        app.MapReverseProxy();
 
-// Auth可以添加到这个端点，我们可以将它限制在某些点上
-// 避免外部流量撞击它
-app.MapHttp2Tunnel("/api/gateway/connect-h2");
+        _ = Task.Run(() => GatewayAdmin(args, app.Services));
 
-app.UseAuthentication();
-app.UseAuthorization();
+        await app.RunAsync();
+    }
 
-app.MapReverseProxy();
+    private static async Task GatewayAdmin(string[] args, IServiceProvider serviceProvider)
+    {
+        var flowAnalyzer = serviceProvider.GetRequiredService<IFlowAnalyzer>();
+        var inMemoryConfigProvider = serviceProvider.GetRequiredService<InMemoryConfigProvider>();
 
-await app.RunAsync();
+        var builder = WebApplication.CreateBuilder(args);
+
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAll",
+                policyBuilder => policyBuilder
+                    .SetIsOriginAllowed(_ => true)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+        });
+
+        builder.Services.AddSingleton<GatewayService>();
+        builder.Services.AddSingleton<CertificateService>();
+        builder.Services.AddSingleton<StaticFileProxyService>();
+        builder.Services.AddSingleton<IFlowAnalyzer>(flowAnalyzer);
+        builder.Services.AddSingleton<InMemoryConfigProvider>(inMemoryConfigProvider);
+
+        builder.Services.AddHostedService<GatewayBackgroundService>();
+
+        builder.Services.AddSingleton<IFreeSql>(_freeSql);
+
+        builder.Services.AddResponseCompression();
+
+        builder.Services
+            .AddAuthorization()
+            .AddJwtBearerAuthentication();
+
+        var app = builder.Build();
+
+        app.UseCors("AllowAll");
+
+        // 配置MiniApis服务
+        app.MapStaticFileProxy();
+        app.MapFileStorage();
+        app.MapGateway();
+        app.MapAuthority();
+        app.MapCertificate();
+        app.MapSystem();
+
+        app.UseResponseCompression();
+
+        app.UseStaticFiles();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+        await app.RunAsync("http://*:8000");
+    }
+}

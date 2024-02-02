@@ -11,7 +11,6 @@ public static class JwtServiceCollectionExtension
     /// 注册JWT Bearer认证服务的静态扩展方法
     /// </summary>
     /// <param name="services"></param>
-    /// <param name="options">JWT授权的配置项</param>
     /// <param name="policies">路由信息</param>
     public static IServiceCollection AddJwtBearerAuthentication(this IServiceCollection services, List<RouteEntity>? policies = null)
     {
@@ -37,17 +36,15 @@ public static class JwtServiceCollectionExtension
             });
 
         // 添加认证信息
-        if (policies != null)
+        if (policies == null) return services;
+        foreach (var policy in policies)
         {
-            foreach (var policy in policies)
+            authenticationBuilder.AddJwtBearer(policy.AuthorizationPolicy!, options =>
             {
-                authenticationBuilder.AddJwtBearer(policy.AuthorizationPolicy!, options =>
-                {
-                    options.Authority = policy.AuthorizationPolicyAddress;
-                    options.RequireHttpsMetadata = policy.RequireHttpsMetadata ?? true;
-                    options.Audience = policy.AuthorizationPolicy!;
-                });
-            }
+                options.Authority = policy.AuthorizationPolicyAddress;
+                options.RequireHttpsMetadata = policy.RequireHttpsMetadata ?? true;
+                options.Audience = policy.AuthorizationPolicy!;
+            });
         }
         return services;
     }
