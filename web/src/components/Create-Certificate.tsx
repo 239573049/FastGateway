@@ -11,7 +11,7 @@ interface IProps {
     onSusccess: () => void;
 }
 
-const {  Input, DatePicker } = Form;
+const { Input, DatePicker } = Form;
 
 export default function CreateCertificate({ visible, onCancel, onSusccess }: IProps) {
     const [file, setFile] = useState<File>({} as File);

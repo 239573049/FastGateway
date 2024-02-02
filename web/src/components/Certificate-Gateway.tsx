@@ -42,78 +42,81 @@ export default function CertificateGateway({ activeKey }: IProps) {
         })
     }
 
-        return (
-            <>
-                <List
-                    size="large"
-                    header={
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <div>
-                                证书管理
-                            </div>
-                            <Button onClick={() => setCreateCertificateVisible(true)} theme='solid' style={{}}>
-                                添加证书
-                            </Button>
+    return (
+        <>
+            <List
+                size="large"
+                header={
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div>
+                            证书管理
                         </div>
-                    }
-                    bordered
-                    style={{
-                        height: 'calc(100vh - 280px)',
-                        overflow: 'auto',
-                        padding: '10px',
-                    }}
-                    dataSource={data}
-                    renderItem={(item: CertificateEntity, index) =>
-                        <>
-                            <div className="certificate-item">
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <div style={{ marginRight: '20px' }}>
-                                            <div style={{ marginBottom: '10px' }}>
-                                                证书名称：{item.name}
-                                            </div>
-                                            <div style={{ marginBottom: '10px' }}>
-                                                证书描述：{item.description}
-                                            </div>
+                        <Button onClick={() => setCreateCertificateVisible(true)} theme='solid' style={{}}>
+                            添加证书
+                        </Button>
+                    </div>
+                }
+                bordered
+                style={{
+                    height: 'calc(100vh - 280px)',
+                    overflow: 'auto',
+                    padding: '10px',
+                }}
+                dataSource={data}
+                renderItem={(item: CertificateEntity, index) =>
+                    <>
+                        <div className="certificate-item">
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <div style={{ marginRight: '20px' }}>
+                                        <div style={{ marginBottom: '10px' }}>
+                                            证书名称：{item.name}
                                         </div>
-                                        <div style={{ marginRight: '20px' }} >
-                                            <div style={{ marginBottom: '10px' }}>
-                                                证书私钥：{item.password}
-                                            </div>
-                                            <div style={{ marginBottom: '10px' }}>
-                                                上传时间：{item.createTime}
-                                            </div>
+                                        <div style={{ marginBottom: '10px' }}>
+                                            证书描述：{item.description}
                                         </div>
-                                        <div>
-                                            <div style={{ marginBottom: '10px' }}>
-                                                域名：{item.host}
-                                            </div>
-                                            <div style={{ marginBottom: '10px' }}>
-                                                过期时间：{item.expirationTime}
-                                            </div>
+                                    </div>
+                                    <div style={{ marginRight: '20px' }} >
+                                        <div style={{ marginBottom: '10px' }}>
+                                            证书私钥：{item.password}
+                                        </div>
+                                        <div style={{ marginBottom: '10px' }}>
+                                            上传时间：{item.createTime}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ marginBottom: '10px' }}>
+                                            域名：{item.host}
+                                        </div>
+                                        <div style={{ marginBottom: '10px' }}>
+                                            过期时间：{item.expirationTime}
                                         </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <Button onClick={() => setUpdateCertificateVisible(true)} theme='solid' style={{ marginRight: '10px' }}>
-                                        更新证书
-                                    </Button>
-                                    <Button onClick={() => deleteCertificateById(item.id)} theme='solid' style={{ marginRight: '10px' }}>
-                                        删除
-                                    </Button>
-                                </div>
                             </div>
-                        </>}
-                />
-                <CreateCertificate visible={createCertificateVisible} onCancel={() => setCreateCertificateVisible(false)} onSusccess={() => {
-                    setCreateCertificateVisible(false);
-                    loadingCertificate();
-                 }} />
-                 <UpdateCertificate certificate={updateCertificate}  visible={updateCertificateVisible} onCancel={() => setUpdateCertificateVisible(false)} onSusccess={() => {
-                    setUpdateCertificateVisible(false);
-                    loadingCertificate();
-                    setUpdateCertificate({} as CertificateEntity);
-                 }} />
-            </>
-        )
-    }
+                            <div>
+                                <Button onClick={() => {
+                                    setUpdateCertificateVisible(true);
+                                    setUpdateCertificate(item);
+                                }} theme='solid' style={{ marginRight: '10px' }}>
+                                    更新证书
+                                </Button>
+                                <Button onClick={() => deleteCertificateById(item.id)} theme='solid' style={{ marginRight: '10px' }}>
+                                    删除
+                                </Button>
+                            </div>
+                        </div>
+                    </>}
+            />
+            <CreateCertificate visible={createCertificateVisible} onCancel={() => setCreateCertificateVisible(false)} onSusccess={() => {
+                setCreateCertificateVisible(false);
+                loadingCertificate();
+            }} />
+            <UpdateCertificate certificate={updateCertificate} visible={updateCertificateVisible} onCancel={() => setUpdateCertificateVisible(false)} onSusccess={() => {
+                setUpdateCertificateVisible(false);
+                loadingCertificate();
+                setUpdateCertificate({} as CertificateEntity);
+            }} />
+        </>
+    )
+}
