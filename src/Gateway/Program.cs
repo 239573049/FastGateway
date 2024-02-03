@@ -36,9 +36,9 @@ internal static class Program
 
         // 给控制台输出一个彩色的标题
         Console.ForegroundColor = ConsoleColor.Green;
-        
+
         Console.WriteLine(title);
-        
+
         Console.ResetColor();
 
         #region FreeSql类型转换
@@ -258,6 +258,16 @@ internal static class Program
 
         app.UseCors("AllowAll");
 
+        app.Use((async (context, next) =>
+        {
+            if (context.Request.Path == "/")
+            {
+                context.Request.Path = "/index.html";
+            }
+
+            await next(context);
+        }));
+
         // 配置MiniApis服务
         app.MapStaticFileProxy();
         app.MapFileStorage();
@@ -273,6 +283,6 @@ internal static class Program
         app.UseAuthentication();
         app.UseAuthorization();
 
-        await app.RunAsync("http://*:8000");
+        await app.RunAsync();
     }
 }
