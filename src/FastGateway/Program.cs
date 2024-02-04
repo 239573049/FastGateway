@@ -171,6 +171,7 @@ internal static class Program
         builder.Services.AddSingleton<StaticFileProxyMiddleware>();
         builder.Services.AddSingleton<GatewayMiddleware>();
 
+        builder.Services.AddSingleton<RequestSourceService>();
         builder.Services.AddSingleton<TestService>();
 
         builder.Services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();

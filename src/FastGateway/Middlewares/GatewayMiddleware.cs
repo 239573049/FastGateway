@@ -1,7 +1,8 @@
 ﻿namespace FastGateway.Middlewares;
 
-public class GatewayMiddleware : IMiddleware
+public class GatewayMiddleware(RequestSourceService requestSourceService) : IMiddleware
 {
+    
     /// <summary>
     ///     请求计数器
     /// </summary>
@@ -28,16 +29,11 @@ public class GatewayMiddleware : IMiddleware
 
         context.Response.Headers["FastGateway-Version"] = GatewayOptions.Version;
 
-        // Gateway默认的请求不记录
-        var record = context.Request.Path.Value?.StartsWith("/api/gateway/") == false;
-
-        // 使用原子操作，防止并发问题
-        if (record)
-            Interlocked.Increment(ref _currentRequestCount);
+        Interlocked.Increment(ref _currentRequestCount);
 
         await next(context);
 
-        if (record && context.Response.StatusCode >= 400) Interlocked.Increment(ref _currentErrorCount);
+        if (context.Response.StatusCode >= 400) Interlocked.Increment(ref _currentErrorCount);
     }
 
     public static void ClearRequestCount()
