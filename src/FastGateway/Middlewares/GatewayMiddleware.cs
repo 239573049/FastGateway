@@ -2,7 +2,6 @@
 
 public class GatewayMiddleware(RequestSourceService requestSourceService) : IMiddleware
 {
-    
     /// <summary>
     ///     请求计数器
     /// </summary>
@@ -31,9 +30,34 @@ public class GatewayMiddleware(RequestSourceService requestSourceService) : IMid
 
         Interlocked.Increment(ref _currentRequestCount);
 
+        // 获取当前请求平台
+        requestSourceService.Execute(new RequestSourceEntity()
+        {
+            CreatedTime = DateTime.Now,
+            Ip = ip,
+            Host = context.Request.Host.Host,
+            Platform = GetUserPlatform(context.Request.Headers.UserAgent.ToString()),
+            Id = Guid.NewGuid().ToString("N"),
+        });
+
         await next(context);
 
         if (context.Response.StatusCode >= 400) Interlocked.Increment(ref _currentErrorCount);
+    }
+
+    private static string GetUserPlatform(string userAgent)
+    {
+        if (userAgent.Contains("Windows NT"))
+        {
+            return "Windows";
+        }
+
+        if (userAgent.Contains("Macintosh"))
+        {
+            return "Mac";
+        }
+
+        return userAgent.Contains("Linux") ? "Linux" : "Unknown";
     }
 
     public static void ClearRequestCount()

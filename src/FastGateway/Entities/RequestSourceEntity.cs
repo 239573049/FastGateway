@@ -14,11 +14,6 @@ public sealed class RequestSourceEntity : Entity
     public string Host { get; set; }
 
     /// <summary>
-    /// 请求User-Agent
-    /// </summary>
-    public string UserAgent { get; set; }
-
-    /// <summary>
     /// 归属地
     /// </summary>
     public string HomeAddress { get; set; }

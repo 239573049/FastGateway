@@ -1,6 +1,6 @@
 ﻿namespace FastGateway.Services;
 
-public class RequestSourceService
+public sealed class RequestSourceService
 {
     /// <summary>
     /// 限制队列长度，防止内存泄漏
@@ -8,6 +8,10 @@ public class RequestSourceService
     private readonly Channel<RequestSourceEntity> _channel;
 
     private readonly IFreeSql _freeSql;
+
+    private readonly ConcurrentDictionary<uint, WeakReference> _ipLocks = new();
+
+    private readonly Dictionary<uint, (RequestSourceEntity Entity, DateTime)> _ipRequestInfo = new();
 
     public RequestSourceService(IFreeSql freeSql)
     {
@@ -25,7 +29,7 @@ public class RequestSourceService
     /// 当超出队列长度时，不插入数据
     /// </summary>
     /// <param name="entity"></param>
-    public void ExecuteAsync(RequestSourceEntity entity)
+    public void Execute(RequestSourceEntity entity)
     {
         _channel.Writer.TryWrite(entity);
     }
@@ -49,31 +53,80 @@ public class RequestSourceService
         }
     }
 
-    private void SaveRequestSourceAsync(object? o)
+
+    private async Task SaveRequestSourceAsync(object? o)
     {
         if (o is not RequestSourceEntity entity) return;
 
-        // 搜索是否存在相同的记录
-        var source = _freeSql.Select<RequestSourceEntity>().Where(x => x.Ip == entity.Ip).First();
 
-        if (source == null)
+        var weakRef = _ipLocks.GetOrAdd(IpToInt(entity.Ip), new WeakReference(new object()));
+        var ipLock = weakRef.Target;
+        if (ipLock == null)
         {
-            _freeSql.Insert(entity).ExecuteAffrows();
+            // The lock was garbage collected, create a new one
+            ipLock = new object();
+            weakRef.Target = ipLock;
         }
-        else
+
+        lock (ipLock)
         {
-            // 使用sql的原则更新数据
-            _freeSql.Ado.ExecuteNonQuery(
-                "update RequestSourceEntity set RequestCount = RequestCount + @RequestCount, LastRequestTime = @LastRequestTime, Host = @Host, UserAgent = @UserAgent, Platform = @Platform where Ip = @Ip",
-                new
+            if (_ipRequestInfo.TryGetValue(IpToInt(entity.Ip), out var info))
+            {
+                // 指定时间内只记录一次请求，防止数据库压力过大
+                if (DateTime.Now - info.Item2 > TimeSpan.FromSeconds(10))
                 {
-                    entity.RequestCount,
-                    entity.LastRequestTime,
-                    entity.Host,
-                    entity.UserAgent,
-                    entity.Platform,
-                    entity.Ip
-                });
+                    _ipRequestInfo.Remove(IpToInt(entity.Ip));
+                }
+                // 如果请求时间间隔小于3秒，则不记录，只更新请求次数
+                else
+                {
+                    info.Entity.RequestCount++;
+                    return;
+                }
+            }
+
+            _ipRequestInfo[IpToInt(entity.Ip)] = (entity, DateTime.Now);
         }
+
+        // 搜索是否存在相同的记录
+        var source = await _freeSql.Select<RequestSourceEntity>().Where(x => x.Ip == entity.Ip).FirstAsync();
+
+        try
+        {
+            if (source == null)
+            {
+                await _freeSql.Insert(entity).ExecuteAffrowsAsync();
+            }
+            else
+            {
+                // 使用sql的原则更新数据
+                await _freeSql.Ado.ExecuteNonQueryAsync(
+                    "update RequestSourceEntity set RequestCount = RequestCount+1, LastRequestTime = @LastRequestTime, Host = @Host,  Platform = @Platform where Ip = @Ip",
+                    new
+                    {
+                        LastRequestTime = DateTime.Now,
+                        entity.Host,
+                        entity.Platform,
+                        entity.Ip
+                    });
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
+    public static uint IpToInt(string ip)
+    {
+        var ipParts = ip.Split(new[] { "." }, StringSplitOptions.None);
+        uint ipInInt = 0;
+
+        for (var i = 0; i < 4; i++)
+        {
+            ipInInt = (ipInInt << 8) + Convert.ToUInt32(ipParts[i]);
+        }
+
+        return ipInInt;
     }
 }
