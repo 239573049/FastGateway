@@ -8,7 +8,6 @@ public class RequestSourceService
     private readonly Channel<RequestSourceEntity> _channel;
 
     private readonly IFreeSql _freeSql;
-    private readonly ConcurrentDictionary<uint, WeakReference> _ipLocks = new();
 
     public RequestSourceService(IFreeSql freeSql)
     {
@@ -54,46 +53,27 @@ public class RequestSourceService
     {
         if (o is not RequestSourceEntity entity) return;
 
-        var weakRef = _ipLocks.GetOrAdd(IpToInt(entity.Ip), new WeakReference(new object()));
+        // 搜索是否存在相同的记录
+        var source = _freeSql.Select<RequestSourceEntity>().Where(x => x.Ip == entity.Ip).First();
 
-        lock (weakRef)
+        if (source == null)
         {
-            // 由于并发量大，这里需要加锁
-            // 搜索是否存在相同的记录
-            var source = _freeSql.Select<RequestSourceEntity>().Where(x => x.Ip == entity.Ip).First();
-
-            if (source == null)
-            {
-                _freeSql.Insert(entity).ExecuteAffrows();
-            }
-            else
-            {
-                // 使用sql的原则更新数据
-                _freeSql.Ado.ExecuteNonQuery(
-                    "update RequestSourceEntity set RequestCount = RequestCount + @RequestCount, LastRequestTime = @LastRequestTime, Host = @Host, UserAgent = @UserAgent, Platform = @Platform where Ip = @Ip",
-                    new
-                    {
-                        entity.RequestCount,
-                        entity.LastRequestTime,
-                        entity.Host,
-                        entity.UserAgent,
-                        entity.Platform,
-                        entity.Ip
-                    });
-            }
+            _freeSql.Insert(entity).ExecuteAffrows();
         }
-    }
-
-    public static uint IpToInt(string ip)
-    {
-        var ipParts = ip.Split(new[] { "." }, StringSplitOptions.None);
-        uint ipInInt = 0;
-
-        for (var i = 0; i < 4; i++)
+        else
         {
-            ipInInt = (ipInInt << 8) + Convert.ToUInt32(ipParts[i]);
+            // 使用sql的原则更新数据
+            _freeSql.Ado.ExecuteNonQuery(
+                "update RequestSourceEntity set RequestCount = RequestCount + @RequestCount, LastRequestTime = @LastRequestTime, Host = @Host, UserAgent = @UserAgent, Platform = @Platform where Ip = @Ip",
+                new
+                {
+                    entity.RequestCount,
+                    entity.LastRequestTime,
+                    entity.Host,
+                    entity.UserAgent,
+                    entity.Platform,
+                    entity.Ip
+                });
         }
-
-        return ipInInt;
     }
 }

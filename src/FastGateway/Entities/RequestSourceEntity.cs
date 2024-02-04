@@ -5,6 +5,7 @@ public sealed class RequestSourceEntity : Entity
     /// <summary>
     /// 访问IP
     /// </summary>
+    [Column(IsPrimary = true, IsIdentity = false)]
     public string Ip { get; set; }
     
     /// <summary>
