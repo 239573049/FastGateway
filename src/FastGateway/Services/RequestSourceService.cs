@@ -1,4 +1,6 @@
-﻿namespace FastGateway.Services;
+﻿using FastGateway.Contract;
+
+namespace FastGateway.Services;
 
 public sealed class RequestSourceService
 {
@@ -13,9 +15,11 @@ public sealed class RequestSourceService
 
     private readonly Dictionary<uint, (RequestSourceEntity Entity, DateTime)> _ipRequestInfo = new();
 
-    public RequestSourceService(IFreeSql freeSql)
+    private readonly IHomeAddressService _homeAddressService;
+    public RequestSourceService(IFreeSql freeSql, IHomeAddressService homeAddressService)
     {
         _freeSql = freeSql;
+        _homeAddressService = homeAddressService;
         _channel = Channel.CreateBounded<RequestSourceEntity>(new BoundedChannelOptions(10000)
         {
             SingleReader = true,
@@ -100,12 +104,17 @@ public sealed class RequestSourceService
             }
             else
             {
+                if (entity.HomeAddress.IsNullOrEmpty())
+                {
+                    entity.HomeAddress = await _homeAddressService.GetHomeAddress(entity.Ip);
+                }
                 // 使用sql的原则更新数据
                 await _freeSql.Ado.ExecuteNonQueryAsync(
                     "update RequestSourceEntity set RequestCount = RequestCount+1, LastRequestTime = @LastRequestTime, Host = @Host,  Platform = @Platform where Ip = @Ip",
                     new
                     {
                         LastRequestTime = DateTime.Now,
+                        HomeAddress = entity.HomeAddress,
                         entity.Host,
                         entity.Platform,
                         entity.Ip

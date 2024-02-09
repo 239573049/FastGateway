@@ -1,6 +1,6 @@
 ﻿namespace FastGateway.Middlewares;
 
-public class GatewayMiddleware(RequestSourceService requestSourceService) : IMiddleware
+public sealed class GatewayMiddleware(RequestSourceService requestSourceService) : IMiddleware
 {
     /// <summary>
     ///     请求计数器

@@ -42,7 +42,8 @@ internal static class Program
         Console.WriteLine(title);
 
         Console.ResetColor();
-
+        
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         #region FreeSql类型转换
 
         Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>),
@@ -158,6 +159,17 @@ internal static class Program
 
         builder.Services.AddHostedService<FlowBackgroundService>();
 
+        // 获取环境变量是否启用离线IP归属地
+        var enable_offline_home_address = Environment.GetEnvironmentVariable("ENABLE_OFFLINE_HOME_ADDRESS") ?? "false";
+        if (enable_offline_home_address == "false")
+        {
+            builder.Services.AddOnLineHomeAddress();
+        }
+        else
+        {
+            builder.Services.AddOfflineHomeAddress();
+        }
+
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll",
@@ -169,6 +181,7 @@ internal static class Program
         });
 
         builder.Services.AddSingleton<StaticFileProxyMiddleware>();
+        
         builder.Services.AddSingleton<GatewayMiddleware>();
 
         builder.Services.AddSingleton<RequestSourceService>();
@@ -235,6 +248,7 @@ internal static class Program
         builder.Services.AddSingleton(inMemoryConfigProvider);
 
         builder.Services.AddHostedService<GatewayBackgroundService>();
+        
 
         builder.Services.AddSingleton(_freeSql);
 
