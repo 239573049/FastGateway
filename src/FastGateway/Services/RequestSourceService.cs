@@ -77,9 +77,10 @@ public sealed class RequestSourceService
                 {
                     _ipRequestInfo.Remove(IpToInt(entity.Ip));
                 }
-                // 如果请求时间间隔小于3秒，则不记录，只更新请求次数
+                // 如果请求时间间隔小于10秒，则不记录，只更新请求次数
                 else
                 {
+                    info.Item2 = DateTime.Now;
                     info.Entity.RequestCount++;
                     return;
                 }
@@ -117,9 +118,14 @@ public sealed class RequestSourceService
         }
     }
 
+    /// <summary>
+    /// 将ip字符串转换最小的整数
+    /// </summary>
+    /// <param name="ip"></param>
+    /// <returns></returns>
     public static uint IpToInt(string ip)
     {
-        var ipParts = ip.Split(new[] { "." }, StringSplitOptions.None);
+        var ipParts = ip.Split(["."], StringSplitOptions.None);
         uint ipInInt = 0;
 
         for (var i = 0; i < 4; i++)
