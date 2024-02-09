@@ -34,7 +34,7 @@ public sealed class OnLineHomeAddressService(IHttpClientFactory httpClientFactor
         string ip,
         string pro,
         string proCode,
-        string city,
+        string? city,
         string cityCode,
         string region,
         string regionCode,

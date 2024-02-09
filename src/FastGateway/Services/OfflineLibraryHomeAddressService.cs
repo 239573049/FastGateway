@@ -1,19 +1,31 @@
 ﻿using FastGateway.Contract;
+using IP2Region.Net.Abstractions;
+using IP2Region.Net.XDB;
 
 namespace FastGateway.Services;
 
 /// <summary>
 /// 获取离线IP归属地
 /// </summary>
-public class OfflineLibraryHomeAddressService : IHomeAddressService
+public sealed class OfflineLibraryHomeAddressService : IHomeAddressService
 {
-    public Task<string> GetHomeAddress(string ip)
+    private static ISearcher _searcher;
+
+    public OfflineLibraryHomeAddressService()
     {
-        throw new NotImplementedException();
+        _searcher = new Searcher(CachePolicy.File, "./ip2region.xdb");
     }
 
-    public IAsyncEnumerable<string?> GetHomeAddress(IEnumerable<string> ips)
+    public async Task<string?> GetHomeAddress(string ip)
     {
-        throw new NotImplementedException();
+        return await Task.Run((() => _searcher.Search(ip)));
+    }
+
+    public async IAsyncEnumerable<string?> GetHomeAddress(IEnumerable<string> ips)
+    {
+        foreach (var ip in ips)
+        {
+            yield return await GetHomeAddress(ip);
+        }
     }
 }

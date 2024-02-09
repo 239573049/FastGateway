@@ -110,7 +110,7 @@ public sealed class RequestSourceService
                 }
                 // 使用sql的原则更新数据
                 await _freeSql.Ado.ExecuteNonQueryAsync(
-                    "update RequestSourceEntity set RequestCount = RequestCount+1, LastRequestTime = @LastRequestTime, Host = @Host,  Platform = @Platform where Ip = @Ip",
+                    "update RequestSourceEntity set RequestCount = RequestCount+1, LastRequestTime = @LastRequestTime, Host = @Host,HomeAddress=@HomeAddress,  Platform = @Platform where Ip = @Ip",
                     new
                     {
                         LastRequestTime = DateTime.Now,
