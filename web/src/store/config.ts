@@ -1,4 +1,4 @@
-let API_URL : string;
+let API_URL : string = "";
 
 // @ts-ignore
 window._env_ = window._env_ || {};

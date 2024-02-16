@@ -2,7 +2,7 @@ import { API_URL } from "../store/config";
 
 export async function stream() {
     // @ts-ignore
-    if (API_URL.endsWith("/")) {
+    if (API_URL && API_URL.endsWith("/")) {
         // @ts-ignore
         API_URL = API_URL.substring(0, API_URL.length - 1);
     }
