@@ -18,7 +18,8 @@ public sealed class OfflineLibraryHomeAddressService : IHomeAddressService
 
     public async Task<string?> GetHomeAddress(string ip)
     {
-        return await Task.Run((() => _searcher.Search(ip)));
+        return await Task.Run((() => _searcher.Search(ip)?.Split("|").LastOrDefault()?.Trim() ?? "未知地址"))
+            .ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<string?> GetHomeAddress(IEnumerable<string> ips)

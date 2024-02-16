@@ -42,8 +42,9 @@ internal static class Program
         Console.WriteLine(title);
 
         Console.ResetColor();
-        
+
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
         #region FreeSql类型转换
 
         Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>),
@@ -158,6 +159,7 @@ internal static class Program
         });
 
         builder.Services.AddHostedService<FlowBackgroundService>();
+        builder.Services.AddHostedService<RequestSourceBackgroundService>();
 
         // 获取环境变量是否启用离线IP归属地
         var enable_offline_home_address = Environment.GetEnvironmentVariable("ENABLE_OFFLINE_HOME_ADDRESS") ?? "false";
@@ -181,7 +183,7 @@ internal static class Program
         });
 
         builder.Services.AddSingleton<StaticFileProxyMiddleware>();
-        
+
         builder.Services.AddSingleton<GatewayMiddleware>();
 
         builder.Services.AddSingleton<RequestSourceService>();
@@ -228,6 +230,7 @@ internal static class Program
     {
         var flowAnalyzer = serviceProvider.GetRequiredService<IFlowAnalyzer>();
         var inMemoryConfigProvider = serviceProvider.GetRequiredService<InMemoryConfigProvider>();
+        var requestSourceService = serviceProvider.GetRequiredService<RequestSourceService>();
 
         var builder = WebApplication.CreateBuilder(args);
 
@@ -246,9 +249,10 @@ internal static class Program
         builder.Services.AddSingleton<StaticFileProxyService>();
         builder.Services.AddSingleton(flowAnalyzer);
         builder.Services.AddSingleton(inMemoryConfigProvider);
-
-        builder.Services.AddHostedService<GatewayBackgroundService>();
+        builder.Services.AddSingleton(requestSourceService);
         
+        builder.Services.AddHostedService<GatewayBackgroundService>();
+
 
         builder.Services.AddSingleton(_freeSql);
 
@@ -276,6 +280,7 @@ internal static class Program
         app.MapAuthority();
         app.MapCertificate();
         app.MapSystem();
+        app.MapRequestSource();
 
         app.UseResponseCompression();
 

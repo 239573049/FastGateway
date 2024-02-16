@@ -1,4 +1,5 @@
 ﻿using FastGateway.Contract;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FastGateway.Services;
 
@@ -11,21 +12,16 @@ public sealed class RequestSourceService
 
     private readonly IFreeSql _freeSql;
 
-    private readonly ConcurrentDictionary<uint, WeakReference> _ipLocks = new();
+    private readonly ConcurrentDictionary<uint, RequestSourceEntity> _ipRequestInfo = new();
 
-    private readonly Dictionary<uint, (RequestSourceEntity Entity, DateTime)> _ipRequestInfo = new();
-
-    private readonly IHomeAddressService _homeAddressService;
     public RequestSourceService(IFreeSql freeSql, IHomeAddressService homeAddressService)
     {
         _freeSql = freeSql;
-        _homeAddressService = homeAddressService;
         _channel = Channel.CreateBounded<RequestSourceEntity>(new BoundedChannelOptions(10000)
         {
             SingleReader = true,
             SingleWriter = false
         });
-
         Task.Run(HandleRequestSourceAsync);
     }
 
@@ -57,74 +53,27 @@ public sealed class RequestSourceService
         }
     }
 
-
-    private async Task SaveRequestSourceAsync(object? o)
+    private void SaveRequestSourceAsync(object? o)
     {
         if (o is not RequestSourceEntity entity) return;
 
-
-        var weakRef = _ipLocks.GetOrAdd(IpToInt(entity.Ip), new WeakReference(new object()));
-        var ipLock = weakRef.Target;
-        if (ipLock == null)
+        // 通过安全集合更新数据
+        _ipRequestInfo.AddOrUpdate(IpToInt(entity.Ip), entity, (key, oldValue) =>
         {
-            // The lock was garbage collected, create a new one
-            ipLock = new object();
-            weakRef.Target = ipLock;
-        }
+            oldValue.RequestCount++;
+            return oldValue;
+        });
+    }
 
-        lock (ipLock)
-        {
-            if (_ipRequestInfo.TryGetValue(IpToInt(entity.Ip), out var info))
-            {
-                // 指定时间内只记录一次请求，防止数据库压力过大
-                if (DateTime.Now - info.Item2 > TimeSpan.FromSeconds(10))
-                {
-                    _ipRequestInfo.Remove(IpToInt(entity.Ip));
-                }
-                // 如果请求时间间隔小于10秒，则不记录，只更新请求次数
-                else
-                {
-                    info.Item2 = DateTime.Now;
-                    info.Entity.RequestCount++;
-                    return;
-                }
-            }
-
-            _ipRequestInfo[IpToInt(entity.Ip)] = (entity, DateTime.Now);
-        }
-
-        // 搜索是否存在相同的记录
-        var source = await _freeSql.Select<RequestSourceEntity>().Where(x => x.Ip == entity.Ip).FirstAsync();
-
-        try
-        {
-            if (source == null)
-            {
-                await _freeSql.Insert(entity).ExecuteAffrowsAsync();
-            }
-            else
-            {
-                if (entity.HomeAddress.IsNullOrEmpty())
-                {
-                    entity.HomeAddress = await _homeAddressService.GetHomeAddress(entity.Ip);
-                }
-                // 使用sql的原则更新数据
-                await _freeSql.Ado.ExecuteNonQueryAsync(
-                    "update RequestSourceEntity set RequestCount = RequestCount+1, LastRequestTime = @LastRequestTime, Host = @Host,HomeAddress=@HomeAddress,  Platform = @Platform where Ip = @Ip",
-                    new
-                    {
-                        LastRequestTime = DateTime.Now,
-                        HomeAddress = entity.HomeAddress,
-                        entity.Host,
-                        entity.Platform,
-                        entity.Ip
-                    });
-            }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
+    /// <summary>
+    /// 获取并且清空数据
+    /// </summary>
+    /// <returns></returns>
+    public List<RequestSourceEntity> GetAndClearDataAsync()
+    {
+        var list = _ipRequestInfo.Values.ToList();
+        _ipRequestInfo.Clear();
+        return list;
     }
 
     /// <summary>
@@ -143,5 +92,31 @@ public sealed class RequestSourceService
         }
 
         return ipInInt;
+    }
+
+    public object GetDisplayData()
+    {
+        var now = DateTime.Now.AddDays(-7);
+
+        var result = _freeSql.Select<RequestSourceEntity>()
+            .Where(x => x.CreatedTime >= now)
+            .GroupBy(x => x.CreatedTime.ToString("yyyy-MM-dd"))
+            .Select(x => new
+            {
+                x.Key,
+                Count = x.Count()
+            }).OrderBy(x => x.Key).ToList();
+
+        return result;
+    }
+}
+
+public static class RequestSourceExtension
+{
+    public static void MapRequestSource(this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/gateway/request-source/display-data",
+            ([FromServices] RequestSourceService requestSourceService) =>
+                requestSourceService.GetDisplayData());
     }
 }
