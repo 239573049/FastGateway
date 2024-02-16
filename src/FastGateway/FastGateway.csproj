@@ -5,22 +5,23 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <UserSecretsId>c5e6e718-4c1d-4bcd-8131-669c9bbea142</UserSecretsId>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <DockerfileContext>..\..</DockerfileContext>
 
 
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="FreeSql" Version="$(FreeSqlVersion)"/>
-        <PackageReference Include="FreeSql.DbContext" Version="$(FreeSqlVersion)"/>
-        <PackageReference Include="FreeSql.Provider.Sqlite" Version="$(FreeSqlVersion)"/>
+        <PackageReference Include="FreeSql" Version="$(FreeSqlVersion)" />
+        <PackageReference Include="FreeSql.DbContext" Version="$(FreeSqlVersion)" />
+        <PackageReference Include="FreeSql.Provider.Sqlite" Version="$(FreeSqlVersion)" />
         <PackageReference Include="IP2Region.Net" Version="2.0.2" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1"/>
-        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6"/>
-        <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)"/>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
+        <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)" />
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="wwwroot\"/>
+        <Folder Include="wwwroot\" />
     </ItemGroup>
 
     <ItemGroup>
