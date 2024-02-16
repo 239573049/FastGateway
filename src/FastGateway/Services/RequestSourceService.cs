@@ -98,16 +98,31 @@ public sealed class RequestSourceService
     {
         var now = DateTime.Now.AddDays(-7);
 
+        var requestSourceDto = new RequestSourceDto();
+
         var result = _freeSql.Select<RequestSourceEntity>()
             .Where(x => x.CreatedTime >= now)
             .GroupBy(x => x.CreatedTime.ToString("yyyy-MM-dd"))
-            .Select(x => new
+            .Select(x => new RequestSourceDayCountDto
             {
-                x.Key,
+                Day = x.Key,
                 Count = x.Count()
-            }).OrderBy(x => x.Key).ToList();
+            }).OrderBy(x => x.Day).ToList();
 
-        return result;
+        requestSourceDto.DayCountDtos = result;
+
+        var sourceResult = _freeSql.Select<RequestSourceEntity>()
+            .Where(x => x.CreatedTime >= now && !string.IsNullOrEmpty(x.HomeAddress))
+            .GroupBy(x => x.HomeAddress)
+            .Select(x => new RequestSourceAddressDto
+            {
+                HomeAddress = x.Key,
+                Count = x.Count()
+            }).OrderByDescending(x => x.Count).ToList();
+
+        requestSourceDto.AddressDtos = sourceResult;
+
+        return requestSourceDto;
     }
 }
 
