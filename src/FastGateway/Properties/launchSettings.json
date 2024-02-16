@@ -6,7 +6,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "USER": "root",
-        "PASS": "Aa010426."
+        "PASS": "Aa010426.",
+        "ENABLE_OFFLINE_HOME_ADDRESS": "true"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5048"

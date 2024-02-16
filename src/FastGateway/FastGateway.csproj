@@ -13,6 +13,7 @@
         <PackageReference Include="FreeSql" Version="$(FreeSqlVersion)"/>
         <PackageReference Include="FreeSql.DbContext" Version="$(FreeSqlVersion)"/>
         <PackageReference Include="FreeSql.Provider.Sqlite" Version="$(FreeSqlVersion)"/>
+        <PackageReference Include="IP2Region.Net" Version="2.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1"/>
         <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6"/>
         <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)"/>
@@ -25,6 +26,9 @@
     <ItemGroup>
         <None Update="certificates\gateway.pfx">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="ip2region.xdb">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
 

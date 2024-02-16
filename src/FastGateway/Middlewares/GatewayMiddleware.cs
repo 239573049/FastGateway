@@ -1,6 +1,6 @@
 ﻿namespace FastGateway.Middlewares;
 
-public class GatewayMiddleware : IMiddleware
+public sealed class GatewayMiddleware(RequestSourceService requestSourceService) : IMiddleware
 {
     /// <summary>
     ///     请求计数器
@@ -28,16 +28,36 @@ public class GatewayMiddleware : IMiddleware
 
         context.Response.Headers["FastGateway-Version"] = GatewayOptions.Version;
 
-        // Gateway默认的请求不记录
-        var record = context.Request.Path.Value?.StartsWith("/api/gateway/") == false;
+        Interlocked.Increment(ref _currentRequestCount);
 
-        // 使用原子操作，防止并发问题
-        if (record)
-            Interlocked.Increment(ref _currentRequestCount);
+        // 获取当前请求平台
+        requestSourceService.Execute(new RequestSourceEntity()
+        {
+            CreatedTime = DateTime.Now,
+            Ip = ip,
+            Host = context.Request.Host.Host,
+            Platform = GetUserPlatform(context.Request.Headers.UserAgent.ToString()),
+            Id = Guid.NewGuid().ToString("N"),
+        });
 
         await next(context);
 
-        if (record && context.Response.StatusCode >= 400) Interlocked.Increment(ref _currentErrorCount);
+        if (context.Response.StatusCode >= 400) Interlocked.Increment(ref _currentErrorCount);
+    }
+
+    private static string GetUserPlatform(string userAgent)
+    {
+        if (userAgent.Contains("Windows NT"))
+        {
+            return "Windows";
+        }
+
+        if (userAgent.Contains("Macintosh"))
+        {
+            return "Mac";
+        }
+
+        return userAgent.Contains("Linux") ? "Linux" : "Unknown";
     }
 
     public static void ClearRequestCount()

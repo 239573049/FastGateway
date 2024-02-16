@@ -9,10 +9,13 @@ public class GatewayBackgroundService(
     {
         // 数据库迁移
         freeSql.CodeFirst.SyncStructure(typeof(RouteEntity), typeof(ClusterEntity), typeof(CertificateEntity),
-            typeof(StaticFileProxyEntity), typeof(SystemLoggerEntity));
+            typeof(StaticFileProxyEntity), typeof(SystemLoggerEntity), typeof(RequestSourceEntity));
 
         // 首次启动时更新配置
         await gatewayService.RefreshConfig();
         await certificateService.RefreshConfig();
+        
+        
     }
 }
+

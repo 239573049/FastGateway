@@ -8,6 +8,7 @@ const Home = lazy(() => import('./pages/home'));
 const Gateway = lazy(() => import('./pages/gateway'));
 const Setting = lazy(() => import('./pages/settings'));
 const Login = lazy(() => import('./pages/login'));
+const RequestSource = lazy(() => import('./pages/request-source'));
 
 
 const router = createBrowserRouter([{
@@ -32,6 +33,12 @@ const router = createBrowserRouter([{
       path: "Setting",
       element: <Suspense fallback={'加载中'}>
         <Setting />
+      </Suspense>
+    },
+    {
+      path: "RequestSource",
+      element: <Suspense fallback={'加载中'}>
+        <RequestSource />
       </Suspense>
     }
   ],
