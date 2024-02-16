@@ -289,6 +289,6 @@ internal static class Program
         app.UseAuthentication();
         app.UseAuthorization();
 
-        await app.RunAsync();
+        await app.RunAsync("http://*:8000");
     }
 }
