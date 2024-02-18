@@ -19,7 +19,7 @@ public sealed class GatewayMiddleware(RequestSourceService requestSourceService)
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         // TODO: 由于h3需要对应请求的端口，所以这里需要动态设置
-        context.Response.Headers.AltSvc = "h3=\":" + context.Request.Host.Port + "\"";
+        context.Response.Headers.AltSvc = "h3=\":" + (context.Request.Host.Port ?? 443) + "\"";
 
         // 添加X-Forwarded-For头，用于获取真实的客户端IP
         var ip = context.Connection.RemoteIpAddress?.MapToIPv4()?.ToString();
