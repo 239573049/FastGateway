@@ -207,3 +207,7 @@ services:
       - 10800:80
 
 ```
+
+## 第三方下载
+
+- [ip2region.xdb](https://tokenfile.oss-cn-beijing.aliyuncs.com/ip2region.xdb) 用于ip离线归属地
