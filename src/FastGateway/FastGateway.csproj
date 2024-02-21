@@ -21,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Folder Include="certificates\" />
         <Folder Include="wwwroot\" />
     </ItemGroup>
 

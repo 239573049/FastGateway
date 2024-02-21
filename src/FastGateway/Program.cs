@@ -73,7 +73,7 @@ internal static class Program
             .Get<GatewayOptions>();
 
         // 获取环境变量
-        var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "dd666666";
+        var https_password = Environment.GetEnvironmentVariable("HTTPS_PASSWORD") ?? "010426";
         var https_file = Environment.GetEnvironmentVariable("HTTPS_FILE") ?? "gateway.pfx";
         var enable_flow_monitoring = Environment.GetEnvironmentVariable("ENABLE_FLOW_MONITORING") ?? "true";
 
