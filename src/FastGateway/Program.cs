@@ -250,7 +250,7 @@ internal static class Program
         builder.Services.AddSingleton(flowAnalyzer);
         builder.Services.AddSingleton(inMemoryConfigProvider);
         builder.Services.AddSingleton(requestSourceService);
-        
+
         builder.Services.AddHostedService<GatewayBackgroundService>();
 
 
@@ -268,9 +268,18 @@ internal static class Program
 
         app.Use(async (context, next) =>
         {
-            if (context.Request.Path == "/") context.Request.Path = "/index.html";
+            if (context.Request.Path == "/")
+            {
+                context.Request.Path = "/index.html";
+            }
 
             await next(context);
+
+            if (context.Response.StatusCode == 404)
+            {
+                context.Request.Path = "/index.html";
+                await next(context);
+            }
         });
 
         // 配置MiniApis服务

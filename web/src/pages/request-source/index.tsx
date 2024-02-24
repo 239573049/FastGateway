@@ -1,11 +1,48 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { displaydata } from '../../service/RequestSourceService'
 import * as echarts from 'echarts';
-import { Card, Toast } from '@douyinfe/semi-ui';
+import { Card, Pagination, Table, Toast } from '@douyinfe/semi-ui';
 
 export default function RequestSource() {
 
-
+    const columns = [
+        {
+            title: 'ip',
+            dataIndex: 'ip'
+        },
+        {
+            title: '请求域名',
+            dataIndex: 'host',
+        },
+        {
+            title: '归属地',
+            dataIndex: 'homeAddress',
+        },
+        {
+            title: '请求数量',
+            dataIndex: 'requestCount',
+        },
+        {
+            title: '请求平台',
+            dataIndex: 'platform',
+        },
+        {
+            title: '创建时间',
+            dataIndex: 'createdTime',
+            render: (text: any) => {
+                // 转换 yyyy-MM-dd HH:mm:ss
+                const date = new Date(text);
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                return `${year}-${month}-${day}`;
+            }
+        },
+    ];
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [data, setData] = useState([] as any);
+    const [total, setTotal] = useState(0);
 
     async function getDisplayData() {
         try {
@@ -15,56 +52,24 @@ export default function RequestSource() {
                     data: [] as any
                 },
                 yAxis: {
-                    type: 'value'
+                    type: 'value',
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: '请求IP数量{c0}'
                 },
                 series: [
                     {
+                        name: 'ip数量',
+                        stack: 'Total',
                         data: [] as any,
-                        type: 'bar'
+                        type: 'line'
                     }
                 ]
             };
 
-            let addressOptions = {
-                tooltip: {
-                  trigger: 'item'
-                },
-                legend: {
-                  top: '5%',
-                  left: 'center'
-                },
-                series: [
-                  {
-                    name: '七天内请求IP数量',
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    avoidLabelOverlap: false,
-                    itemStyle: {
-                      borderRadius: 10,
-                      borderColor: '#fff',
-                      borderWidth: 2
-                    },
-                    label: {
-                      show: false,
-                      position: 'center'
-                    },
-                    emphasis: {
-                      label: {
-                        show: true,
-                        fontSize: 40,
-                        fontWeight: 'bold'
-                      }
-                    },
-                    labelLine: {
-                      show: false
-                    },
-                    data: [
-                    ] as any
-                  }
-                ]
-              };
 
-            const data = await displaydata() as any;
+            const data = await displaydata(page,pageSize) as any;
 
             const value = data.dayCountDtos as any;
             // 遍历value
@@ -77,22 +82,8 @@ export default function RequestSource() {
             const displayDayChat = echarts.init(displayDay as any);
             displayDayChat.setOption(dayOptions);
 
-
-            const addressValue = data.addressDtos as any;
-
-            for (let i = 0; i < addressValue.length; i++) {
-                addressOptions.series[0].data.push({
-                    value: addressValue[i].count,
-                    name: addressValue[i].homeAddress
-                }) 
-            }
-
-            const displayAddress = document.getElementById('display-address');
-            const displayAddressChat = echarts.init(displayAddress as any);
-            displayAddressChat.setOption(addressOptions);
-
-
-
+            setData(data.items);
+            setTotal(data.total);
         } catch (error) {
             Toast.error('获取数据失败');
             console.log(error);
@@ -107,22 +98,20 @@ export default function RequestSource() {
         <Card style={{
             margin: '10px 0',
             width: '100%',
-            height: '400px',
+            height: '350px',
         }}>
             <div id='display-day' style={{
                 height: '300px',
             }}>
             </div>
         </Card>
-        <Card style={{
-            margin: '10px 0',
-            width: '100%',
-            height: '400px',
-        }}>
-            <div id='display-address' style={{
-                height: '300px',
-            }}>
-            </div>
-        </Card>
+        
+        <Table columns={columns} dataSource={data} pagination={false} />
+        <Pagination onPageChange={(currentPage)=>{
+            setPage(currentPage);
+            getDisplayData();
+        }} total={
+            Math.ceil(total / pageSize)
+        } style={{ marginBottom: 12 }}></Pagination>
     </div>)
 }

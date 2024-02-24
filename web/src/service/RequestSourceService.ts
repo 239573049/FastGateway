@@ -5,6 +5,6 @@ import request from "../utils/request";
  * @param file 
  * @returns 
  */
-export function displaydata() {
-  return request.get("/api/gateway/request-source/display-data");
+export function displaydata(page:number,pageSize:number) {
+  return request.get("/api/gateway/request-source/display-data?page="+page+"&pageSize="+pageSize);
 }

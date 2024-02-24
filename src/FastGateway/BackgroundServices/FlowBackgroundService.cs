@@ -15,7 +15,7 @@ public class FlowBackgroundService(
                 var seconds = (DateTime.Now.Date.AddDays(1) - DateTime.Now).TotalSeconds;
 
                 // Task.Delay不能是负数
-                if (seconds < 0) seconds = 1000;
+                if (seconds < 0) seconds = 1;
 
                 #region 等待第二天凌晨
 

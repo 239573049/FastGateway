@@ -1,6 +1,4 @@
-import { Button, Divider, Input, Toast } from "@douyinfe/semi-ui";
-import { useEffect, useState } from "react";
-import { getList ,update} from "../../service/SettingService";
+import {  Divider} from "@douyinfe/semi-ui";
 
 
 

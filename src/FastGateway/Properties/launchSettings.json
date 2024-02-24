@@ -7,7 +7,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "USER": "root",
         "PASS": "Aa010426.",
-        "ENABLE_OFFLINE_HOME_ADDRESS": "true"
+        "ENABLE_OFFLINE_HOME_ADDRESS": "false"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5048"

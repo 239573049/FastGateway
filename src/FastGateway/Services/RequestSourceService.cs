@@ -14,7 +14,7 @@ public sealed class RequestSourceService
 
     private readonly ConcurrentDictionary<uint, RequestSourceEntity> _ipRequestInfo = new();
 
-    public RequestSourceService(IFreeSql freeSql, IHomeAddressService homeAddressService)
+    public RequestSourceService(IFreeSql freeSql)
     {
         _freeSql = freeSql;
         _channel = Channel.CreateBounded<RequestSourceEntity>(new BoundedChannelOptions(10000)
@@ -94,7 +94,7 @@ public sealed class RequestSourceService
         return ipInInt;
     }
 
-    public object GetDisplayData()
+    public async Task<object> GetDisplayData(int page, int pageSize)
     {
         var now = DateTime.Now.AddDays(-7);
 
@@ -109,18 +109,26 @@ public sealed class RequestSourceService
                 Count = x.Count()
             }).OrderBy(x => x.Day).ToList();
 
+        var currentDay = DateTime.Now.ToString("yyyy-MM-dd");
+
+        result.Add(new RequestSourceDayCountDto
+        {
+            Day = currentDay,
+            Count = _ipRequestInfo.Values.Count
+        });
+
         requestSourceDto.DayCountDtos = result;
 
-        var sourceResult = _freeSql.Select<RequestSourceEntity>()
-            .Where(x => x.CreatedTime >= now && !string.IsNullOrEmpty(x.HomeAddress))
-            .GroupBy(x => x.HomeAddress)
-            .Select(x => new RequestSourceAddressDto
-            {
-                HomeAddress = x.Key,
-                Count = x.Count()
-            }).OrderByDescending(x => x.Count).ToList();
+        var items = await _freeSql.Select<RequestSourceEntity>()
+            .Where(x => x.CreatedTime >= now)
+            .OrderByDescending(x => x.CreatedTime)
+            .Page(page, pageSize)
+            .ToListAsync();
 
-        requestSourceDto.AddressDtos = sourceResult;
+        requestSourceDto.Items = items;
+
+        requestSourceDto.Total =
+            await _freeSql.Select<RequestSourceEntity>().Where(x => x.CreatedTime >= now).CountAsync();
 
         return requestSourceDto;
     }
@@ -131,7 +139,8 @@ public static class RequestSourceExtension
     public static void MapRequestSource(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/gateway/request-source/display-data",
-            ([FromServices] RequestSourceService requestSourceService) =>
-                requestSourceService.GetDisplayData());
+            async ([FromServices] RequestSourceService requestSourceService, int page, int pageSize) =>
+            await requestSourceService.GetDisplayData(page, pageSize))
+            .RequireAuthorization();
     }
 }

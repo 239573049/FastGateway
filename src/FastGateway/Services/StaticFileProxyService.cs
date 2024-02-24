@@ -128,18 +128,22 @@ public static class StaticFileProxyExtension
     {
         app.MapGet("/api/gateway/static-file-proxy", async (StaticFileProxyService staticFileProxyService,
                 string keyword) =>
-            await staticFileProxyService.GetListAsync(keyword));
+            await staticFileProxyService.GetListAsync(keyword))
+            .RequireAuthorization();
 
         app.MapPost("/api/gateway/static-file-proxy",
             async (StaticFileProxyService staticFileProxyService, StaticFileProxyEntity entity) =>
-                await staticFileProxyService.CreateAsync(entity));
+                await staticFileProxyService.CreateAsync(entity))
+            .RequireAuthorization();
 
         app.MapPut("/api/gateway/static-file-proxy",
             async (StaticFileProxyService staticFileProxyService, StaticFileProxyEntity entity) =>
-                await staticFileProxyService.UpdateAsync(entity));
+                await staticFileProxyService.UpdateAsync(entity))
+            .RequireAuthorization();
 
         app.MapDelete("/api/gateway/static-file-proxy",
             async (StaticFileProxyService staticFileProxyService, string id) =>
-                await staticFileProxyService.DeleteAsync(id));
+                await staticFileProxyService.DeleteAsync(id))
+            .RequireAuthorization();
     }
 }

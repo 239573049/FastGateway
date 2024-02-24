@@ -89,6 +89,7 @@ public static class SystemExtension
     public static void MapSystem(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/gateway/system", async (HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer) =>
-            await SystemService.StreamAsync(context, sql, flowAnalyzer));
+            await SystemService.StreamAsync(context, sql, flowAnalyzer))
+            .RequireAuthorization();
     }
 }

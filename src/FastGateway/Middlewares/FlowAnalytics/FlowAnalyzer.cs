@@ -86,6 +86,7 @@ public sealed class FlowAnalyzer : IFlowAnalyzer
         {
             _queues.Clear();
             Interlocked.Exchange(ref _cleaning, 0);
+            Interlocked.Exchange(ref _totalBytes, 0);
         }
 
         private record QueueItem(long Ticks, int Length);

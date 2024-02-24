@@ -2,6 +2,7 @@ import './App.css';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import 'reset-css';
 import { Suspense, lazy } from 'react';
+import NotFoundPage from './pages/error/NotFoundPage';
 
 const MainLayout = lazy(() => import('./layout/main-layout'));
 const Home = lazy(() => import('./pages/home'));
@@ -47,6 +48,9 @@ const router = createBrowserRouter([{
   element: <Suspense fallback={'加载中'}>
     <Login />
   </Suspense>
+}, {
+  path: "*",
+  element: <NotFoundPage />
 }]);
 
 function App() {
