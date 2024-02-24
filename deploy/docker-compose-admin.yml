@@ -1,12 +1,12 @@
 
 services:
   gateway-api:
-    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:8.0-http3
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:8.0-admin
     restart: always
     container_name: gateway-api
     build:
       context: ../
-      dockerfile: src/FastGateway/Dockerfile-http3
+      dockerfile: src/FastGateway/Dockerfile-admin
     ports:
       - 8000:8000 # 提供给web端调用的管理接口
       - 8200:8080 # Http代理端口
@@ -14,15 +14,3 @@ services:
       - 8300:8081/tcp # Https代理端口 Http3需要开启UDP和TCP，请注意防火墙设置是否允许
     volumes:
       - ./data:/data/ # 请注意手动创建data目录，负责在Linux下可能出现权限问题导致无法写入
-
-  gateway-web:
-    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
-    restart: always
-    build:
-      context: ../web
-      dockerfile: Dockerfile
-    privileged: true
-    environment:
-      api_url: http://localhost:8000
-    ports:
-      - 10800:80

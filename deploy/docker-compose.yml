@@ -5,8 +5,8 @@ services:
     restart: always
     container_name: gateway-api
     build:
-      context: ../src
-      dockerfile: Gateway/Dockerfile
+      context: ../
+      dockerfile: src/FastGateway/Dockerfile
     ports:
       - 8000:8000 # 提供给web端调用的管理接口
       - 8200:8080 # Http代理端口
