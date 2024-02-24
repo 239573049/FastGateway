@@ -78,6 +78,60 @@ services:
 
 密码：Aa010426.
 
+## 自带管理界面的docker-compose
+
+```
+
+services:
+  gateway-api:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:8.0-admin
+    restart: always
+    container_name: gateway-api
+    build:
+      context: ../
+      dockerfile: src/FastGateway/Dockerfile-admin
+    ports:
+      - 8000:8000 # 提供给web端调用的管理接口
+      - 8200:8080 # Http代理端口
+      - 8300:8081/udp # Https代理端口
+      - 8300:8081/tcp # Https代理端口 Http3需要开启UDP和TCP，请注意防火墙设置是否允许
+    volumes:
+      - ./data:/data/ # 请注意手动创建data目录，负责在Linux下可能出现权限问题导致无法写入
+
+```
+
+## 支持HTTP3的docker-compose
+
+```
+services:
+  gateway-api:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:8.0-http3
+    restart: always
+    container_name: gateway-api
+    build:
+      context: ../
+      dockerfile: src/FastGateway/Dockerfile-http3
+    ports:
+      - 8000:8000 # 提供给web端调用的管理接口
+      - 8200:8080 # Http代理端口
+      - 8300:8081/udp # Https代理端口
+      - 8300:8081/tcp # Https代理端口 Http3需要开启UDP和TCP，请注意防火墙设置是否允许
+    volumes:
+      - ./data:/data/ # 请注意手动创建data目录，负责在Linux下可能出现权限问题导致无法写入
+
+  gateway-web:
+    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-web
+    restart: always
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    privileged: true
+    environment:
+      api_url: http://localhost:8000
+    ports:
+      - 10800:80
+```
+
 ## 替换默认的https证书
 
 由于需要使用https，为了方便系统默认提供了一个pfx证书，如果你需要提供的话可以按照以下操作进行，如果是Docker执行的话证书的目录则是 `/app/certificates/gateway.pfx`
