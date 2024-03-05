@@ -9,6 +9,12 @@ builder.Services.AddReverseProxy()
 builder.Configuration.GetSection(TunnelClientOptions.Name)
     .Get<TunnelClientOptions>();
 
+var TUNNEL_URL = Environment.GetEnvironmentVariable("TUNNEL_URL");
+if (!string.IsNullOrEmpty(TUNNEL_URL))
+{
+    TunnelClientOptions.Url = TUNNEL_URL;
+}
+
 builder.WebHost.UseTunnelTransport();
 
 var app = builder.Build();
