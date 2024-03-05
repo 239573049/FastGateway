@@ -42,7 +42,6 @@ export default function CreateStaticFileProxy({ visible, onCancel, onSusccess }:
                         <Input
                             rules={[
                                 { required: true, message: '代理名称是必填的' },
-                                { validator: (rule, value) => value.length < 10, message: '路由名称长度不能超过10位' },
                             ]} field='name' required={true} size='large' label='路由名称' style={{ width: '100%' }} placeholder='请输入路由名称'></Input>
                         <Input field='description' label='代理描述' size='large' style={{ width: '100%' }} placeholder='请输入路由描述'></Input>
                         <Input rules={[

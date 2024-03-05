@@ -55,8 +55,7 @@ export default function CreateRouter({ visible, onCancel, onSusccess }: IProps) 
                     <>
                         <Input
                             rules={[
-                                { required: true, message: '路由名称是必填的' },
-                                { validator: (rule, value) => value.length < 10, message: '路由名称长度不能超过10位' },
+                                { required: true, message: '路由名称是必填的' }
                             ]} field='routeName' required={true} size='large' label='路由名称' style={{ width: '100%' }} placeholder='请输入路由名称'></Input>
                         <Input field='description' label='路由描述' size='large' style={{ width: '100%' }} placeholder='请输入路由描述'></Input>
                         <Input field='authorizationPolicy' label='授权策略' size='large' style={{ width: '100%' }} placeholder='请输入授权策略'></Input>

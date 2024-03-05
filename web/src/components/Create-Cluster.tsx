@@ -46,8 +46,7 @@ export default function CreateCluster({ visible, onCancel, onSusccess }: IProps)
                 {({ formState, values, formApi }) => (
                     <>
                         <Input rules={[
-                            { required: true, message: '集群名称是必填的' },
-                            { validator: (rule, value) => value.length < 10, message: '集群名称长度不能超过10位' },
+                            { required: true, message: '集群名称是必填的' }
                         ]} field='clusterName' size='large' label='集群名称' style={{ width: '100%' }} placeholder='请输入集群名称'></Input>
                         <Input field='description' label='集群描述' size='large' style={{ width: '100%' }} placeholder='请输入集群描述'></Input>
                         <ArrayField field='destinationsEntities' >
