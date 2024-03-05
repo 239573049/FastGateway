@@ -225,6 +225,12 @@ services:
 
 ![输入图片说明](img/%E9%9B%86%E7%BE%A4-01.png.png)
 
+FastGatewayClient环境变量参数：
+
+- TUNNEL_URL：Fast Gateway访问地址示例：https://localhost:8081/api/gateway/connect-h2?host=backend1.app&password=dd666666
+
+
+
 ## 出入流量监控
 
 使用环境变量控制是否启用流量监控，使用环境变量`ENABLE_FLOW_MONITORING`设置我们是否启用流量监控，如果为空则默认启动流量监控，然后可以打开我们的控制面板查看流量监控的数据。
