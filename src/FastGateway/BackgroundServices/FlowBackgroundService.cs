@@ -3,8 +3,7 @@
 namespace FastGateway.BackgroundServices;
 
 public class FlowBackgroundService(
-    IFlowAnalyzer flowAnalyzer,
-    IFreeSql freeSql) : BackgroundService
+    IFlowAnalyzer flowAnalyzer) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -49,7 +48,7 @@ public class FlowBackgroundService(
                 GatewayMiddleware.ClearRequestCount();
                 flowAnalyzer.CleanRecords();
 
-                await freeSql.Insert(systemLoggerEntity).ExecuteAffrowsAsync();
+                await FreeSqlContext.FreeSql.Insert(systemLoggerEntity).ExecuteAffrowsAsync();
             }
             catch (Exception e)
             {

@@ -10,6 +10,7 @@ const Gateway = lazy(() => import('./pages/gateway'));
 const Setting = lazy(() => import('./pages/settings'));
 const Login = lazy(() => import('./pages/login'));
 const RequestSource = lazy(() => import('./pages/request-source'));
+const Service = lazy(() => import('./pages/service'));
 
 
 const router = createBrowserRouter([{
@@ -40,6 +41,12 @@ const router = createBrowserRouter([{
       path: "RequestSource",
       element: <Suspense fallback={'加载中'}>
         <RequestSource />
+      </Suspense>
+    },
+    {
+      path: "Service",
+      element: <Suspense fallback={'加载中'}>
+        <Service />
       </Suspense>
     }
   ],

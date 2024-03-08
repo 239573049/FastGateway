@@ -10,13 +10,11 @@ public sealed class RequestSourceService
     /// </summary>
     private readonly Channel<RequestSourceEntity> _channel;
 
-    private readonly IFreeSql _freeSql;
 
     private readonly ConcurrentDictionary<uint, RequestSourceEntity> _ipRequestInfo = new();
 
-    public RequestSourceService(IFreeSql freeSql)
+    public RequestSourceService()
     {
-        _freeSql = freeSql;
         _channel = Channel.CreateBounded<RequestSourceEntity>(new BoundedChannelOptions(10000)
         {
             SingleReader = true,
@@ -100,7 +98,7 @@ public sealed class RequestSourceService
 
         var requestSourceDto = new RequestSourceDto();
 
-        var result = _freeSql.Select<RequestSourceEntity>()
+        var result = FreeSqlContext.FreeSql.Select<RequestSourceEntity>()
             .Where(x => x.CreatedTime >= now)
             .GroupBy(x => x.CreatedTime.ToString("yyyy-MM-dd"))
             .Select(x => new RequestSourceDayCountDto
@@ -119,7 +117,7 @@ public sealed class RequestSourceService
 
         requestSourceDto.DayCountDtos = result;
 
-        var items = await _freeSql.Select<RequestSourceEntity>()
+        var items = await FreeSqlContext.FreeSql.Select<RequestSourceEntity>()
             .Where(x => x.CreatedTime >= now)
             .OrderByDescending(x => x.CreatedTime)
             .Page(page, pageSize)
@@ -128,7 +126,7 @@ public sealed class RequestSourceService
         requestSourceDto.Items = items;
 
         requestSourceDto.Total =
-            await _freeSql.Select<RequestSourceEntity>().Where(x => x.CreatedTime >= now).CountAsync();
+            await FreeSqlContext.FreeSql.Select<RequestSourceEntity>().Where(x => x.CreatedTime >= now).CountAsync();
 
         return requestSourceDto;
     }

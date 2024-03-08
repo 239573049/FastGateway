@@ -1,4 +1,4 @@
-﻿namespace FastGateway;
+﻿namespace FastGateway.Helpers;
 
 /// <summary>
 ///     令牌桶，用于限制流量。

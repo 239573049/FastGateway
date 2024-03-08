@@ -37,5 +37,10 @@ public sealed class CertificateEntity : Entity
     /// </summary>
     public DateTime? ExpirationTime { get; set; }
 
+    /// <summary>
+    /// 绑定端口Id
+    /// </summary>
+    public string PortManagertId { get; set; }
+    
     public CertificateType Type { get; set; }
 }

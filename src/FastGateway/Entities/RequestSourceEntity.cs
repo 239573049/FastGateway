@@ -26,4 +26,9 @@ public sealed class RequestSourceEntity : Entity
     /// 请求平台
     /// </summary>
     public string Platform { get; set; }
+    
+    /// <summary>
+    /// 绑定端口Id
+    /// </summary>
+    public string PortManagertId { get; set; }
 }

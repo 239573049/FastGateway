@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Layout, Nav, Button, Avatar, Dropdown } from '@douyinfe/semi-ui';
-import { IconGithubLogo, IconHome, IconServerStroked,IconSetting,IconHistogram } from '@douyinfe/semi-icons';
+import { IconGithubLogo, IconHome, IconServerStroked, IconSignal, IconSetting, IconHistogram } from '@douyinfe/semi-icons';
 import { Outlet, useNavigate } from 'react-router-dom';
 
 export default function MainLayout() {
@@ -33,15 +33,18 @@ export default function MainLayout() {
                             navigate('/');
                         } else if (key.itemKey === 'Gateway') {
                             navigate('/Gateway');
-                        }if (key.itemKey === 'RequestSource') {
+                        } if (key.itemKey === 'RequestSource') {
                             navigate('/RequestSource');
                         } else if (key.itemKey === 'Setting') {
                             navigate('/Setting');
+                        } else if (key.itemKey === 'Service') {
+                            navigate('/Service');
                         }
                     }}
                     style={{ maxWidth: 220, height: '100%' }}
                     items={[
                         { itemKey: 'Home', text: '首页', icon: <IconHome size="large" /> },
+                        { itemKey: 'Service', text: '服务管理', icon: <IconSignal /> },
                         { itemKey: 'Gateway', text: '代理设置', icon: <IconServerStroked /> },
                         { itemKey: 'RequestSource', text: '请求来源分析', icon: <IconHistogram /> },
                         { itemKey: 'Setting', text: '设置', icon: <IconSetting size="large" /> },
@@ -66,7 +69,7 @@ export default function MainLayout() {
                                     position='left'
                                     render={
                                         <Dropdown.Menu>
-                                            <Dropdown.Item onClick={()=>{
+                                            <Dropdown.Item onClick={() => {
                                                 localStorage.removeItem('token');
                                                 navigate('/login');
                                             }}>退出登录</Dropdown.Item>

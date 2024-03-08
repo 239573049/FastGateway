@@ -26,4 +26,9 @@ public sealed class SystemLoggerEntity : Entity
     ///     获取写入速率
     /// </summary>
     public double WriteRate { get; init; }
+    
+    /// <summary>
+    /// 绑定端口Id
+    /// </summary>
+    public string PortManagertId { get; set; }
 }

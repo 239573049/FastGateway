@@ -50,4 +50,9 @@ public sealed class RouteEntity : Entity
     /// </summary>
     [Column(MapType = typeof(string), StringLength = -1)]
     public string[] Hosts { get; set; }
+
+    /// <summary>
+    /// 绑定端口Id
+    /// </summary>
+    public string PortManagertId { get; set; }
 }

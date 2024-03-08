@@ -1,12 +1,12 @@
 ﻿namespace FastGateway.Services;
 
-public class CertificateService(IFreeSql freeSql)
+public class CertificateService
 {
     public static ConcurrentDictionary<string, CertificateEntity> CertificateEntityDict { get; } = new();
 
     public async Task RefreshConfig()
     {
-        var certificateEntities = await freeSql.Select<CertificateEntity>().ToListAsync();
+        var certificateEntities = await FreeSqlContext.FreeSql.Select<CertificateEntity>().ToListAsync();
 
         foreach (var entity in certificateEntities) CertificateEntityDict.TryAdd(entity.Host, entity);
     }
@@ -17,10 +17,10 @@ public class CertificateService(IFreeSql freeSql)
         certificateEntity.CreatedTime = DateTime.Now;
 
 
-        if (await freeSql.Select<CertificateEntity>().AnyAsync(x => x.Host == certificateEntity.Host))
+        if (await FreeSqlContext.FreeSql.Select<CertificateEntity>().AnyAsync(x => x.Host == certificateEntity.Host))
             return ResultDto.Error("域名已存在");
 
-        await freeSql.Insert(certificateEntity).ExecuteAffrowsAsync();
+        await FreeSqlContext.FreeSql.Insert(certificateEntity).ExecuteAffrowsAsync();
 
         CertificateEntityDict.TryAdd(certificateEntity.Host, certificateEntity);
 
@@ -29,7 +29,7 @@ public class CertificateService(IFreeSql freeSql)
 
     public async Task<ResultDto> UpdateAsync(CertificateEntity certificateEntity)
     {
-        var entity = await freeSql.Select<CertificateEntity>().Where(x => x.Id == certificateEntity.Id).FirstAsync();
+        var entity = await FreeSqlContext.FreeSql.Select<CertificateEntity>().Where(x => x.Id == certificateEntity.Id).FirstAsync();
 
         if (entity == null) return ResultDto.Error("证书不存在");
 
@@ -39,7 +39,7 @@ public class CertificateService(IFreeSql freeSql)
         entity.Password = certificateEntity.Password;
         entity.UpdateTime = DateTime.Now;
 
-        await freeSql.Update<CertificateEntity>().SetSource(entity).ExecuteAffrowsAsync();
+        await FreeSqlContext.FreeSql.Update<CertificateEntity>().SetSource(entity).ExecuteAffrowsAsync();
 
         CertificateEntityDict[certificateEntity.Host] = certificateEntity;
 
@@ -48,11 +48,11 @@ public class CertificateService(IFreeSql freeSql)
 
     public async Task<ResultDto> DeleteAsync(string id)
     {
-        var certificateEntity = await freeSql.Select<CertificateEntity>().Where(x => x.Id == id).FirstAsync();
+        var certificateEntity = await FreeSqlContext.FreeSql.Select<CertificateEntity>().Where(x => x.Id == id).FirstAsync();
 
         if (certificateEntity == null) return ResultDto.Error("证书不存在");
 
-        await freeSql.Delete<CertificateEntity>().Where(x => x.Id == id).ExecuteAffrowsAsync();
+        await FreeSqlContext.FreeSql.Delete<CertificateEntity>().Where(x => x.Id == id).ExecuteAffrowsAsync();
 
         CertificateEntityDict.TryRemove(certificateEntity.Host, out _);
 
@@ -61,21 +61,21 @@ public class CertificateService(IFreeSql freeSql)
 
     public async Task<ResultDto> GetAsync()
     {
-        var certificateEntities = await freeSql.Select<CertificateEntity>().ToListAsync();
+        var certificateEntities = await FreeSqlContext.FreeSql.Select<CertificateEntity>().ToListAsync();
 
         return ResultDto.Success(certificateEntities);
     }
 
     public async Task UpdateCertificateAsync(string id, string path)
     {
-        var certificateEntity = await freeSql.Select<CertificateEntity>().Where(x => x.Id == id).FirstAsync();
+        var certificateEntity = await FreeSqlContext.FreeSql.Select<CertificateEntity>().Where(x => x.Id == id).FirstAsync();
 
         if (certificateEntity == null) return;
 
         certificateEntity.Path = path;
         certificateEntity.UpdateTime = DateTime.Now;
 
-        await freeSql.Update<CertificateEntity>().SetSource(certificateEntity).ExecuteAffrowsAsync();
+        await FreeSqlContext.FreeSql.Update<CertificateEntity>().SetSource(certificateEntity).ExecuteAffrowsAsync();
 
         CertificateEntityDict[certificateEntity.Host] = certificateEntity;
     }

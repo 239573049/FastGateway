@@ -49,4 +49,9 @@ public sealed class StaticFileProxyEntity : Entity
     /// </summary>
     [Column(MapType = typeof(string), StringLength = -1)]
     public string[] TryFiles { get; set; }
+    
+    /// <summary>
+    /// 绑定端口Id
+    /// </summary>
+    public string PortManagertId { get; set; }
 }

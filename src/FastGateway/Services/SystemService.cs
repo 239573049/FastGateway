@@ -7,17 +7,19 @@ namespace FastGateway.Services;
 /// </summary>
 public static class SystemService
 {
-    public static async Task StreamAsync(HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer)
+    public static async Task StreamAsync(HttpContext context, IFlowAnalyzer flowAnalyzer)
     {
         // 使用sse，返回响应头
         context.Response.Headers.ContentType = "text/event-stream";
 
         var i = 0;
 
-        var totalErrorCount = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.ErrorRequestCount);
-        var totalRequestCount = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.RequestCount);
-        var totalRead = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.ReadRate);
-        var totalWrite = (double)await sql.Select<SystemLoggerEntity>().SumAsync(x => x.WriteRate);
+        var totalErrorCount =
+            (double)await FreeSqlContext.FreeSql.Select<SystemLoggerEntity>().SumAsync(x => x.ErrorRequestCount);
+        var totalRequestCount =
+            (double)await FreeSqlContext.FreeSql.Select<SystemLoggerEntity>().SumAsync(x => x.RequestCount);
+        var totalRead = (double)await FreeSqlContext.FreeSql.Select<SystemLoggerEntity>().SumAsync(x => x.ReadRate);
+        var totalWrite = (double)await FreeSqlContext.FreeSql.Select<SystemLoggerEntity>().SumAsync(x => x.WriteRate);
 
         while (!context.RequestAborted.IsCancellationRequested)
         {
@@ -88,8 +90,8 @@ public static class SystemExtension
 {
     public static void MapSystem(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/gateway/system", async (HttpContext context, IFreeSql sql, IFlowAnalyzer flowAnalyzer) =>
-            await SystemService.StreamAsync(context, sql, flowAnalyzer))
+        app.MapGet("/api/gateway/system", async (HttpContext context, IFlowAnalyzer flowAnalyzer) =>
+                await SystemService.StreamAsync(context, flowAnalyzer))
             .RequireAuthorization();
     }
 }

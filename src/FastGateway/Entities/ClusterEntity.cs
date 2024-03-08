@@ -15,6 +15,11 @@ public sealed class ClusterEntity : Entity
     /// </summary>
     public string? Description { get; set; }
 
+    
+    /// <summary>
+    /// 绑定端口Id
+    /// </summary>
+    public string PortManagertId { get; set; }
 
     [Column(MapType = typeof(string), StringLength = -1)]
     public List<DestinationsEntity> DestinationsEntities { get; set; } = new();
