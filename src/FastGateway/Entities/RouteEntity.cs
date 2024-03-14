@@ -49,5 +49,5 @@ public sealed class RouteEntity : Entity
     ///     匹配域名
     /// </summary>
     [Column(MapType = typeof(string), StringLength = -1)]
-    public string[] Hosts { get; set; }
+    public string[] Hosts { get; set; } = Array.Empty<string>();
 }
