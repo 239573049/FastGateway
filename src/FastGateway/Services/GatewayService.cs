@@ -74,7 +74,7 @@ public class GatewayService(
                 .Where(x => x.Path == routeEntity.Path).ToListAsync();
 
             // 如果有Host则判断Path是否存在，如果Path存在则判断Host是否存在，如果Host存在则不允许创建
-            if (routes?.Any(x => x.Hosts.Any(y => routeEntity.Hosts.Contains(y))) == true)
+            if (routes?.Any(x => x.Hosts.Any(y => routeEntity?.Hosts?.Contains(y) == true)) == true)
                 return ResultDto.Error("路由Host已存在");
         }
 
