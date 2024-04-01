@@ -1,4 +1,6 @@
-﻿namespace FastGateway.EFCore;
+﻿using StatisticRequestCount = FastGateway.Domain.StatisticRequestCount;
+
+namespace FastGateway.EFCore;
 
 public class MasterDbContext : DbContext
 {
@@ -18,6 +20,8 @@ public class MasterDbContext : DbContext
 
     public DbSet<Cert> Certs { get; set; }
 
+    public DbSet<StatisticRequestCount> StatisticRequestCounts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -32,7 +36,6 @@ public class MasterDbContext : DbContext
                 v => string.Join(';', v),
                 v => v.Split(';', StringSplitOptions.RemoveEmptyEntries)
             );
-
         });
 
         modelBuilder.Entity<Location>(options =>
@@ -57,9 +60,8 @@ public class MasterDbContext : DbContext
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions),
                 v => JsonSerializer.Deserialize<List<UpStream>>(v, JsonSerializerOptions)
             );
-
         });
-        
+
         modelBuilder.Entity<Cert>(options =>
         {
             options.ToTable("cert");
@@ -75,6 +77,34 @@ public class MasterDbContext : DbContext
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions),
                 v => JsonSerializer.Deserialize<List<CertData>>(v, JsonSerializerOptions)
             );
+        });
+
+        modelBuilder.Entity<StatisticRequestCount>(options =>
+        {
+            options.ToTable("statistic_request_count");
+
+            options.HasKey(x => x.Id);
+
+            options.HasIndex(x => x.ServiceId);
+
+            options.Property(x => x.Id)
+                .ValueGeneratedOnAdd();
+        });
+
+        modelBuilder.Entity<StatisticIp>(options =>
+        {
+            options.ToTable("statistic_ip");
+
+            // ip serviceIP聚合
+            options.HasKey(x => new { x.Ip, x.ServiceId, x.Year, x.Month, x.Day });
+
+            options.Property(x => x.Ip)
+                .ValueGeneratedNever();
+            
+            options.Property(x => x.Id)
+                .ValueGeneratedOnAdd();
+            
+            options.HasKey(x => x.Id);
         });
     }
 }

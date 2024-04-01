@@ -53,6 +53,25 @@ namespace FastGateway.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "statistic_ip",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Ip = table.Column<string>(type: "TEXT", nullable: true),
+                    Count = table.Column<int>(type: "INTEGER", nullable: false),
+                    Year = table.Column<ushort>(type: "INTEGER", nullable: false),
+                    Month = table.Column<byte>(type: "INTEGER", nullable: false),
+                    Day = table.Column<byte>(type: "INTEGER", nullable: false),
+                    Location = table.Column<string>(type: "TEXT", nullable: true),
+                    ServiceId = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_statistic_ip", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "location",
                 columns: table => new
                 {
@@ -77,9 +96,39 @@ namespace FastGateway.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "statistic_request_count",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ServiceId = table.Column<string>(type: "TEXT", nullable: false),
+                    RequestCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    Error4xxCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    Error5xxCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    Year = table.Column<ushort>(type: "INTEGER", nullable: false),
+                    Month = table.Column<byte>(type: "INTEGER", nullable: false),
+                    Day = table.Column<byte>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_statistic_request_count", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_statistic_request_count_service_ServiceId",
+                        column: x => x.ServiceId,
+                        principalTable: "service",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_location_ServiceId",
                 table: "location",
+                column: "ServiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_statistic_request_count_ServiceId",
+                table: "statistic_request_count",
                 column: "ServiceId");
         }
 
@@ -91,6 +140,12 @@ namespace FastGateway.Migrations
 
             migrationBuilder.DropTable(
                 name: "location");
+
+            migrationBuilder.DropTable(
+                name: "statistic_ip");
+
+            migrationBuilder.DropTable(
+                name: "statistic_request_count");
 
             migrationBuilder.DropTable(
                 name: "service");

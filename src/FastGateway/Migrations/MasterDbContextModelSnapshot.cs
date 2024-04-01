@@ -3,7 +3,6 @@ using System;
 using FastGateway.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,11 +10,9 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FastGateway.Migrations
 {
     [DbContext(typeof(MasterDbContext))]
-    [Migration("20240401140242_Initial")]
-    partial class Initial
+    partial class MasterDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.3");
@@ -142,6 +139,73 @@ namespace FastGateway.Migrations
                     b.ToTable("service", (string)null);
                 });
 
+            modelBuilder.Entity("FastGateway.Domain.StatisticIp", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("Day")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Ip")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte>("Month")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ServiceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<ushort>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("statistic_ip", (string)null);
+                });
+
+            modelBuilder.Entity("FastGateway.Domain.StatisticRequestCount", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("Day")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Error4xxCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Error5xxCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("Month")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RequestCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ServiceId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<ushort>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceId");
+
+                    b.ToTable("statistic_request_count", (string)null);
+                });
+
             modelBuilder.Entity("FastGateway.Domain.Location", b =>
                 {
                     b.HasOne("FastGateway.Domain.Service", null)
@@ -149,6 +213,17 @@ namespace FastGateway.Migrations
                         .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FastGateway.Domain.StatisticRequestCount", b =>
+                {
+                    b.HasOne("FastGateway.Domain.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Service");
                 });
 
             modelBuilder.Entity("FastGateway.Domain.Service", b =>

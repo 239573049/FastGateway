@@ -1,0 +1,29 @@
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    color: white;
+    background-color: #1a1a1a; /* Dark background for the dark theme */
+  }
+  
+  .dashboard-header {
+    /* Styles for the header */
+  }
+  
+  .dashboard-content {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 columns */
+    gap: 20px; /* Space between blocks */
+    padding: 20px;
+  }
+  
+  .stat-block {
+    background-color: #2a2a2a; /* Slightly lighter than the background for contrast */
+    padding: 20px;
+    border-radius: 5px;
+    height: 150px; /* Example height, adjust as needed */
+  }
+  
+  .stat-block.large {
+    grid-column: span 2; /* Make the larger block span two columns */
+    height: 300px; /* Larger height for the larger block */
+  }

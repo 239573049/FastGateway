@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using FastGateway.Infrastructures;
+using FastGateway.Middlewares;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -306,12 +308,19 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
         }
 
 
+        builder.Services.AddSingleton<ICurrentContext>(new CurrentContext()
+        {
+            ServiceId = service.Id
+        }).AddSingleton<StatisticsMiddleware>();
+        
         builder.Services.AddReverseProxy()
             .LoadFromMemory(routes, clusters);
 
         var app = builder.Build();
 
         WebApplications.Add(service.Id, app);
+
+        app.UseMiddleware<StatisticsMiddleware>();
 
         foreach (var location in staticFiles)
         {
