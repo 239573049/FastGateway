@@ -7,4 +7,5 @@ global using FastGateway.Dto;
 global using FastMiniApis;
 global using System.Text.Json;
 global using FastGateway.Core;
-
+global using FastGateway.Services;
+global using Microsoft.AspNetCore.StaticFiles;

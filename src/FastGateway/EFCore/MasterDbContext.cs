@@ -12,9 +12,11 @@ public class MasterDbContext : DbContext
     {
     }
 
-    public DbSet<Service> Services { get; set; }
+    public DbSet<Service?> Services { get; set; }
 
     public DbSet<Location> Locations { get; set; }
+
+    public DbSet<Cert> Certs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +58,23 @@ public class MasterDbContext : DbContext
                 v => JsonSerializer.Deserialize<List<UpStream>>(v, JsonSerializerOptions)
             );
 
+        });
+        
+        modelBuilder.Entity<Cert>(options =>
+        {
+            options.ToTable("cert");
+
+            options.HasKey(x => x.Id);
+
+            options.Property(x => x.Domains).HasConversion(
+                v => string.Join(';', v),
+                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            );
+
+            options.Property(x => x.Certs).HasConversion(
+                v => JsonSerializer.Serialize(v, JsonSerializerOptions),
+                v => JsonSerializer.Deserialize<List<CertData>>(v, JsonSerializerOptions)
+            );
         });
     }
 }

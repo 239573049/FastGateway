@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,6 +11,26 @@ namespace FastGateway.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "cert",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "TEXT", nullable: false),
+                    Domains = table.Column<string>(type: "TEXT", nullable: false),
+                    Expired = table.Column<bool>(type: "INTEGER", nullable: false),
+                    AutoRenew = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Issuer = table.Column<string>(type: "TEXT", nullable: false),
+                    Email = table.Column<string>(type: "TEXT", nullable: false),
+                    RenewTime = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    RenewStats = table.Column<int>(type: "INTEGER", nullable: false),
+                    NotAfter = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    Certs = table.Column<string>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_cert", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "service",
                 columns: table => new
@@ -36,6 +57,7 @@ namespace FastGateway.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
+                    Path = table.Column<string>(type: "TEXT", nullable: false),
                     ServiceId = table.Column<string>(type: "TEXT", nullable: false),
                     ProxyPass = table.Column<string>(type: "TEXT", nullable: true),
                     AddHeader = table.Column<string>(type: "TEXT", nullable: false),
@@ -64,6 +86,9 @@ namespace FastGateway.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "cert");
+
             migrationBuilder.DropTable(
                 name: "location");
 

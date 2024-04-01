@@ -1,0 +1,63 @@
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+  }
+  
+  .outer-border {
+    transition: all 0.5s;
+    border: 2px solid #007bff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.9);
+    width: 400px;
+  }
+
+  .outer-border:hover {
+    transform: scale(1.05);
+    transition: all 0.5s;
+  }
+  
+  .inner-content {
+    text-align: center;
+  }
+  
+  .input-container {
+    margin-bottom: 20px;
+  }
+  
+  input {
+    padding: 10px;
+    width: calc(100% - 22px);
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+  }
+  
+  
+  /* 创建气泡背景 */
+  .login-container::before {
+    content: '';
+    position: fixed;
+    top: -50px;
+    left: -50px;
+    width: 200%;
+    height: 200%;
+    background-image: radial-gradient(circle, #007bff 10%, transparent 20%);
+    background-size: 40px 40px;
+    z-index: -1;
+    animation: bubbleAnimation 10s infinite linear;
+  }
+  
+  @keyframes bubbleAnimation {
+    from {
+      transform: translate(0, 0);
+    }
+    to {
+      transform: translate(0, -100%);
+    }
+  }
+  
