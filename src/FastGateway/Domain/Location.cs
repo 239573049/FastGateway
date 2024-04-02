@@ -34,6 +34,8 @@ public class Location
     /// </summary>
     public string[]? TryFiles { get; set; }
 
+    public ApiServiceType Type { get; set; }
+    
     /// <summary>
     /// 负载均衡模型
     /// </summary>

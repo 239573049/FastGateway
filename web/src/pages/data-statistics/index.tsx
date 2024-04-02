@@ -2,13 +2,21 @@ import { Divider, Select, Tag } from '@douyinfe/semi-ui'
 import './index.css'
 import { useEffect, useState } from 'react';
 import * as echarts from 'echarts';
-import { GetSelectList } from '../../services/ApiServiceService';
 import { getQpsChart } from '../../services/QpsService';
+import { DayRequestCount, TotalRequestCount } from '../../services/StatisticRequestService';
 
 export default function DataStatistics() {
   const [qps, setQps] = useState(0)
-  const [serviceOptions, setServiceOptions] = useState([])
-  const [serviceId, setServiceId] = useState('')
+  const [dayRequestCount, setDayRequestCount] = useState({
+    requestCount: 0,
+    error4xxCount: 0,
+    error5xxCount: 0,
+  })
+  const [totalRequestCount, setTotalRequestCount] = useState({
+    requestCount: 0,
+    error4xxCount: 0,
+    error5xxCount: 0,
+  })
   const [qps_chartData] = useState({
     tooltip: {
       trigger: 'axis',
@@ -60,7 +68,6 @@ export default function DataStatistics() {
     }]
   });
 
-  let qps_service: string;
   var qps_chart: any;
   useEffect(() => {
     qps_chart = echarts.init(document.getElementById('qps_chart'));
@@ -79,33 +86,8 @@ export default function DataStatistics() {
     };
     window.addEventListener('resize', resizeHandler);
 
-    getSelectList();
-
-    return () => {
-      window.removeEventListener('resize', resizeHandler);
-    }
-
-  }, []);
-
-  function getSelectList() {
-    GetSelectList()
-      .then(res => {
-        if (res.success) {
-          res.data.push({
-            value: '',
-            label: '全部服务'
-          })
-          setServiceOptions(res.data);
-        }
-      })
-
-  }
-
-  useEffect(() => {
-    // 定时任务，10s一次
-
     async function stream() {
-      const response = await getQpsChart(serviceId) as any;
+      const response = await getQpsChart('') as any;
       for await (const data of response) {
         qps_chartData.xAxis.data.shift();
         qps_chartData.xAxis.data.push(data.now);
@@ -116,33 +98,29 @@ export default function DataStatistics() {
       }
     }
 
+
+    DayRequestCount().then((res) => {
+      setDayRequestCount(res.data)
+    })
+
+    TotalRequestCount().then((res) => {
+      setTotalRequestCount(res.data)
+    })
+
     stream()
 
     const intervalId = setInterval(stream, 10900);
     return () => {
       clearInterval(intervalId);
+      window.removeEventListener('resize', resizeHandler);
     }
 
-  }, [serviceId]);
+  }, []);
+
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <Select
-          style={{
-            position: 'relative',
-            float: 'right',
-            marginRight: '20px',
-            width: '200px',
-            marginTop: '10px',
-          }}
-          defaultValue={serviceId}
-          onChange={(value) => {
-            qps_service = value as string;
-            setServiceId(value as string)
-          }}
-          value={serviceId}
-          optionList={serviceOptions}
-        />
       </div>
       <div className="dashboard-content">
         <div className="stat-block" style={{ backgroundColor: '#333' }}>
@@ -151,7 +129,7 @@ export default function DataStatistics() {
             justifyContent: 'space-between',
             lineHeight: '50px'
           }}>
-            今天请求总量 <span>0</span>
+            今天请求总量 <span>{dayRequestCount.requestCount}</span>
           </div>
           <Divider />
           <div style={{
@@ -159,7 +137,7 @@ export default function DataStatistics() {
             justifyContent: 'space-between',
             lineHeight: '50px'
           }}>
-            今天4xx错误数量 <span>0 </span>
+            今天4xx错误数量 <span>{dayRequestCount.error4xxCount}</span>
           </div>
           <Divider />
           <div style={{
@@ -167,7 +145,7 @@ export default function DataStatistics() {
             justifyContent: 'space-between',
             lineHeight: '50px'
           }}>
-            今天5xx错误数量 <span>0</span>
+            今天5xx错误数量 <span>{dayRequestCount.error5xxCount}</span>
           </div>
         </div>
         <div className="stat-block" style={{ backgroundColor: '#333' }}>
@@ -176,7 +154,7 @@ export default function DataStatistics() {
             justifyContent: 'space-between',
             lineHeight: '50px'
           }}>
-            请求总量 <span>0</span>
+            请求总量 <span>{totalRequestCount.requestCount}</span>
           </div>
           <Divider />
           <div style={{
@@ -184,7 +162,7 @@ export default function DataStatistics() {
             justifyContent: 'space-between',
             lineHeight: '50px'
           }}>
-            4xx错误数量 <span>0 </span>
+            4xx错误数量 <span>{totalRequestCount.error4xxCount}</span>
           </div>
           <Divider />
           <div style={{
@@ -192,7 +170,7 @@ export default function DataStatistics() {
             justifyContent: 'space-between',
             lineHeight: '50px'
           }}>
-            5xx错误数量 <span>0</span>
+            5xx错误数量 <span>{totalRequestCount.error5xxCount}</span>
           </div>
         </div>
         <div className="stat-block" style={{ backgroundColor: '#666', gridColumn: 'span 2' }}>

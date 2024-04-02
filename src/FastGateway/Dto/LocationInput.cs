@@ -2,6 +2,8 @@
 
 public class LocationInput
 {
+    public string? Id { get; set; }
+    
     /// <summary>
     /// 绑定服务ID
     /// </summary>
@@ -32,6 +34,8 @@ public class LocationInput
     /// </summary>
     public string[]? TryFiles { get; set; }
 
+    public ApiServiceType Type { get; set; }
+    
     /// <summary>
     /// 负载均衡模型
     /// </summary>

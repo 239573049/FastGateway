@@ -1,6 +1,6 @@
 import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, Service, ServiceInput } from "../../../module";
-import { CheckDirecotryExistence, CreateApiService } from "../../../services/ApiServiceService";
+import { CheckDirecotryExistence, CreateApiService, UpdateApiService } from "../../../services/ApiServiceService";
 
 interface IUpdateHttpProxyProps {
     visible: boolean;
@@ -35,11 +35,11 @@ export default function UpdateHttpProxy({
                 labelCol={{ span: 4 }}
                 initValues={values}
                 onSubmit={(values: ServiceInput) => {
-                    CreateApiService(values)
+                    UpdateApiService(values.id as string, values)
                         .then((res: any) => {
                             Notification.success({
-                                title: '创建成功',
-                                content: '创建成功',
+                                title: '修改成功',
+                                content: '修改成功',
                             });
                             onOk();
                         })
@@ -74,7 +74,6 @@ export default function UpdateHttpProxy({
                                 allowCreate={true}
                                 multiple={true}
                                 filter={true}
-                                onChange={v => console.log(v)}
                                 defaultActiveFirstOption
                             ></Select>
                             <Row>
@@ -184,6 +183,27 @@ export default function UpdateHttpProxy({
                                     ></Checkbox>
                                 </Col>
                             </Row>
+                            {
+                                values.isHttps && (
+                                    <Row>
+                                        <Col span={12}>
+                                            <Checkbox
+                                                field="enableHttp3"
+                                                label="启用H3"
+                                                initValue={false}
+                                                onChange={(v: any) => {
+                                                    values.enableHttp3 = v;
+                                                    formApi.setValues(values);
+                                                }}
+                                                style={{
+                                                    marginTop: '5px',
+                                                    marginLeft: '10px',
+                                                }}
+                                            ></Checkbox>
+                                        </Col>
+                                    </Row>
+                                )
+                            }
                             <Divider></Divider>
                             <div style={{
                                 display: 'flex',
@@ -242,6 +262,7 @@ export default function UpdateHttpProxy({
                                             <Select
                                                 label="代理类型"
                                                 field="type"
+                                                initValue={arrayField.type}
                                                 style={{
                                                     width: '100%',
                                                     borderRadius: '8px',
@@ -249,7 +270,6 @@ export default function UpdateHttpProxy({
                                                     border: '1px solid var(--semi-color-border)',
                                                     fontSize: '14px',
                                                 }}
-                                                initValue={arrayField.type}
                                                 onChange={(v: any) => {
                                                     arrayField.type = v;
                                                     formApi.setValues(values);

@@ -20,7 +20,7 @@ public sealed class StatisticRequestCountDto
     /// <summary>
     /// 关联服务ID
     /// </summary>
-    public string ServiceId { get; set; }
+    public string? ServiceId { get; set; }
 
     public DateTime CreatedTime { get; set; }
 }

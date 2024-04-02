@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FastGateway.Services;
 
@@ -108,9 +109,9 @@ public sealed class QpsService : IQpsService, IDisposable
     }
 }
 
-public sealed class ApiQpsService(IQpsService qpsService) : ServiceBase("/api/v1/Qps")
+public sealed class ApiQpsService
 {
-    public async Task GetAsync(HttpContext context, string? serviceId = null)
+    public static async Task GetAsync([FromServices]IQpsService qpsService,HttpContext context, string? serviceId = null)
     {
         context.Response.Headers.ContentType = "text/event-stream";
         qpsService.EnableQps(true);

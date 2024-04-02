@@ -82,6 +82,7 @@ namespace FastGateway.Migrations
                     AddHeader = table.Column<string>(type: "TEXT", nullable: false),
                     Root = table.Column<string>(type: "TEXT", nullable: true),
                     TryFiles = table.Column<string>(type: "TEXT", nullable: true),
+                    Type = table.Column<int>(type: "INTEGER", nullable: false),
                     LoadType = table.Column<int>(type: "INTEGER", nullable: false),
                     UpStreams = table.Column<string>(type: "TEXT", nullable: false)
                 },

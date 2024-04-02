@@ -3,6 +3,7 @@ export interface AuthorizeInput {
 }
 
 export interface ServiceInput {
+    id?: string;
     serviceNames: string[];
     listen: number;
     enableHttp3: boolean;
@@ -17,6 +18,7 @@ export interface ServiceInput {
 }
 
 export interface LocationInput {
+    id?: string;
     serviceId?: string;
     path: string;
     proxyPass?: string | null;

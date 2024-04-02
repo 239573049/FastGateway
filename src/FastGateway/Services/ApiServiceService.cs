@@ -1,14 +1,16 @@
 ﻿using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using FastGateway.Infrastructures;
 using FastGateway.Middlewares;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Transforms;
 
 namespace FastGateway.Services;
 
-public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
+public class ApiServiceService
 {
     private static readonly Dictionary<string, WebApplication> WebApplications = new();
 
@@ -33,7 +35,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task CreateAsync(ServiceInput input, MasterDbContext masterDbContext)
+    public static async Task CreateAsync(ServiceInput input, MasterDbContext masterDbContext)
     {
         var service = input.Adapt<Service>();
 
@@ -54,7 +56,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task UpdateAsync(string id, ServiceInput input, MasterDbContext masterDbContext)
+    public static async Task UpdateAsync(string id, ServiceInput input, MasterDbContext masterDbContext)
     {
         var service = await masterDbContext.Services.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id);
@@ -72,7 +74,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task DeleteAsync(string id, MasterDbContext masterDbContext)
+    public static async Task DeleteAsync(string id, MasterDbContext masterDbContext)
     {
         try
         {
@@ -105,7 +107,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     /// </summary>
     /// <param name="path"></param>
     /// <returns></returns>
-    public ResultDto<bool> CheckDirectoryExistenceAsync(string path)
+    public static ResultDto<bool> CheckDirectoryExistenceAsync(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -130,7 +132,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task<Service?> GetAsync(string id, MasterDbContext masterDbContext)
+    public static async Task<Service?> GetAsync(string id, MasterDbContext masterDbContext)
     {
         return await masterDbContext.Services.AsNoTracking()
             .Include(x => x.Locations)
@@ -138,7 +140,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task<ResultDto<PageResultDto<Service>>> GetListAsync(int page, int pageSize,
+    public static async Task<ResultDto<PageResultDto<Service>>> GetListAsync(int page, int pageSize,
         MasterDbContext masterDbContext)
     {
         if (page < 1)
@@ -166,7 +168,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task<ResultDto<List<ServiceSelectDto>>> GetSelectListAsync(MasterDbContext masterDbContext)
+    public static async Task<ResultDto<List<ServiceSelectDto>>> GetSelectListAsync(MasterDbContext masterDbContext)
     {
         var result = await masterDbContext.Services
             .AsNoTracking()
@@ -180,7 +182,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public ResultDto<Dictionary<string, bool>> ServiceStats([FromBody] List<string> ids)
+    public static ResultDto<Dictionary<string, bool>> ServiceStats([FromBody] List<string> ids)
     {
         var result = new Dictionary<string, bool>();
 
@@ -196,7 +198,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task StartServiceAsync(string id, MasterDbContext masterDbContext)
+    public static async Task StartServiceAsync(string id, MasterDbContext masterDbContext)
     {
         if (WebApplications.TryGetValue(id, out var app))
         {
@@ -213,7 +215,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task StopServiceAsync(string id)
+    public static async Task StopServiceAsync(string id)
     {
         if (WebApplications.TryGetValue(id, out var app))
         {
@@ -223,7 +225,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
-    public async Task RestartServiceAsync(string id, MasterDbContext masterDbContext)
+    public static async Task RestartServiceAsync(string id, MasterDbContext masterDbContext)
     {
         if (WebApplications.TryGetValue(id, out var app))
         {
@@ -242,20 +244,29 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
         var service = (Service)state;
 
         var builder = WebApplication.CreateBuilder([]);
-        
-        var qpsService = FastApp.GetRequiredService<IQpsService>();
-        qpsService?.AddServiceQps(service.Id);
+
+        FastContext.QpsService?.AddServiceQps(service.Id);
 
         IContentTypeProvider defaultContentTypeProvider = new DefaultContentTypeProvider();
 
         builder.WebHost.UseKestrel(options =>
         {
-            options.Listen(IPAddress.Parse("0.0.0.0"), service.Listen, listenOptions =>
+            options.ConfigureHttpsDefaults(adapterOptions =>
             {
                 if (service.IsHttps)
                 {
-                    // listenOptions.UseHttps(service.SslCertificate, service.SslCertificatePassword);
+                    adapterOptions.ServerCertificateSelector = (context, name) =>
+                        CertService.Certs.TryGetValue(name, out var cert)
+                            ? new X509Certificate2(cert.File, cert.Password)
+                            : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
                 }
+            });
+
+            options.Listen(IPAddress.Parse("0.0.0.0"), service.Listen, listenOptions =>
+            {
+                if (!service.IsHttps) return;
+
+                listenOptions.UseHttps();
 
                 if (service.EnableHttp3)
                 {
@@ -266,7 +277,6 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
 
         var routes = new List<RouteConfig>();
         var clusters = new List<ClusterConfig>();
-        var staticFiles = new List<Location>();
 
         // 绑定路由到service
         foreach (var location in service.Locations)
@@ -278,7 +288,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
                 ClusterId = clusterId,
                 Match = new RouteMatch()
                 {
-                    Path = location.Path + "{**catch-all}",
+                    Path = location.Path.TrimEnd('/') + "/{**catch-all}",
                     Hosts = service.ServiceNames
                 }
             };
@@ -291,8 +301,18 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
                 ClusterId = clusterId
             };
 
-            // 如果配置了 UpStreams ，多个则负载均衡
-            if (location.UpStreams.Count > 0)
+
+            if (location.Type == ApiServiceType.SingleService)
+            {
+                destinations.Add(location.ProxyPass, new DestinationConfig()
+                {
+                    Address = location.ProxyPass,
+                    Host = new Uri(location.ProxyPass).Host,
+                });
+                clusters.Add(cluster);
+                continue;
+            }
+            else if (location.Type == ApiServiceType.LoadBalance)
             {
                 foreach (var upStream in location.UpStreams.Where(x => !string.IsNullOrEmpty(x.Server)))
                 {
@@ -303,28 +323,13 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
                 }
 
                 clusters.Add(cluster);
-                continue;
             }
-
-            if (!string.IsNullOrWhiteSpace(location.ProxyPass))
-            {
-                destinations.Add(location.ProxyPass, new DestinationConfig()
-                {
-                    Address = location.ProxyPass,
-                    Host = new Uri(location.ProxyPass).Host,
-                });
-                clusters.Add(cluster);
-                continue;
-            }
-            if (!string.IsNullOrWhiteSpace(location.Root))
+            else if (location.Type == ApiServiceType.StaticProxy)
             {
                 routes.Remove(route);
-                staticFiles.Add(location);
-                // 静态文件
-                continue;
             }
         }
-        
+
 
         builder.Services.AddSingleton<ICurrentContext>(new CurrentContext()
         {
@@ -332,7 +337,16 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
         }).AddSingleton<StatisticsMiddleware>();
 
         builder.Services.AddReverseProxy()
-            .LoadFromMemory(routes, clusters);
+            .LoadFromMemory(routes, clusters)
+            // 删除所有代理的前缀
+            .AddTransforms(context =>
+            {
+                var prefix = context.Route.Match.Path?.Replace("/{**catch-all}", "");
+                if (!string.IsNullOrEmpty(prefix))
+                {
+                    context.AddPathRemovePrefix(prefix);
+                }
+            });
 
         var app = builder.Build();
 
@@ -340,7 +354,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
 
         app.UseMiddleware<StatisticsMiddleware>();
 
-        foreach (var location in staticFiles)
+        foreach (var location in service.Locations.Where(x => x.Type == ApiServiceType.StaticProxy))
         {
             app.Map(location.Path.TrimEnd('/'), app =>
             {
@@ -358,20 +372,25 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
                         return;
                     }
 
+                    if (location.TryFiles == null || location.TryFiles.Length == 0)
+                    {
+                        context.Response.StatusCode = 404;
+                        return;
+                    }
+
                     // 搜索 try_files
                     foreach (var tryFile in location.TryFiles)
                     {
                         var tryPath = Path.Combine(location.Root, tryFile);
 
-                        if (File.Exists(tryPath))
-                        {
-                            defaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
-                            context.Response.Headers.ContentType = contentType;
+                        if (!File.Exists(tryPath)) continue;
 
-                            await context.Response.SendFileAsync(tryPath);
+                        defaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
+                        context.Response.Headers.ContentType = contentType;
 
-                            return;
-                        }
+                        await context.Response.SendFileAsync(tryPath);
+
+                        return;
                     }
                 }));
             });

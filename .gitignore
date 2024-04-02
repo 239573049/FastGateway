@@ -103,7 +103,9 @@ StyleCopReport.xml
 *.pidb
 *.svclog
 *.scc
-
+*.db*
+yarn.lock
+package-lock.json
 # Chutzpah Test files
 _Chutzpah*
 

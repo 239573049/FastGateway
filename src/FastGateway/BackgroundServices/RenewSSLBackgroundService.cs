@@ -30,6 +30,9 @@ public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider) 
                     masterDbContext.Certs.Update(certItem);
 
                     await masterDbContext.SaveChangesAsync(stoppingToken);
+
+                    // 成功以后需要刷新证书列表
+                    await CertService.LoadCerts(masterDbContext);
                 }
                 catch (Exception e)
                 {

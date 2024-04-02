@@ -8,10 +8,22 @@ using Directory = System.IO.Directory;
 
 namespace FastGateway.Services;
 
-public class CertService() : ServiceBase("/api/v1/Cert")
+public static class CertService
 {
+    public static Dictionary<string, CertData> Certs { get; private set; } = [];
+
+    public static async Task LoadCerts(MasterDbContext masterDbContext)
+    {
+        var cert = (await masterDbContext.Certs
+            .Where(x => x.AutoRenew && x.Expired == false)
+            .Select(x => x.Certs)
+            .ToListAsync()).SelectMany(x => x);
+
+        Certs = cert.ToDictionary(x => x.Domain, x => x);
+    }
+
     [Authorize]
-    public async Task<ResultDto<PageResultDto<Cert>>> GetListAsync(int page, int pageSize,
+    public static async Task<ResultDto<PageResultDto<Cert>>> GetListAsync(int page, int pageSize,
         [FromServices] MasterDbContext masterDbContext)
     {
         var query = masterDbContext.Certs.AsQueryable();
@@ -24,7 +36,7 @@ public class CertService() : ServiceBase("/api/v1/Cert")
     }
 
     [Authorize]
-    public async Task<Cert> GetAsync(MasterDbContext masterDbContext, string id)
+    public static async Task<Cert> GetAsync(MasterDbContext masterDbContext, string id)
     {
         var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
 
@@ -32,7 +44,7 @@ public class CertService() : ServiceBase("/api/v1/Cert")
     }
 
     [Authorize]
-    public async Task<ResultDto> CreateAsync(MasterDbContext masterDbContext, CertInput input)
+    public static async Task<ResultDto> CreateAsync(MasterDbContext masterDbContext, CertInput input)
     {
         // 判断是否存在相同的域名
         var certs = await masterDbContext.Certs.ToListAsync();
@@ -42,7 +54,6 @@ public class CertService() : ServiceBase("/api/v1/Cert")
         {
             return ResultDto.ErrorResult("存在相同的域名");
         }
-
 
         var cert = new Cert
         {
@@ -62,7 +73,7 @@ public class CertService() : ServiceBase("/api/v1/Cert")
     }
 
     [Authorize]
-    public async Task<Cert> UpdateAsync(MasterDbContext masterDbContext, Cert cert)
+    public static async Task<Cert> UpdateAsync(MasterDbContext masterDbContext, Cert cert)
     {
         masterDbContext.Certs.Update(cert);
 
@@ -72,7 +83,7 @@ public class CertService() : ServiceBase("/api/v1/Cert")
     }
 
     [Authorize]
-    public async Task DeleteAsync(MasterDbContext masterDbContext, string id)
+    public static async Task DeleteAsync(MasterDbContext masterDbContext, string id)
     {
         var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
 
@@ -85,7 +96,7 @@ public class CertService() : ServiceBase("/api/v1/Cert")
     /// 申请证书
     /// </summary>
     [Authorize]
-    public async Task ApplyAsync(MasterDbContext masterDbContext, string id)
+    public static async Task ApplyAsync(MasterDbContext masterDbContext, string id)
     {
         var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
 
@@ -96,7 +107,10 @@ public class CertService() : ServiceBase("/api/v1/Cert")
 
         var context = await RegisterWithLetsEncrypt(cert.Email);
 
-        await ApplyForCert(context, cert);
+        if (await ApplyForCert(context, cert))
+        {
+            await LoadCerts(masterDbContext);
+        }
 
         masterDbContext.Certs.Update(cert);
 
@@ -104,8 +118,7 @@ public class CertService() : ServiceBase("/api/v1/Cert")
     }
 
 
-    [IgnoreRoute]
-    public static async ValueTask ApplyForCert(AcmeContext context, Cert certItem)
+    public static async ValueTask<bool> ApplyForCert(AcmeContext context, Cert certItem)
     {
         certItem.ClearCerts();
 
@@ -176,9 +189,10 @@ public class CertService() : ServiceBase("/api/v1/Cert")
                 Password = certPassword
             });
         }
+
+        return true;
     }
 
-    [IgnoreRoute]
     public static async ValueTask<AcmeContext> RegisterWithLetsEncrypt(string email)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "certs");

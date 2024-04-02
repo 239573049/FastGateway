@@ -4,14 +4,13 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <ServerGarbageCollection>true</ServerGarbageCollection>
+        <InvariantGlobalization>true</InvariantGlobalization>
     </PropertyGroup>
 
     <ItemGroup>
-<!--        <PackageReference Include="FastMiniApis" Version="0.1.2" />-->
         <PackageReference Include="Certes" Version="3.0.4" />
-        <PackageReference Include="FastMiniApis" Version="0.1.2" />
         <PackageReference Include="Mapster.DependencyInjection" Version="1.0.2-pre01" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.3" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.3">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -20,7 +19,6 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.3" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.1" />
         <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
@@ -28,6 +26,12 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FastGateway.Core\FastGateway.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="gateway.pfx">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

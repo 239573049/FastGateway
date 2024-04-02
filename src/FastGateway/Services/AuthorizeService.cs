@@ -6,9 +6,9 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace FastGateway.Services;
 
-public class AuthorizeService() : ServiceBase("/api/v1/Authorize")
+public class AuthorizeService
 {
-    public ResultDto CreateAsync(AuthorizeInput input)
+    public static ResultDto CreateAsync(AuthorizeInput input)
     {
         // 获取环境变量
         var password = Environment.GetEnvironmentVariable("PASSWORD", EnvironmentVariableTarget.Machine) ?? "Aa123456";
