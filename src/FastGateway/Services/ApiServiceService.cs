@@ -354,6 +354,9 @@ public class ApiServiceService
 
         app.UseMiddleware<StatisticsMiddleware>();
 
+        app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
+        app.MapPost("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
+
         foreach (var location in service.Locations.Where(x => x.Type == ApiServiceType.StaticProxy))
         {
             app.Map(location.Path.TrimEnd('/'), app =>

@@ -20,7 +20,7 @@ export default function CertPage() {
             title: '类型',
             dataIndex: 'autoRenew',
             key: 'autoRenew',
-            render: (text: any, record: any) => (
+            render: (_text: any, record: any) => (
                 <div>
                     {record.autoRenew ? '自动续期' : '上传证书'}
                 </div>
@@ -30,7 +30,7 @@ export default function CertPage() {
             title: '域名',
             dataIndex: 'domains',
             key: 'domains',
-            render: (text: any, record: any) => (
+            render: (_text: any, record: any) => (
                 <div>
                     {record.domains.join(',')}
                 </div>
@@ -45,7 +45,7 @@ export default function CertPage() {
             title: '证书状态',
             dataIndex: 'renewStats',
             key: 'renewStats',
-            render: (text: any, record: Cert) => (
+            render: (_text: any, record: Cert) => (
                 <Tag
                     color='blue'
                     size='large'
@@ -59,7 +59,7 @@ export default function CertPage() {
             title: '最近续期时间',
             dataIndex: 'renewTime',
             key: 'renewTime',
-            render: (text: any, record: any) => (
+            render: (_text: any, record: any) => (
                 <div>
                     {record.renewTime}
                 </div>
@@ -69,7 +69,7 @@ export default function CertPage() {
             title: '有效期',
             dataIndex: 'notAfter',
             key: 'notAfter',
-            render: (text: any, record: any) => (
+            render: (_text: any, record: any) => (
                 <div>
                     {record.notAfter}
                 </div>
@@ -78,7 +78,7 @@ export default function CertPage() {
         {
             title: '操作',
             key: 'action',
-            render: (text: any, record: any) => (
+            render: (_text: any, record: any) => (
                 <Dropdown
                     render={
                         <Dropdown.Menu>

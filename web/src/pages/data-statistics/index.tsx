@@ -1,4 +1,4 @@
-import { Divider, Select, Tag } from '@douyinfe/semi-ui'
+import { Divider,Tag } from '@douyinfe/semi-ui'
 import './index.css'
 import { useEffect, useState } from 'react';
 import * as echarts from 'echarts';

@@ -1,6 +1,0 @@
-﻿﻿<Directives>
-  <Application>
-    <Assembly Name="FastGateway"  Dynamic="Required All">
-    </Assembly>
-  </Application>
-</Directives>

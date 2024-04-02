@@ -8,7 +8,7 @@ interface ICreateCertProps {
 
 }
 
-const { Input, Switch, Select } = Form;
+const { Input,  Select } = Form;
 
 export default function CreateCertPage({
     visible,
@@ -43,7 +43,7 @@ export default function CreateCertPage({
                 }}
             >
                 {
-                    ({ formState, values, formApi }: any) => (
+                    ({ values, formApi }: any) => (
                         <>
                             <Select
                                 name="type"

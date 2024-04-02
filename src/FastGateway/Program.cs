@@ -1,6 +1,7 @@
 using FastGateway;
 using FastGateway.BackgroundServices;
 using FastGateway.Options;
+using Microsoft.AspNetCore.ResponseCompression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,11 @@ builder.Services.AddSingleton<IQpsService, QpsService>();
 builder.Services.AddHostedService<RenewSslBackgroundService>();
 builder.Services.AddHostedService<StatisticsBackgroundService>();
 
+builder.Services.AddResponseCompression(options =>
+{
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
 builder.Services.AddMapster();
 
 builder.Services.AddDbContext<MasterDbContext>(options =>
@@ -38,14 +44,13 @@ builder.Services
 
 var app = builder.Build();
 
+app.UseResponseCompression();
 
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
-app.MapPost("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
 
 #region Authorize
 
@@ -144,15 +149,14 @@ statisticService.MapGet("/TotalRequestCount",
 
 FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>());
 
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
-    await db.Database.MigrateAsync();
+app.UseStaticFiles();
 
-    await ApiServiceService.LoadServices(db);
-    
-    await CertService.LoadCerts(db);
-}
+using var scope = app.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
+await db.Database.MigrateAsync();
+
+await ApiServiceService.LoadServices(db);
+
+await CertService.LoadCerts(db);
 
 await app.RunAsync();

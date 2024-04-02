@@ -1,6 +1,6 @@
 import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, Service, ServiceInput } from "../../../module";
-import { CheckDirecotryExistence, CreateApiService, UpdateApiService } from "../../../services/ApiServiceService";
+import { CheckDirecotryExistence,  UpdateApiService } from "../../../services/ApiServiceService";
 
 interface IUpdateHttpProxyProps {
     visible: boolean;
@@ -36,7 +36,7 @@ export default function UpdateHttpProxy({
                 initValues={values}
                 onSubmit={(values: ServiceInput) => {
                     UpdateApiService(values.id as string, values)
-                        .then((res: any) => {
+                        .then(() => {
                             Notification.success({
                                 title: '修改成功',
                                 content: '修改成功',
@@ -54,7 +54,7 @@ export default function UpdateHttpProxy({
 
             >
                 {
-                    ({ formState, values, formApi }: IFormValues) => (
+                    ({ values, formApi }: IFormValues) => (
                         <>
 
                             <Select

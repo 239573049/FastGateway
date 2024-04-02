@@ -1,4 +1,4 @@
-import { ArrayField, Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
+import {  Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, ServiceInput } from "../../../module";
 import { CheckDirecotryExistence, CreateApiService } from "../../../services/ApiServiceService";
 
@@ -33,7 +33,7 @@ export default function CreateHttpProxy({
                 labelCol={{ span: 4 }}
                 onSubmit={(values: ServiceInput) => {
                     CreateApiService(values)
-                        .then((res:any) => {
+                        .then(() => {
                             Notification.success({
                                 title: '创建成功',
                                 content: '创建成功',
@@ -51,7 +51,7 @@ export default function CreateHttpProxy({
 
             >
                 {
-                    ({ formState, values, formApi }: IFormValues) => (
+                    ({ values, formApi }: IFormValues) => (
                         <>
 
                             <Select

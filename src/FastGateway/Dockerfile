@@ -1,0 +1,35 @@
+#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0.3-alpine3.18-amd64 AS base
+USER app
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+
+
+FROM node:alpine as builder
+WORKDIR /src
+COPY web .
+RUN yarn config set strict-ssl false
+RUN yarn
+RUN yarn build
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0.203-alpine3.18-amd64 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["src/FastGateway/FastGateway.csproj", "src/FastGateway/"]
+COPY ["src/FastGateway.Core/FastGateway.Core.csproj", "src/FastGateway.Core/"]
+RUN dotnet restore "./src/FastGateway/FastGateway.csproj"
+COPY . .
+WORKDIR "/src/src/FastGateway"
+RUN dotnet build "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish --os linux /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+COPY --from=builder /src/dist ./wwwroot
+ENTRYPOINT ["dotnet", "FastGateway.dll"]
