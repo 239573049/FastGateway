@@ -22,6 +22,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonDateTimeConverter());
 });
 
+builder.Services.AddSingleton<IQpsService,QpsService>();
 builder.Services.AddHostedService<RenewSslBackgroundService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

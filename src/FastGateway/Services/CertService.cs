@@ -1,6 +1,7 @@
 ﻿using Certes;
 using Certes.Acme;
 using Certes.Acme.Resource;
+using FastGateway.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Directory = System.IO.Directory;

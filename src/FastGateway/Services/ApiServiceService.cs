@@ -166,6 +166,20 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
     }
 
     [Authorize]
+    public async Task<ResultDto<List<ServiceSelectDto>>> GetSelectListAsync(MasterDbContext masterDbContext)
+    {
+        var result = await masterDbContext.Services
+            .AsNoTracking()
+            .Select(x => new ServiceSelectDto()
+            {
+                Value = x.Id,
+                Label = x.ServiceNames.First()
+            })
+            .ToListAsync();
+        return ResultDto<List<ServiceSelectDto>>.SuccessResult(result);
+    }
+
+    [Authorize]
     public ResultDto<Dictionary<string, bool>> ServiceStats([FromBody] List<string> ids)
     {
         var result = new Dictionary<string, bool>();
@@ -228,6 +242,9 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
         var service = (Service)state;
 
         var builder = WebApplication.CreateBuilder([]);
+        
+        var qpsService = FastApp.GetRequiredService<IQpsService>();
+        qpsService?.AddServiceQps(service.Id);
 
         IContentTypeProvider defaultContentTypeProvider = new DefaultContentTypeProvider();
 
@@ -288,7 +305,8 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
                 clusters.Add(cluster);
                 continue;
             }
-            else if (!string.IsNullOrWhiteSpace(location.ProxyPass))
+
+            if (!string.IsNullOrWhiteSpace(location.ProxyPass))
             {
                 destinations.Add(location.ProxyPass, new DestinationConfig()
                 {
@@ -298,7 +316,7 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
                 clusters.Add(cluster);
                 continue;
             }
-            else if (!string.IsNullOrWhiteSpace(location.Root))
+            if (!string.IsNullOrWhiteSpace(location.Root))
             {
                 routes.Remove(route);
                 staticFiles.Add(location);
@@ -306,13 +324,13 @@ public class ApiServiceService() : ServiceBase("/api/v1/ApiService")
                 continue;
             }
         }
-
+        
 
         builder.Services.AddSingleton<ICurrentContext>(new CurrentContext()
         {
-            ServiceId = service.Id
+            ServiceId = service.Id,
         }).AddSingleton<StatisticsMiddleware>();
-        
+
         builder.Services.AddReverseProxy()
             .LoadFromMemory(routes, clusters);
 

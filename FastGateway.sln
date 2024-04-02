@@ -12,10 +12,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway", "src\FastGate
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway.Core", "src\FastGateway.Core\FastGateway.Core.csproj", "{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastMiniApis", "..\FastMiniApis\src\FastMiniApis\FastMiniApis.csproj", "{6E4C87FD-BECD-41C6-867A-08E58D6ADCF1}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastMiniApis.Core", "..\FastMiniApis\src\FastMiniApis.Core\FastMiniApis.Core.csproj", "{38C51A19-54CE-4500-B08A-CAAE99CC0072}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,19 +26,9 @@ Global
 		{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6E4C87FD-BECD-41C6-867A-08E58D6ADCF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6E4C87FD-BECD-41C6-867A-08E58D6ADCF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6E4C87FD-BECD-41C6-867A-08E58D6ADCF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6E4C87FD-BECD-41C6-867A-08E58D6ADCF1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{38C51A19-54CE-4500-B08A-CAAE99CC0072}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{38C51A19-54CE-4500-B08A-CAAE99CC0072}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{38C51A19-54CE-4500-B08A-CAAE99CC0072}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{38C51A19-54CE-4500-B08A-CAAE99CC0072}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{0503A140-FADC-491A-8141-13FF103B205E} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
 		{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
-		{6E4C87FD-BECD-41C6-867A-08E58D6ADCF1} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
-		{38C51A19-54CE-4500-B08A-CAAE99CC0072} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
 	EndGlobalSection
 EndGlobal

@@ -39,7 +39,7 @@ const Login = () => {
             <div className="outer-border">
                 <div className="inner-content">
                     <h2 style={{
-                        color: 'var(--semi-color-text-0)',
+                        color: 'var(--semi-color-text-3)',
                         fontSize: '24px',
                         fontWeight: '600',
                         marginBottom: '24px',

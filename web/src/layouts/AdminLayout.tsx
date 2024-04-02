@@ -13,6 +13,7 @@ export default function AdminLayout() {
         navigate(path);
     }
 
+
     useEffect(() => {
         // 获取路由
         const path = window.location.pathname;
@@ -20,10 +21,9 @@ export default function AdminLayout() {
             setKey('HTTPProxt');
         } else if (path === '/setting') {
             setKey('Setting');
-        }else if (path === '/cert') {
+        } else if (path === '/cert') {
             setKey('cert');
         }
-        
 
     }, []);
 
@@ -128,6 +128,8 @@ export default function AdminLayout() {
                         borderRadius: '10px',
                         padding: '20px',
                         overflow: 'auto',
+                        // 高度自适应
+                        height: 'calc(100vh - 160px)',
                     }}
                 >
                     <Outlet />

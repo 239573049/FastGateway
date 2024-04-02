@@ -82,3 +82,13 @@ export function StopService(id: string) {
 export function RestartService(id: string) {
     return post('/api/v1/ApiService/RestartService?id=' + id);
 }
+
+/**
+ * 获取服务Select格式参数列表。
+ * 
+ * @param id - The ID of the service.
+ * @returns A Promise that resolves to the log.
+ */
+export function GetSelectList(){
+    return get('/api/v1/ApiService/SelectList')
+}

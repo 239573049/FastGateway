@@ -4,14 +4,11 @@ namespace FastGateway.Middlewares;
 
 public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMiddleware
 {
-    private static int _requestCount;
-    private static int _error4xx;
-    private static int _error5xx;
+    private readonly IQpsService _qpsService = FastApp.GetRequiredService<IQpsService>();
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         await next(context);
-
 
         switch (context.Response.StatusCode)
         {
@@ -44,14 +41,17 @@ public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMidd
                 break;
         }
 
+        _qpsService.IncrementServiceRequests(currentContext.ServiceId);
 
-        // 获取ip
-        var ip = context.Connection.RemoteIpAddress?.ToString();
-
-        // 获取请求头中的IP
-        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-        {
-            ip = forwardedFor;
-        }
+        //
+        //
+        // // 获取ip
+        // var ip = context.Connection.RemoteIpAddress?.ToString();
+        //
+        // // 获取请求头中的IP
+        // if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+        // {
+        //     ip = forwardedFor;
+        // }
     }
 }
