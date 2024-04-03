@@ -26,3 +26,21 @@ html{
 ::-webkit-scrollbar-track {
   background-color: transparent;
 }
+
+
+::view-transition-old(root) {
+  animation: none;
+}
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: clip .5s ease-in;
+}
+
+@keyframes clip {
+  from {
+      clip-path: circle(0% at var(--x) var(--y));
+  }
+  to{
+      clip-path: circle(100% at var(--x) var(--y));
+  }
+}

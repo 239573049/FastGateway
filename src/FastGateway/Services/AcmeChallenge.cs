@@ -2,7 +2,7 @@
 
 public static class AcmeChallenge
 {
-    public static async Task Challenge(HttpContext context, IMemoryCache cache, string token)
+    public static async Task Challenge(HttpContext context, [FromServices]IMemoryCache cache, string token)
     {
         if (cache.TryGetValue(token, out var value))
         {

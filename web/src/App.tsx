@@ -6,6 +6,7 @@ import DataStatistics from './pages/data-statistics';
 import HttpProxy from './pages/http-proxy';
 import Setting from './pages/setting';
 import Cert from './pages/cert';
+import Protection from './pages/protection';
 
 const theme = localStorage.getItem('theme');
 const body = document.body;
@@ -35,6 +36,10 @@ const routes = createBrowserRouter([{
     {
       path: '/cert',
       element: <Cert />
+    },
+    {
+      path: '/protection',
+      element: <Protection />
     },
   ]
 }, {

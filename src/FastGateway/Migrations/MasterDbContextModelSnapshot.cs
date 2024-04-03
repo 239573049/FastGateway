@@ -17,6 +17,34 @@ namespace FastGateway.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.3");
 
+            modelBuilder.Entity("FastGateway.Domain.BlacklistAndWhitelist", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enable")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Ips")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("blacklist_and_whitelist", (string)null);
+                });
+
             modelBuilder.Entity("FastGateway.Domain.Cert", b =>
                 {
                     b.Property<string>("Id")
@@ -47,7 +75,7 @@ namespace FastGateway.Migrations
                     b.Property<DateTime?>("NotAfter")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("RenewStats")
+                    b.Property<byte>("RenewStats")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("RenewTime")
@@ -67,7 +95,7 @@ namespace FastGateway.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("LoadType")
+                    b.Property<byte>("LoadType")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Path")
@@ -87,7 +115,7 @@ namespace FastGateway.Migrations
                     b.Property<string>("TryFiles")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Type")
+                    b.Property<byte>("Type")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("UpStreams")
@@ -109,6 +137,9 @@ namespace FastGateway.Migrations
                     b.Property<bool>("Enable")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("EnableBlacklist")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("EnableFlowMonitoring")
                         .HasColumnType("INTEGER");
 
@@ -119,6 +150,9 @@ namespace FastGateway.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("EnableTunnel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("EnableWhitelist")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsHttps")

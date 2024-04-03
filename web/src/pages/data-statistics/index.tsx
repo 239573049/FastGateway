@@ -1,12 +1,13 @@
-import { Divider,Tag } from '@douyinfe/semi-ui'
+import { Divider, Progress, Tag } from '@douyinfe/semi-ui'
 import './index.css'
 import { useEffect, useState } from 'react';
 import * as echarts from 'echarts';
 import { getQpsChart } from '../../services/QpsService';
-import { DayRequestCount, TotalRequestCount } from '../../services/StatisticRequestService';
+import { DayRequestCount, GetLocation, TotalRequestCount } from '../../services/StatisticRequestService';
 
 export default function DataStatistics() {
   const [qps, setQps] = useState(0)
+  const [locationData, setLocationData] = useState([] as any[]);
   const [dayRequestCount, setDayRequestCount] = useState({
     requestCount: 0,
     error4xxCount: 0,
@@ -34,7 +35,7 @@ export default function DataStatistics() {
     //X轴
     xAxis: {
       type: "category",
-      data: ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+      data: ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
       axisLabel: {
         show: false
       },
@@ -57,7 +58,7 @@ export default function DataStatistics() {
       }
     },
     series: [{
-      data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       name: 'QPS',
       type: 'bar',
       barMinHeight: 5,
@@ -110,6 +111,9 @@ export default function DataStatistics() {
     stream()
 
     const intervalId = setInterval(stream, 10900);
+
+    loading()
+
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('resize', resizeHandler);
@@ -117,13 +121,22 @@ export default function DataStatistics() {
 
   }, []);
 
+  function loading() {
+    GetLocation()
+      .then((res) => {
+        setLocationData(res)
+      }).catch((err) => {
+        console.log(err)
+      })
+  }
+
 
   return (
     <div className="dashboard">
       <div className="dashboard-header">
       </div>
       <div className="dashboard-content">
-        <div className="stat-block" style={{ backgroundColor: '#333' }}>
+        <div className="stat-block" style={{}}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -148,7 +161,7 @@ export default function DataStatistics() {
             今天5xx错误数量 <span>{dayRequestCount.error5xxCount}</span>
           </div>
         </div>
-        <div className="stat-block" style={{ backgroundColor: '#333' }}>
+        <div className="stat-block" style={{}}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -173,7 +186,7 @@ export default function DataStatistics() {
             5xx错误数量 <span>{totalRequestCount.error5xxCount}</span>
           </div>
         </div>
-        <div className="stat-block" style={{ backgroundColor: '#666', gridColumn: 'span 2' }}>
+        <div className="stat-block" style={{ gridColumn: 'span 2' }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -188,12 +201,41 @@ export default function DataStatistics() {
               height: 'calc(100% - 5px)',
             }}
           >
-
           </div>
         </div>
-        <div className="stat-block large" style={{ backgroundColor: '#777' }}>Block 5</div>
-        <div className="stat-block" style={{ backgroundColor: '#888' }}>Block 6</div>
-        <div className="stat-block" style={{ backgroundColor: '#999' }}>Block 7</div>
+        <div className="stat-block large" style={{
+
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            lineHeight: '50px'
+          }}>
+            请求来源
+          </div>
+          <Divider />
+          <div style={{
+            justifyContent: 'space-between',
+            lineHeight: '50px'
+          }}>
+            <ul>
+              {
+                locationData.map((item, index) => {
+                  return <li key={index}>
+                    <span>{item.location}</span>
+                    <Progress showInfo={true} percent={item.ratio} stroke="var(--semi-color-warning)" aria-label="disk usage" />
+                  </li>
+                })
+              }
+            </ul>
+          </div>
+        </div>
+        <div className="stat-block" style={{}}>
+
+        </div>
+        <div className="stat-block" style={{}}>
+
+        </div>
       </div>
     </div>
   );

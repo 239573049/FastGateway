@@ -30,6 +30,8 @@ public static class AuthorizeService
         {
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddDays(7),
+            Audience = "FastGateway",
+            Issuer = "FastGateway",
             SigningCredentials =
                 new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };

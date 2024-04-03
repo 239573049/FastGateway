@@ -12,6 +12,8 @@ export interface ServiceInput {
     enableRequestSource: boolean;
     enable: boolean;
     enableTunnel: boolean;
+    enableBlacklist: boolean;
+    enableWhitelist: boolean;
     locations: LocationInput[];
     sslCertificate: string | null;
     sslCertificatePassword: string | null;
@@ -99,4 +101,16 @@ export interface Location {
 export interface UpStream {
     server: string | null;
     weight: number;
+}
+export interface BlacklistAndWhitelist {
+    id: number;
+    ips: string[];
+    name: string;
+    description: string | null;
+    type: ProtectionType;
+}
+
+export enum ProtectionType {
+    Blacklist = 1,
+    Whitelist = 2
 }

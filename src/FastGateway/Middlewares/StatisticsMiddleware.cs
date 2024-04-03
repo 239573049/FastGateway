@@ -9,7 +9,7 @@ public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMidd
         switch (context.Response.StatusCode)
         {
             case >= 400 and < 500:
-                StatisticsBackgroundService.WriteAsync(new StatisticRequestCountDto()
+                StatisticsBackgroundService.Write(new StatisticRequestCountDto()
                 {
                     CreatedTime = DateTime.Now,
                     ServiceId = currentContext.ServiceId,
@@ -18,7 +18,7 @@ public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMidd
                 });
                 break;
             case >= 500:
-                StatisticsBackgroundService.WriteAsync(new StatisticRequestCountDto()
+                StatisticsBackgroundService.Write(new StatisticRequestCountDto()
                 {
                     CreatedTime = DateTime.Now,
                     ServiceId = currentContext.ServiceId,
@@ -27,7 +27,7 @@ public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMidd
                 });
                 break;
             case < 400:
-                StatisticsBackgroundService.WriteAsync(new StatisticRequestCountDto()
+                StatisticsBackgroundService.Write(new StatisticRequestCountDto()
                 {
                     CreatedTime = DateTime.Now,
                     ServiceId = currentContext.ServiceId,
@@ -37,5 +37,31 @@ public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMidd
         }
 
         FastContext.QpsService.IncrementServiceRequests();
+
+        // 获取请求的IP
+        var ip = context.Connection.RemoteIpAddress?.ToString();
+
+        // 可能再请求头中
+        if (string.IsNullOrWhiteSpace(ip))
+        {
+            ip = context.Request.Headers["X-Forwarded-For"];
+        }
+
+        var ips = new string[]
+        {
+            "121.35.0.122",
+            "117.147.0.196",
+            "146.19.24.28",
+            "203.135.98.155",
+            "129.153.125.162"
+        };
+
+        StatisticsBackgroundService.Write(new StatisticIpDto()
+        {
+            CreatedTime = DateTime.Now,
+            // 如果是本地测试，就随机一个IP
+            Ip = ips[new Random().Next(0, ips.Length)],
+            ServiceId = currentContext.ServiceId,
+        });
     }
 }

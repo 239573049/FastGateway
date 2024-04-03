@@ -13,7 +13,7 @@ EXPOSE 8080
 EXPOSE 8081
 
 
-FROM node:alpine as builder
+FROM node as builder
 WORKDIR /src
 COPY web .
 RUN yarn config set strict-ssl false
@@ -32,7 +32,7 @@ RUN dotnet build "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish --os linux /p:UseAppHost=false
+RUN dotnet publish "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

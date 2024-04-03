@@ -1,12 +1,15 @@
-import { Layout, Nav, Button, Avatar } from '@douyinfe/semi-ui';
-import { IconSemiLogo, IconBell, IconHelpCircle, IconKey, IconGlobeStroke, IconHistogram, IconSetting } from '@douyinfe/semi-icons';
+import { Layout, Nav, Avatar, Switch } from '@douyinfe/semi-ui';
+import { IconSemiLogo, IconMoon, IconSun, IconKey, IconGlobeStroke, IconShield, IconHistogram, IconSetting } from '@douyinfe/semi-icons';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+
+const body = document.body;
 
 export default function AdminLayout() {
     const { Header, Footer, Sider, Content } = Layout;
     const [key, setKey] = useState('DataStatistics');
     const navigate = useNavigate();
+    const [theme, setTheme] = useState(body.hasAttribute('theme-mode') ? true : false);
 
     function selectKey(key: string, path: string) {
         setKey(key);
@@ -23,9 +26,36 @@ export default function AdminLayout() {
             setKey('Setting');
         } else if (path === '/cert') {
             setKey('cert');
+        } else if (path === '/protection') {
+            setKey('protection');
         }
 
     }, []);
+
+    function onTheme(theme: boolean) {
+        setTheme(theme);
+        if (theme) {
+            document.documentElement.style.setProperty('--x', 0 + 'px')
+            document.documentElement.style.setProperty('--y', 0 + 'px')
+        } else {
+            // 获取屏幕右下角坐标
+            const x = window.innerWidth;
+            const y = window.innerHeight;
+            document.documentElement.style.setProperty('--x', x + 'px')
+            document.documentElement.style.setProperty('--y', y + 'px')
+        }
+        document.startViewTransition(() => {
+            if (!theme) {
+                body.setAttribute('theme-mode', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.setAttribute('theme-mode', 'light');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    }
+
+
 
     return (
         <Layout style={{ border: '1px solid var(--semi-color-border)', height: "100%" }}>
@@ -51,22 +81,9 @@ export default function AdminLayout() {
                             </span>
                         </span>
                         <Nav.Footer>
-                            <Button
-                                theme="borderless"
-                                icon={<IconBell size="large" />}
-                                style={{
-                                    color: 'var(--semi-color-text-2)',
-                                    marginRight: '12px',
-                                }}
-                            />
-                            <Button
-                                theme="borderless"
-                                icon={<IconHelpCircle size="large" />}
-                                style={{
-                                    color: 'var(--semi-color-text-2)',
-                                    marginRight: '12px',
-                                }}
-                            />
+                            <Switch onChange={(v) => onTheme(v)} checked={theme} style={{
+                                marginRight: '20px',
+                            }} checkedText={<IconMoon />} uncheckedText={<IconSun />} size="large" />
                             <Avatar color="orange" size="small">
                                 Gateway
                             </Avatar>
@@ -102,6 +119,14 @@ export default function AdminLayout() {
                                 icon: <IconKey size="large" />,
                                 onClick: () => {
                                     selectKey('cert', '/cert');
+                                }
+                            },
+                            {
+                                itemKey: 'protection',
+                                text: '防护配置',
+                                icon: <IconShield size="large" />,
+                                onClick: () => {
+                                    selectKey('protection', '/protection');
                                 }
                             },
                             {

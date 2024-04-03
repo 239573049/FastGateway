@@ -1,3 +1,5 @@
+using IP2Region.Net.Abstractions;
+using IP2Region.Net.XDB;
 using Directory = System.IO.Directory;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,14 +22,12 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ISearcher>(new Searcher(CachePolicy.File, "ip2region.xdb"));
 builder.Services.AddSingleton<IQpsService, QpsService>();
 builder.Services.AddHostedService<RenewSslBackgroundService>();
 builder.Services.AddHostedService<StatisticsBackgroundService>();
 
-builder.Services.AddResponseCompression(options =>
-{
-    options.Providers.Add<BrotliCompressionProvider>();
-});
+builder.Services.AddResponseCompression(options => { options.Providers.Add<BrotliCompressionProvider>(); });
 
 builder.Services.AddDbContext<MasterDbContext>(options =>
 {
@@ -37,11 +37,9 @@ builder.Services.AddDbContext<MasterDbContext>(options =>
         connectionString = "Data Source=/data/FastGateway.db";
     }
 
-    // 获取目录是否存在
-    var directory = Path.GetDirectoryName(connectionString);
-    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+    if (!Directory.Exists("/data/"))
     {
-        Directory.CreateDirectory(directory);
+        Directory.CreateDirectory("/data/");
     }
 
     options.UseSqlite(connectionString);
@@ -59,12 +57,13 @@ using var scope = app.Services.CreateScope();
 var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
 Console.WriteLine("数据库迁移中...");
 await db.Database.MigrateAsync();
-
 Console.WriteLine("数据库迁移完成");
 
-await ApiServiceService.LoadServices(db);
+await ProtectionService.LoadBlacklistAndWhitelistAsync(db);
 
 await CertService.LoadCerts(db);
+
+await ApiServiceService.LoadServices(db);
 
 #endregion
 
@@ -77,8 +76,7 @@ app.UseAuthorization();
 
 #region Authorize
 
-var authorizeService = app.MapGroup("/api/v1/Authorize")
-    .RequireAuthorization();
+var authorizeService = app.MapGroup("/api/v1/Authorize");
 
 authorizeService.MapPost(string.Empty,
     AuthorizeService.CreateAsync);
@@ -167,6 +165,31 @@ statisticService.MapGet("/DayRequestCount",
 
 statisticService.MapGet("/TotalRequestCount",
     StatisticRequestService.GetTotalStatisticAsync);
+
+statisticService.MapGet("/Location",
+    StatisticRequestService.GetStatisticLocationAsync);
+
+#endregion
+
+#region Protection
+
+var protectionService = app.MapGroup("/api/v1/Protection")
+    .RequireAuthorization();
+
+protectionService.MapPost("/BlacklistAndWhitelist",
+    ProtectionService.CreateBlacklistAndWhitelistAsync);
+
+protectionService.MapGet("/BlacklistAndWhitelist/List",
+    ProtectionService.GetBlacklistListAsync);
+
+protectionService.MapDelete("/BlacklistAndWhitelist/{id}",
+    ProtectionService.DeleteBlacklistAsync);
+
+protectionService.MapPut("/BlacklistAndWhitelist",
+    ProtectionService.UpdateBlacklistAsync);
+
+protectionService.MapPost("/BlacklistAndWhitelist/Enable/{id}",
+    ProtectionService.EnableBlacklistAndWhitelistAsync);
 
 #endregion
 

@@ -35,6 +35,16 @@ public class ServiceInput
     public bool EnableRequestSource { get; set; }
 
     /// <summary>
+    /// 启用黑名单
+    /// </summary>
+    public bool EnableBlacklist { get; set; }
+
+    /// <summary>
+    /// 启用白名单 （白名单优先级高，设置了白名单则忽略黑名单）
+    /// </summary>
+    public bool EnableWhitelist { get; set; }
+    
+    /// <summary>
     /// 是否启动
     /// </summary>
     public bool Enable { get; set; }

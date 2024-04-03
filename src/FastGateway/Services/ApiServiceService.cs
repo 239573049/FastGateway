@@ -2,8 +2,6 @@
 using System.Security.Cryptography.X509Certificates;
 using FastGateway.Infrastructures;
 using FastGateway.Middlewares;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
@@ -46,6 +44,8 @@ public static class ApiServiceService
             EnableFlowMonitoring = input.EnableFlowMonitoring,
             EnableHttp3 = input.EnableHttp3,
             EnableTunnel = input.EnableTunnel,
+            EnableWhitelist = input.EnableWhitelist,
+            EnableBlacklist = input.EnableBlacklist,
             IsHttps = input.IsHttps,
             Listen = input.Listen,
             ServiceNames = input.ServiceNames,
@@ -91,6 +91,8 @@ public static class ApiServiceService
         service.ServiceNames = input.ServiceNames;
         service.Listen = input.Listen;
         service.IsHttps = input.IsHttps;
+        service.EnableBlacklist = input.EnableBlacklist;
+        service.EnableWhitelist = input.EnableWhitelist;
         service.EnableHttp3 = input.EnableHttp3;
         service.Locations = input.Locations.Select(x => new Location()
         {
@@ -278,6 +280,10 @@ public static class ApiServiceService
         {
             await app.StopAsync();
 
+            await app.DisposeAsync();
+
+            WebApplications.Remove(id, out _);
+
             var service = await GetAsync(id, masterDbContext);
 
             await Task.Factory.StartNew(BuilderService, service);
@@ -288,168 +294,216 @@ public static class ApiServiceService
 
     private static async Task BuilderService(object state)
     {
-        var service = (Service)state;
-
-        var builder = WebApplication.CreateBuilder([]);
-
-        IContentTypeProvider defaultContentTypeProvider = new DefaultContentTypeProvider();
-
-        builder.WebHost.UseKestrel(options =>
+        try
         {
-            options.ConfigureHttpsDefaults(adapterOptions =>
+            var service = (Service)state;
+
+            var builder = WebApplication.CreateBuilder([]);
+
+            IContentTypeProvider defaultContentTypeProvider = new DefaultContentTypeProvider();
+
+            builder.WebHost.UseKestrel(options =>
             {
-                if (service.IsHttps)
+                options.ConfigureHttpsDefaults(adapterOptions =>
                 {
-                    adapterOptions.ServerCertificateSelector = (context, name) =>
-                        CertService.Certs.TryGetValue(name, out var cert)
-                            ? new X509Certificate2(cert.File, cert.Password)
-                            : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
-                }
-            });
-
-            options.Listen(IPAddress.Parse("0.0.0.0"), service.Listen, listenOptions =>
-            {
-                if (!service.IsHttps) return;
-
-                listenOptions.UseHttps();
-                
-                listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-
-                if (service.EnableHttp3)
-                {
-                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                }
-            });
-        });
-
-        var routes = new List<RouteConfig>();
-        var clusters = new List<ClusterConfig>();
-
-        // 绑定路由到service
-        foreach (var location in service.Locations)
-        {
-            var clusterId = location.Id;
-            var route = new RouteConfig()
-            {
-                RouteId = location.Id,
-                ClusterId = clusterId,
-                Match = new RouteMatch()
-                {
-                    Path = location.Path.TrimEnd('/') + "/{**catch-all}",
-                    Hosts = service.ServiceNames
-                }
-            };
-            routes.Add(route);
-            var destinations = new Dictionary<string, DestinationConfig>();
-
-            var cluster = new ClusterConfig()
-            {
-                Destinations = destinations,
-                ClusterId = clusterId
-            };
-
-
-            if (location.Type == ApiServiceType.SingleService)
-            {
-                destinations.Add(location.ProxyPass, new DestinationConfig()
-                {
-                    Address = location.ProxyPass,
-                    Host = new Uri(location.ProxyPass).Host,
+                    if (service.IsHttps)
+                    {
+                        adapterOptions.ServerCertificateSelector = (context, name) =>
+                            CertService.Certs.TryGetValue(name, out var cert)
+                                ? new X509Certificate2(cert.File, cert.Password)
+                                : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
+                    }
                 });
-                clusters.Add(cluster);
-                continue;
-            }
 
-            if (location.Type == ApiServiceType.LoadBalance)
-            {
-                foreach (var upStream in location.UpStreams.Where(x => !string.IsNullOrEmpty(x.Server)))
+                options.Listen(IPAddress.Parse("0.0.0.0"), service.Listen, listenOptions =>
                 {
-                    destinations.Add(upStream.Server!, new DestinationConfig()
+                    if (!service.IsHttps) return;
+
+                    listenOptions.UseHttps();
+
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
+
+                    if (service.EnableHttp3)
                     {
-                        Address = upStream.Server!,
+                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+                    }
+                });
+            });
+
+            var routes = new List<RouteConfig>();
+            var clusters = new List<ClusterConfig>();
+
+            // 绑定路由到service
+            foreach (var location in service.Locations)
+            {
+                var clusterId = location.Id;
+                var route = new RouteConfig()
+                {
+                    RouteId = location.Id,
+                    ClusterId = clusterId,
+                    Match = new RouteMatch()
+                    {
+                        Path = location.Path.TrimEnd('/') + "/{**catch-all}",
+                        Hosts = service.ServiceNames
+                    }
+                };
+                routes.Add(route);
+                var destinations = new Dictionary<string, DestinationConfig>();
+
+                var cluster = new ClusterConfig()
+                {
+                    Destinations = destinations,
+                    ClusterId = clusterId
+                };
+
+
+                if (location.Type == ApiServiceType.SingleService)
+                {
+                    destinations.Add(location.ProxyPass, new DestinationConfig()
+                    {
+                        Address = location.ProxyPass,
+                        Host = new Uri(location.ProxyPass).Host,
                     });
+                    clusters.Add(cluster);
+                    continue;
                 }
 
-                clusters.Add(cluster);
-            }
-            else if (location.Type == ApiServiceType.StaticProxy)
-            {
-                routes.Remove(route);
-            }
-        }
-
-
-        builder.Services.AddSingleton<ICurrentContext>(new CurrentContext()
-        {
-            ServiceId = service.Id,
-        }).AddSingleton<StatisticsMiddleware>();
-
-        builder.Services.AddReverseProxy()
-            .LoadFromMemory(routes, clusters)
-            // 删除所有代理的前缀
-            .AddTransforms(context =>
-            {
-                var prefix = context.Route.Match.Path?.Replace("/{**catch-all}", "");
-                if (!string.IsNullOrEmpty(prefix))
+                if (location.Type == ApiServiceType.LoadBalance)
                 {
-                    context.AddPathRemovePrefix(prefix);
+                    foreach (var upStream in location.UpStreams.Where(x => !string.IsNullOrEmpty(x.Server)))
+                    {
+                        destinations.Add(upStream.Server!, new DestinationConfig()
+                        {
+                            Address = upStream.Server!,
+                        });
+                    }
+
+                    clusters.Add(cluster);
                 }
-            });
-
-        var app = builder.Build();
-
-        WebApplications.Add(service.Id, app);
-
-        app.UseMiddleware<StatisticsMiddleware>();
-
-        // 用于HTTPS证书签名校验
-        app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
-        app.MapPost("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
-
-        foreach (var location in service.Locations.Where(x => x.Type == ApiServiceType.StaticProxy))
-        {
-            app.Map(location.Path.TrimEnd('/'), app =>
-            {
-                app.Run((async context =>
+                else if (location.Type == ApiServiceType.StaticProxy)
                 {
-                    var path = Path.Combine(location.Root, context.Request.Path.Value[1..]);
+                    routes.Remove(route);
+                }
+            }
 
-                    if (File.Exists(path))
+            builder.Services.AddSingleton<ICurrentContext>(new CurrentContext()
+            {
+                ServiceId = service.Id,
+            }).AddSingleton<StatisticsMiddleware>();
+
+            builder.Services.AddReverseProxy()
+                .LoadFromMemory(routes, clusters)
+                // 删除所有代理的前缀
+                .AddTransforms(context =>
+                {
+                    var prefix = context.Route.Match.Path?.Replace("/{**catch-all}", "");
+                    if (!string.IsNullOrEmpty(prefix))
                     {
-                        defaultContentTypeProvider.TryGetContentType(path, out var contentType);
-                        context.Response.Headers.ContentType = contentType;
+                        context.AddPathRemovePrefix(prefix);
+                    }
+                });
 
-                        await context.Response.SendFileAsync(path);
+            var app = builder.Build();
 
+            WebApplications.Add(service.Id, app);
+
+            // 如果启用白名单则添加中间件
+            if (service.EnableWhitelist)
+            {
+                app.Use(async (context, next) =>
+                {
+                    // 获取当前请求的IP
+                    var ip = context.Connection.RemoteIpAddress?.ToString();
+                    if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+                    {
+                        ip = forwardedFor;
+                    }
+
+                    if (ProtectionService.CheckBlacklistAndWhitelist(ip, ProtectionType.Whitelist))
+                    {
+                        context.Response.StatusCode = 403;
                         return;
                     }
 
-                    if (location.TryFiles == null || location.TryFiles.Length == 0)
+                    await next(context);
+                });
+            }
+            else if (service.EnableBlacklist)
+            {
+                app.Use(async (context, next) =>
+                {
+                    // 获取当前请求的IP
+                    var ip = context.Connection.RemoteIpAddress?.ToString();
+                    if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
                     {
-                        context.Response.StatusCode = 404;
+                        ip = forwardedFor;
+                    }
+
+                    if (ProtectionService.CheckBlacklistAndWhitelist(ip, ProtectionType.Blacklist))
+                    {
+                        context.Response.StatusCode = 403;
                         return;
                     }
 
-                    // 搜索 try_files
-                    foreach (var tryFile in location.TryFiles)
+                    await next(context);
+                });
+            }
+
+            app.UseMiddleware<StatisticsMiddleware>();
+
+            // 用于HTTPS证书签名校验
+            app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
+            app.MapPost("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
+
+            foreach (var location in service.Locations.Where(x => x.Type == ApiServiceType.StaticProxy))
+            {
+                app.Map(location.Path.TrimEnd('/'), app =>
+                {
+                    app.Run((async context =>
                     {
-                        var tryPath = Path.Combine(location.Root, tryFile);
+                        var path = Path.Combine(location.Root, context.Request.Path.Value[1..]);
 
-                        if (!File.Exists(tryPath)) continue;
+                        if (File.Exists(path))
+                        {
+                            defaultContentTypeProvider.TryGetContentType(path, out var contentType);
+                            context.Response.Headers.ContentType = contentType;
 
-                        defaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
-                        context.Response.Headers.ContentType = contentType;
+                            await context.Response.SendFileAsync(path);
 
-                        await context.Response.SendFileAsync(tryPath);
+                            return;
+                        }
 
-                        return;
-                    }
-                }));
-            });
+                        if (location.TryFiles == null || location.TryFiles.Length == 0)
+                        {
+                            context.Response.StatusCode = 404;
+                            return;
+                        }
+
+                        // 搜索 try_files
+                        foreach (var tryFile in location.TryFiles)
+                        {
+                            var tryPath = Path.Combine(location.Root, tryFile);
+
+                            if (!File.Exists(tryPath)) continue;
+
+                            defaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
+                            context.Response.Headers.ContentType = contentType;
+
+                            await context.Response.SendFileAsync(tryPath);
+
+                            return;
+                        }
+                    }));
+                });
+            }
+
+            app.MapReverseProxy();
+
+            await app.RunAsync();
         }
-
-        app.MapReverseProxy();
-
-        await app.RunAsync();
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
     }
 }

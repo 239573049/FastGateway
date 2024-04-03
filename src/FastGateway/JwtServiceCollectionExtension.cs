@@ -39,13 +39,14 @@ public static class JwtServiceCollectionExtension
         var secret = Environment.GetEnvironmentVariable("JWT_SECRET", EnvironmentVariableTarget.Machine);
         if (string.IsNullOrWhiteSpace(secret))
         {
-            Environment.SetEnvironmentVariable("JWT_SECRET", JwtOptions.Secret, EnvironmentVariableTarget.Machine);
+            JwtOptions.Secret = Guid.NewGuid().ToString("N");
+            Environment.SetEnvironmentVariable("JWT_SECRET", JwtOptions.Secret);
         }
         else
         {
             JwtOptions.Secret = secret;
         }
-        
+
         return services;
     }
 }

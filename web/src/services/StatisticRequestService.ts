@@ -13,3 +13,10 @@ export function DayRequestCount(){
 export function TotalRequestCount(){
     return get('/api/v1/Statistic/TotalRequestCount');
 }
+
+/**
+ * 获取归属地统计
+ */
+export function GetLocation(){
+    return get('/api/v1/Statistic/Location');
+}

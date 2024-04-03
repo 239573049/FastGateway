@@ -22,6 +22,10 @@ public class MasterDbContext : DbContext
 
     public DbSet<StatisticRequestCount> StatisticRequestCounts { get; set; }
 
+    public DbSet<StatisticIp> StatisticIps { get; set; }
+
+    public DbSet<BlacklistAndWhitelist> BlacklistAndWhitelists { get; set; }
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -100,11 +104,28 @@ public class MasterDbContext : DbContext
 
             options.Property(x => x.Ip)
                 .ValueGeneratedNever();
+
+            options.Property(x => x.Id)
+                .ValueGeneratedOnAdd();
+
+            options.HasKey(x => x.Id);
+        });
+        
+        modelBuilder.Entity<BlacklistAndWhitelist>(options =>
+        {
+            options.ToTable("blacklist_and_whitelist");
+
+            options.HasKey(x => x.Id);
+
+            options.Property(x => x.Ips).HasConversion(
+                v => string.Join(';', v),
+                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList()
+            );
             
             options.Property(x => x.Id)
                 .ValueGeneratedOnAdd();
-            
-            options.HasKey(x => x.Id);
         });
+        
+        
     }
 }

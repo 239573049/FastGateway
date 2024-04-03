@@ -154,6 +154,37 @@ export default function UpdateHttpProxy({
                             <Row>
                                 <Col span={12}>
                                     <Checkbox
+                                        field="enableBlacklist"
+                                        label={"黑名单：" + (values.enableBlacklist ? '启用' : '停用')}
+                                        initValue={false}
+                                        onChange={(v: any) => {
+                                            values.enableBlacklist = v;
+                                            formApi.setValues(values);
+                                        }}
+                                        style={{
+                                            marginTop: '5px',
+                                            marginLeft: '10px',
+                                        }}
+                                    ></Checkbox>
+                                </Col>
+                                <Col span={12}>
+                                    <Checkbox
+                                        field="enableWhitelist"
+                                        onChange={(v: any) => {
+                                            values.enableWhitelist = v;
+                                            formApi.setValues(values);
+                                        }}
+                                        label={"白名单：" + (values.enableWhitelist ? '启用' : '停用')}
+                                        style={{
+                                            marginTop: '5px',
+                                            marginLeft: '10px',
+                                        }}
+                                    ></Checkbox>
+                                </Col>
+                            </Row>
+                            <Row>
+                                <Col span={12}>
+                                    <Checkbox
                                         field="enableTunnel"
                                         label="启用隧道"
                                         initValue={false}

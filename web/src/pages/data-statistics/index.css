@@ -1,12 +1,20 @@
 .dashboard {
     display: flex;
     flex-direction: column;
-    color: white;
     background-color: #1a1a1a; /* Dark background for the dark theme */
   }
+
+  /* body 元素theme-mode=light */
+  body[theme-mode="light"] .dashboard {
+    background-color: #f0f0f0; /* Light background for the light theme */
+    color: #000;
+  }
+
   
   .dashboard-header {
-    /* Styles for the header */
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
   }
   
   .dashboard-content {
@@ -16,6 +24,12 @@
     padding: 20px;
   }
   
+  /* body 元素theme-mode=light */
+  body[theme-mode="light"] .stat-block {
+    background-color: #dad8d8; /* Light background for the light theme */
+    color: #000;
+  }
+
   .stat-block {
     background-color: #2a2a2a; /* Slightly lighter than the background for contrast */
     padding: 20px;
@@ -25,5 +39,6 @@
   
   .stat-block.large {
     grid-column: span 2; /* Make the larger block span two columns */
-    height: 300px; /* Larger height for the larger block */
+    height: 550px; /* Larger height for the larger block */
+    overflow: auto; /* Hide overflow content */
   }

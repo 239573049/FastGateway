@@ -1,39 +1,86 @@
 ﻿using System.Collections.Concurrent;
 using System.Threading.Channels;
+using IP2Region.Net.Abstractions;
 
 namespace FastGateway.BackgroundServices;
 
-public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider) : BackgroundService
+public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider, ISearcher searcher)
+    : BackgroundService
 {
     private static readonly Channel<StatisticRequestCountDto> StatisticRequestChannel =
         Channel.CreateUnbounded<StatisticRequestCountDto>();
 
-    private static readonly ConcurrentDictionary<string, StatisticRequestCountDto> RequestCountDic = new();
-
+    private static readonly ConcurrentDictionary<string, StatisticRequestCountDto> RequestCountDic = new(-1, 5);
     private static readonly ConcurrentDictionary<string, StatisticIpDto> IpDic = new();
 
-    private static DateTime _lastTime = DateTime.Now;
+    private static readonly Channel<StatisticIpDto> StatisticIpChannel = Channel.CreateUnbounded<StatisticIpDto>();
+
+    private static DateTime _statisticLastTime = DateTime.Now;
+    private static DateTime _statisticIpLastTime = DateTime.Now;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Factory.StartNew(RequestCountAsync, stoppingToken);
+        await Task.Factory.StartNew(StatisticIpAsync, stoppingToken);
     }
 
-    public static void WriteAsync(StatisticRequestCountDto requestCount)
+    public static void Write(StatisticRequestCountDto requestCount)
     {
         StatisticRequestChannel.Writer.TryWrite(requestCount);
     }
 
-    public static void WriteAsync(StatisticIpDto ipDto)
+    public static void Write(StatisticIpDto ipDto)
     {
-        // 判断是否存在缓存
-        if (IpDic.TryGetValue(ipDto.Ip, out var statisticIpDto))
+        StatisticIpChannel.Writer.TryWrite(ipDto);
+    }
+
+    private async Task StatisticIpAsync()
+    {
+        await using var scope = serviceProvider.CreateAsyncScope();
+        var masterDbContext = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
+        while (await StatisticIpChannel.Reader.WaitToReadAsync())
         {
-            statisticIpDto.CreatedTime = ipDto.CreatedTime;
-        }
-        else
-        {
-            IpDic.TryAdd(ipDto.Ip, ipDto);
+            var ipDto = await StatisticIpChannel.Reader.ReadAsync();
+
+            // 判断是否超过5分钟,如果超过5分钟就将之前的数据写入数据库
+            if (DateTime.Now - _statisticIpLastTime >= TimeSpan.FromMinutes(5))
+            {
+                _statisticIpLastTime = DateTime.Now;
+
+                foreach (var item in IpDic)
+                {
+                    await CheckAddOrUpdateAsync(masterDbContext, item.Value);
+                }
+                
+                IpDic.Clear();
+            }
+
+            // 判断是否存在缓存
+            if (IpDic.TryGetValue(ipDto.Ip, out var statisticIpDto))
+            {
+                statisticIpDto.Count += 1;
+            }
+            else
+            {
+                IpDic.TryAdd(ipDto.Ip, ipDto);
+
+                var locations = searcher.Search(ipDto.Ip).Split("|", StringSplitOptions.RemoveEmptyEntries);
+                // 删除0
+                locations = locations.Where(x => x != "0").ToArray();
+                if (locations.Length == 0)
+                {
+                    ipDto.Location = "未知";
+                    continue;
+                }
+
+                // 然后去掉最后一个
+                var location = locations.Distinct().ToArray();
+
+                ipDto.Location = string.Join("", location)
+                    .Replace("电信", "")
+                    .Replace("联通", "")
+                    .Replace("移动", "");
+            }
         }
     }
 
@@ -46,9 +93,9 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
             var requestCount = await StatisticRequestChannel.Reader.ReadAsync();
 
             // 判断是否超过5分钟,如果超过5分钟就将之前的数据写入数据库
-            if (DateTime.Now - _lastTime >= TimeSpan.FromMinutes(5))
+            if (DateTime.Now - _statisticLastTime >= TimeSpan.FromMinutes(5))
             {
-                _lastTime = DateTime.Now;
+                _statisticLastTime = DateTime.Now;
                 foreach (var item in RequestCountDic)
                 {
                     await CheckAddOrUpdateAsync(masterDbContext, item.Value);
@@ -68,7 +115,6 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
             {
                 RequestCountDic.TryAdd(requestCount.ServiceId, requestCount);
             }
-
         }
     }
 
@@ -99,6 +145,44 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
     }
 
     private static async ValueTask CheckAddOrUpdateAsync(MasterDbContext masterDbContext,
+        StatisticIpDto requestCountDto)
+    {
+        // 判断数据库是否存在今年今月今日的数据
+        if (await masterDbContext.StatisticIps
+                .AnyAsync(x => x.ServiceId == requestCountDto.ServiceId
+                               && x.Ip == requestCountDto.Ip
+                               && x.Year == requestCountDto.CreatedTime.Year
+                               && x.Month == requestCountDto.CreatedTime.Month
+                               && x.Day == requestCountDto.CreatedTime.Day))
+        {
+            // 更新
+            await masterDbContext.StatisticIps
+                .Where(x => x.ServiceId == requestCountDto.ServiceId
+                            && x.Year == requestCountDto.CreatedTime.Year
+                            && x.Month == requestCountDto.CreatedTime.Month
+                            && x.Day == requestCountDto.CreatedTime.Day)
+                .ExecuteUpdateAsync(x =>
+                    x.SetProperty(y => y.Count, y => y.Count + requestCountDto.Count));
+        }
+        else
+        {
+            // 直接添加
+            await masterDbContext.StatisticIps.AddAsync(new StatisticIp()
+            {
+                ServiceId = requestCountDto.ServiceId,
+                Count = requestCountDto.Count,
+                Year = (ushort)requestCountDto.CreatedTime.Year,
+                Month = (byte)requestCountDto.CreatedTime.Month,
+                Day = (byte)requestCountDto.CreatedTime.Day,
+                Ip = requestCountDto.Ip,
+                Location = requestCountDto.Location,
+            });
+
+            await masterDbContext.SaveChangesAsync();
+        }
+    }
+
+    private static async ValueTask CheckAddOrUpdateAsync(MasterDbContext masterDbContext,
         StatisticRequestCountDto requestCountDto)
     {
         // 判断数据库是否存在今年今月今日的数据
@@ -122,7 +206,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
         else
         {
             // 直接添加
-            await masterDbContext.StatisticRequestCounts.AddAsync(new Domain.StatisticRequestCount
+            await masterDbContext.StatisticRequestCounts.AddAsync(new StatisticRequestCount
             {
                 ServiceId = requestCountDto.ServiceId,
                 RequestCount = requestCountDto.RequestCount,

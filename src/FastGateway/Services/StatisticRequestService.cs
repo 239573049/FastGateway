@@ -1,6 +1,4 @@
-﻿using FastGateway.BackgroundServices;
-
-namespace FastGateway.Services;
+﻿namespace FastGateway.Services;
 
 public static class StatisticRequestService
 {
@@ -20,7 +18,7 @@ public static class StatisticRequestService
             .FirstOrDefaultAsync();
 
         var currentStatistic = StatisticsBackgroundService.GetCurrentRequestCount(serviceId);
-        
+
         if (statistic == null)
         {
             return ResultDto<StatisticRequestCountDto>.SuccessResult(new StatisticRequestCountDto()
@@ -47,7 +45,7 @@ public static class StatisticRequestService
             string.IsNullOrEmpty(serviceId) || x.ServiceId == serviceId);
 
         var currentStatistic = StatisticsBackgroundService.GetCurrentRequestCount(serviceId);
-        
+
         var requestCount = await query.SumAsync(x => x.RequestCount);
 
         var error4XxCount = await query.SumAsync(x => x.Error4xxCount);
@@ -60,5 +58,29 @@ public static class StatisticRequestService
             Error4xxCount = error4XxCount + currentStatistic.Error4xxCount,
             Error5xxCount = error5XxCount + currentStatistic.Error5xxCount,
         });
+    }
+
+    public static async Task<List<StatisticLocationDto>> GetStatisticLocationAsync(MasterDbContext masterDbContext)
+    {
+        var query = from ip in masterDbContext.StatisticIps
+            group ip by ip.Location
+            into g
+            orderby g.Sum(x => x.Count) descending
+            select new StatisticLocationDto
+            {
+                Location = g.Key,
+                Count = g.Sum(x => x.Count)
+            };
+
+
+        var result = await query
+            .Take(10)
+            .ToListAsync();
+
+        // 计算比例
+        var total = result.Sum(x => x.Count);
+        result.ForEach(x => x.Ratio = Math.Round(((double)x.Count / total) * 100, 2));
+
+        return result;
     }
 }

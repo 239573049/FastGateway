@@ -12,6 +12,23 @@ namespace FastGateway.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "blacklist_and_whitelist",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Ips = table.Column<string>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
+                    Description = table.Column<string>(type: "TEXT", nullable: true),
+                    Enable = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Type = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_blacklist_and_whitelist", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "cert",
                 columns: table => new
                 {
@@ -22,7 +39,7 @@ namespace FastGateway.Migrations
                     Issuer = table.Column<string>(type: "TEXT", nullable: false),
                     Email = table.Column<string>(type: "TEXT", nullable: false),
                     RenewTime = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    RenewStats = table.Column<int>(type: "INTEGER", nullable: false),
+                    RenewStats = table.Column<byte>(type: "INTEGER", nullable: false),
                     NotAfter = table.Column<DateTime>(type: "TEXT", nullable: true),
                     Certs = table.Column<string>(type: "TEXT", nullable: false)
                 },
@@ -40,6 +57,8 @@ namespace FastGateway.Migrations
                     Listen = table.Column<ushort>(type: "INTEGER", nullable: false),
                     EnableHttp3 = table.Column<bool>(type: "INTEGER", nullable: false),
                     IsHttps = table.Column<bool>(type: "INTEGER", nullable: false),
+                    EnableBlacklist = table.Column<bool>(type: "INTEGER", nullable: false),
+                    EnableWhitelist = table.Column<bool>(type: "INTEGER", nullable: false),
                     EnableFlowMonitoring = table.Column<bool>(type: "INTEGER", nullable: false),
                     EnableRequestSource = table.Column<bool>(type: "INTEGER", nullable: false),
                     Enable = table.Column<bool>(type: "INTEGER", nullable: false),
@@ -82,8 +101,8 @@ namespace FastGateway.Migrations
                     AddHeader = table.Column<string>(type: "TEXT", nullable: false),
                     Root = table.Column<string>(type: "TEXT", nullable: true),
                     TryFiles = table.Column<string>(type: "TEXT", nullable: true),
-                    Type = table.Column<int>(type: "INTEGER", nullable: false),
-                    LoadType = table.Column<int>(type: "INTEGER", nullable: false),
+                    Type = table.Column<byte>(type: "INTEGER", nullable: false),
+                    LoadType = table.Column<byte>(type: "INTEGER", nullable: false),
                     UpStreams = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
@@ -136,6 +155,9 @@ namespace FastGateway.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "blacklist_and_whitelist");
+
             migrationBuilder.DropTable(
                 name: "cert");
 
