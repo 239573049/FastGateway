@@ -1,9 +1,4 @@
-﻿using System.Text;
-using FastGateway.Options;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-
-namespace FastGateway;
+﻿namespace FastGateway;
 
 public static class JwtServiceCollectionExtension
 {
@@ -11,7 +6,6 @@ public static class JwtServiceCollectionExtension
     ///     注册JWT Bearer认证服务的静态扩展方法
     /// </summary>
     /// <param name="services"></param>
-    /// <param name="policies">路由信息</param>
     public static IServiceCollection AddJwtBearerAuthentication(this IServiceCollection services)
     {
         //使用应用密钥得到一个加密密钥字节数组
@@ -30,11 +24,28 @@ public static class JwtServiceCollectionExtension
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(JwtOptions.Secret)),
-                    ValidateIssuer = false,
-                    ValidateAudience = false
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidIssuer = "FastGateway",
+                    ValidAudience = "FastGateway",
                 };
             });
 
+        return services;
+    }
+
+    public static IServiceCollection AddEnvironmentVariable(this IServiceCollection services)
+    {
+        var secret = Environment.GetEnvironmentVariable("JWT_SECRET", EnvironmentVariableTarget.Machine);
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            Environment.SetEnvironmentVariable("JWT_SECRET", JwtOptions.Secret, EnvironmentVariableTarget.Machine);
+        }
+        else
+        {
+            JwtOptions.Secret = secret;
+        }
+        
         return services;
     }
 }

@@ -6,7 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace FastGateway.Services;
 
-public class AuthorizeService
+public static class AuthorizeService
 {
     public static ResultDto CreateAsync(AuthorizeInput input)
     {
@@ -29,7 +29,7 @@ public class AuthorizeService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddDays(JwtOptions.ExpireDay),
+            Expires = DateTime.UtcNow.AddDays(7),
             SigningCredentials =
                 new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };

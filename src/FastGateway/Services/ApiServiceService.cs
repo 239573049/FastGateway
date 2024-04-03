@@ -7,10 +7,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
+using Directory = System.IO.Directory;
 
 namespace FastGateway.Services;
 
-public class ApiServiceService
+public static class ApiServiceService
 {
     private static readonly Dictionary<string, WebApplication> WebApplications = new();
 
@@ -37,16 +38,37 @@ public class ApiServiceService
     [Authorize]
     public static async Task CreateAsync(ServiceInput input, MasterDbContext masterDbContext)
     {
-        var service = input.Adapt<Service>();
-
-        service.Id = Guid.NewGuid().ToString();
-
-        service.Locations.ForEach(x =>
+        var serviceId = Guid.NewGuid().ToString("N");
+        var service = new Service()
         {
-            x.Id = Guid.NewGuid().ToString();
-
-            x.ServiceId = service.Id;
-        });
+            Id = serviceId,
+            Enable = input.Enable,
+            EnableFlowMonitoring = input.EnableFlowMonitoring,
+            EnableHttp3 = input.EnableHttp3,
+            EnableTunnel = input.EnableTunnel,
+            IsHttps = input.IsHttps,
+            Listen = input.Listen,
+            ServiceNames = input.ServiceNames,
+            SslCertificate = input.SslCertificate,
+            SslCertificatePassword = input.SslCertificatePassword,
+            Locations = input.Locations.Select(x => new Location()
+            {
+                AddHeader = x.AddHeader,
+                ServiceId = serviceId,
+                Id = Guid.NewGuid().ToString("N"),
+                Path = x.Path,
+                ProxyPass = x.ProxyPass,
+                Root = x.Root,
+                Type = x.Type,
+                TryFiles = x.TryFiles,
+                UpStreams = x.UpStreams.Select(x => new UpStream()
+                {
+                    Server = x.Server,
+                    Weight = x.Weight
+                }).ToList(),
+                LoadType = x.LoadType,
+            }).ToList()
+        };
 
         await masterDbContext.Services.AddAsync(service);
 
@@ -66,7 +88,32 @@ public class ApiServiceService
             throw new Exception("Service not found");
         }
 
-        input.Adapt(service);
+        service.ServiceNames = input.ServiceNames;
+        service.Listen = input.Listen;
+        service.IsHttps = input.IsHttps;
+        service.EnableHttp3 = input.EnableHttp3;
+        service.Locations = input.Locations.Select(x => new Location()
+        {
+            AddHeader = x.AddHeader,
+            Id = x.Id,
+            Path = x.Path,
+            ProxyPass = x.ProxyPass,
+            Root = x.Root,
+            ServiceId = x.ServiceId,
+            Type = x.Type,
+            TryFiles = x.TryFiles,
+            UpStreams = x.UpStreams.Select(x => new UpStream()
+            {
+                Server = x.Server,
+                Weight = x.Weight
+            }).ToList(),
+            LoadType = x.LoadType,
+        }).ToList();
+        service.Enable = input.Enable;
+        service.EnableTunnel = input.EnableTunnel;
+        service.SslCertificate = input.SslCertificate;
+        service.SslCertificatePassword = input.SslCertificatePassword;
+        service.EnableFlowMonitoring = input.EnableFlowMonitoring;
 
         masterDbContext.Update(service);
 
@@ -245,8 +292,6 @@ public class ApiServiceService
 
         var builder = WebApplication.CreateBuilder([]);
 
-        FastContext.QpsService?.AddServiceQps(service.Id);
-
         IContentTypeProvider defaultContentTypeProvider = new DefaultContentTypeProvider();
 
         builder.WebHost.UseKestrel(options =>
@@ -267,6 +312,8 @@ public class ApiServiceService
                 if (!service.IsHttps) return;
 
                 listenOptions.UseHttps();
+                
+                listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
 
                 if (service.EnableHttp3)
                 {
@@ -312,7 +359,8 @@ public class ApiServiceService
                 clusters.Add(cluster);
                 continue;
             }
-            else if (location.Type == ApiServiceType.LoadBalance)
+
+            if (location.Type == ApiServiceType.LoadBalance)
             {
                 foreach (var upStream in location.UpStreams.Where(x => !string.IsNullOrEmpty(x.Server)))
                 {
@@ -354,6 +402,7 @@ public class ApiServiceService
 
         app.UseMiddleware<StatisticsMiddleware>();
 
+        // 用于HTTPS证书签名校验
         app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
         app.MapPost("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
 

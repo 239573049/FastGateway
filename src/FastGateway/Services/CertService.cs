@@ -1,10 +1,4 @@
-﻿using Certes;
-using Certes.Acme;
-using Certes.Acme.Resource;
-using FastGateway.Core;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Directory = System.IO.Directory;
+﻿using Directory = System.IO.Directory;
 
 namespace FastGateway.Services;
 
@@ -96,7 +90,7 @@ public static class CertService
     /// 申请证书
     /// </summary>
     [Authorize]
-    public static async Task ApplyAsync(MasterDbContext masterDbContext, string id)
+    public static async Task ApplyAsync(IMemoryCache memoryCache, MasterDbContext masterDbContext, string id)
     {
         var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
 
@@ -107,7 +101,7 @@ public static class CertService
 
         var context = await RegisterWithLetsEncrypt(cert.Email);
 
-        if (await ApplyForCert(context, cert))
+        if (await ApplyForCert(memoryCache, context, cert))
         {
             await LoadCerts(masterDbContext);
         }
@@ -118,7 +112,7 @@ public static class CertService
     }
 
 
-    public static async ValueTask<bool> ApplyForCert(AcmeContext context, Cert certItem)
+    public static async ValueTask<bool> ApplyForCert(IMemoryCache memoryCache, AcmeContext context, Cert certItem)
     {
         certItem.ClearCerts();
 
@@ -129,7 +123,10 @@ public static class CertService
             var authz = (await order.Authorizations()).First();
             var httpChallenge = await authz.Http();
 
-            AcmeChallenge.AddToken(httpChallenge.Token, httpChallenge.KeyAuthz);
+            // 保存验证信息
+            memoryCache.Set(httpChallenge.Token, httpChallenge.KeyAuthz, TimeSpan.FromMinutes(20));
+
+            await Task.Delay(1000);
 
             var challenge = await httpChallenge.Validate();
 
@@ -146,6 +143,7 @@ public static class CertService
                 }
 
                 await Task.Delay(5000);
+                // 更新验证状态
                 challenge = await httpChallenge.Resource();
             }
 

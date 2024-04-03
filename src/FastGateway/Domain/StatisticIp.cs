@@ -20,5 +20,4 @@ public sealed class StatisticIp
     public string? Location { get; set; }
 
     public string ServiceId { get; set; }
-    
 }

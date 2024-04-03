@@ -1,11 +1,8 @@
-using FastGateway;
-using FastGateway.BackgroundServices;
-using FastGateway.Options;
-using Microsoft.AspNetCore.ResponseCompression;
+using Directory = System.IO.Directory;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Configuration.GetSection("JwtOptions").Get<JwtOptions>();
+builder.Services.AddEnvironmentVariable();
 
 builder.Services.AddCors(options =>
 {
@@ -22,6 +19,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonDateTimeConverter());
 });
 
+builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IQpsService, QpsService>();
 builder.Services.AddHostedService<RenewSslBackgroundService>();
 builder.Services.AddHostedService<StatisticsBackgroundService>();
@@ -29,13 +27,24 @@ builder.Services.AddHostedService<StatisticsBackgroundService>();
 builder.Services.AddResponseCompression(options =>
 {
     options.Providers.Add<BrotliCompressionProvider>();
-    options.Providers.Add<GzipCompressionProvider>();
 });
-builder.Services.AddMapster();
 
 builder.Services.AddDbContext<MasterDbContext>(options =>
 {
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default"));
+    var connectionString = builder.Configuration.GetConnectionString("Default");
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        connectionString = "Data Source=/data/FastGateway.db";
+    }
+
+    // 获取目录是否存在
+    var directory = Path.GetDirectoryName(connectionString);
+    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+    {
+        Directory.CreateDirectory(directory);
+    }
+
+    options.UseSqlite(connectionString);
 });
 
 builder.Services
@@ -44,13 +53,27 @@ builder.Services
 
 var app = builder.Build();
 
+#region 数据库迁移
+
+using var scope = app.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
+Console.WriteLine("数据库迁移中...");
+await db.Database.MigrateAsync();
+
+Console.WriteLine("数据库迁移完成");
+
+await ApiServiceService.LoadServices(db);
+
+await CertService.LoadCerts(db);
+
+#endregion
+
 app.UseResponseCompression();
 
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 
 #region Authorize
 
@@ -150,13 +173,5 @@ statisticService.MapGet("/TotalRequestCount",
 FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>());
 
 app.UseStaticFiles();
-
-using var scope = app.Services.CreateScope();
-var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
-await db.Database.MigrateAsync();
-
-await ApiServiceService.LoadServices(db);
-
-await CertService.LoadCerts(db);
 
 await app.RunAsync();

@@ -1,6 +1,9 @@
 ﻿namespace FastGateway.Domain;
 
-public class Cert
+/// <summary>
+/// 证书管理
+/// </summary>
+public sealed class Cert
 {
     public string Id { get; set; }
 
@@ -42,22 +45,22 @@ public class Cert
     public DateTime? NotAfter { get; set; }
 
     public List<CertData> Certs { get; set; } = new();
-    
+
     public void AddCert(CertData certData)
     {
         Certs.Add(certData);
     }
-    
+
     public CertData GetCert(string domain)
     {
         return Certs.FirstOrDefault(x => x.Domain == domain);
     }
-    
+
     public void RemoveCert(string domain)
     {
         Certs.RemoveAll(x => x.Domain == domain);
     }
-    
+
     public void ClearCerts()
     {
         Certs.Clear();

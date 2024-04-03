@@ -1,6 +1,6 @@
 ﻿namespace FastGateway.Core;
 
-public enum LoadType
+public enum LoadType: byte
 {
     IpHash = 1,
     

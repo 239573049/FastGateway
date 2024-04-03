@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway", "src\FastGate
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway.Core", "src\FastGateway.Core\FastGateway.Core.csproj", "{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common", "common", "{C8495474-1C78-4A80-A429-9C0F6D0FFF87}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

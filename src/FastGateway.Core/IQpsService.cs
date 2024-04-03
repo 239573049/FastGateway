@@ -2,13 +2,11 @@
 
 public interface IQpsService
 {
-    void AddServiceQps(string serviceId);
-    
-    void IncrementServiceRequests(string serviceId);
+    void IncrementServiceRequests();
 
-    void CalculateServiceQps(object? state);
+    void CalculateServiceQps();
 
-    int GetServiceQps(string? serviceId);
+    int GetServiceQps();
     
     /// <summary>
     /// 启用或禁用QPS统计

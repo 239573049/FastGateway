@@ -1,5 +1,8 @@
 ﻿namespace FastGateway.Domain;
 
+/// <summary>
+/// 服务节点管理
+/// </summary>
 public class Location
 {
     public string Id { get; set; }

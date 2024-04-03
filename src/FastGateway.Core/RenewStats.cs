@@ -1,10 +1,10 @@
 ﻿namespace FastGateway.Core;
 
-public enum RenewStats
+public enum RenewStats : byte
 {
     None,
-    
+
     Success,
-    
+
     Fail,
 }

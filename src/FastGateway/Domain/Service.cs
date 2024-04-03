@@ -1,5 +1,8 @@
 ﻿namespace FastGateway.Domain;
 
+/// <summary>
+/// 服务管理
+/// </summary>
 public class Service
 {
     public string Id { get; set; }

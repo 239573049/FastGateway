@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.StaticFiles;
-
-namespace FastGateway;
+﻿namespace FastGateway;
 
 public sealed class DefaultContentTypeProvider : FileExtensionContentTypeProvider
 {

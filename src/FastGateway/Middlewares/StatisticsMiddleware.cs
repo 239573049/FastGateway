@@ -1,6 +1,4 @@
-﻿using FastGateway.BackgroundServices;
-
-namespace FastGateway.Middlewares;
+﻿namespace FastGateway.Middlewares;
 
 public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMiddleware
 {
@@ -38,6 +36,6 @@ public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMidd
                 break;
         }
 
-        FastContext.QpsService.IncrementServiceRequests(currentContext.ServiceId);
+        FastContext.QpsService.IncrementServiceRequests();
     }
 }

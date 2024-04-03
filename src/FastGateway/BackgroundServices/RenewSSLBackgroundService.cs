@@ -1,6 +1,9 @@
-﻿namespace FastGateway.BackgroundServices;
+﻿using Microsoft.Extensions.Caching.Memory;
 
-public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider) : BackgroundService
+namespace FastGateway.BackgroundServices;
+
+public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider, IMemoryCache memoryCache)
+    : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -24,7 +27,7 @@ public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider) 
                     var context = await CertService.RegisterWithLetsEncrypt(certItem.Email);
 
                     // 申请证书
-                    await CertService.ApplyForCert(context, certItem);
+                    await CertService.ApplyForCert(memoryCache, context, certItem);
 
                     // 保存证书信息
                     masterDbContext.Certs.Update(certItem);
@@ -50,8 +53,8 @@ public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider) 
                 }
             }
 
-            // 等待一天
-            await Task.Delay(1000 * 60 * 60 * 24, stoppingToken);
+            // 等待12小时
+            await Task.Delay(1000 * 60 * 60 * 12, stoppingToken);
         }
     }
 }
