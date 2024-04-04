@@ -390,7 +390,7 @@ public static class ApiServiceService
             {
                 ServiceId = service.Id,
             }).AddSingleton<StatisticsMiddleware>();
-
+            
             builder.Services.AddReverseProxy()
                 .LoadFromMemory(routes, clusters)
                 // 删除所有代理的前缀
@@ -453,7 +453,6 @@ public static class ApiServiceService
 
             // 用于HTTPS证书签名校验
             app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
-            app.MapPost("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
 
             foreach (var location in service.Locations.Where(x => x.Type == ApiServiceType.StaticProxy))
             {

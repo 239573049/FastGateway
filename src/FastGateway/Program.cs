@@ -213,7 +213,8 @@ protectionService.MapPost("/BlacklistAndWhitelist/Enable/{id}",
 
 #endregion
 
-FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>());
+FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>(),
+    app.Services.GetRequiredService<IMemoryCache>());
 
 app.UseStaticFiles();
 

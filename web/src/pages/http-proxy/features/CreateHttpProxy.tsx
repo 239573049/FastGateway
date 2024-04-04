@@ -1,4 +1,4 @@
-import {  Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
+import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, ServiceInput } from "../../../module";
 import { CheckDirecotryExistence, CreateApiService } from "../../../services/ApiServiceService";
 
@@ -109,7 +109,7 @@ export default function CreateHttpProxy({
                                         onChange={(v: any) => {
                                             values.isHttps = v;
                                             formApi.setValues(values);
-                                        
+
                                         }}
                                         label="SSL"
                                         style={{
@@ -212,6 +212,27 @@ export default function CreateHttpProxy({
                                     ></Checkbox>
                                 </Col>
                             </Row>
+                            {
+                                values.isHttps && (
+                                    <Row>
+                                        <Col span={12}>
+                                            <Checkbox
+                                                field="enableHttp3"
+                                                label="启用HTTP3"
+                                                initValue={false}
+                                                onChange={(v: any) => {
+                                                    values.enableHttp3 = v;
+                                                    formApi.setValues(values);
+                                                }}
+                                                style={{
+                                                    marginTop: '5px',
+                                                    marginLeft: '10px',
+                                                }}
+                                            ></Checkbox>
+                                        </Col>
+                                    </Row>
+                                )
+                            }
                             <Divider></Divider>
                             <div style={{
                                 display: 'flex',

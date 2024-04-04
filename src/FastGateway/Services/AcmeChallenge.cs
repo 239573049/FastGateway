@@ -2,9 +2,9 @@
 
 public static class AcmeChallenge
 {
-    public static async Task Challenge(HttpContext context, [FromServices]IMemoryCache cache, string token)
+    public static async Task Challenge(HttpContext context, string token)
     {
-        if (cache.TryGetValue(token, out var value))
+        if (FastContext.MemoryCache.TryGetValue(token, out var value))
         {
             context.Response.ContentType = "text/plain";
 
