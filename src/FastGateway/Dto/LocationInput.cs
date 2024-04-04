@@ -10,6 +10,11 @@ public class LocationInput
     public string ServiceId { get; set; }
 
     /// <summary>
+    /// 多个服务名称
+    /// </summary>
+    public string[] ServiceNames { get; set; }
+    
+    /// <summary>
     /// 路由
     /// </summary>
     public string Path { get; set; }

@@ -1,6 +1,6 @@
 import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, Service, ServiceInput } from "../../../module";
-import { CheckDirecotryExistence,  UpdateApiService } from "../../../services/ApiServiceService";
+import { CheckDirecotryExistence, UpdateApiService } from "../../../services/ApiServiceService";
 
 interface IUpdateHttpProxyProps {
     visible: boolean;
@@ -56,26 +56,6 @@ export default function UpdateHttpProxy({
                 {
                     ({ values, formApi }: IFormValues) => (
                         <>
-
-                            <Select
-                                field="serviceNames"
-                                label="域名"
-                                rules={[{
-                                    required: true,
-                                    message: '域名不能为空',
-                                }]}
-                                style={{
-                                    width: '100%',
-                                    borderRadius: '8px',
-                                    padding: '3px',
-                                    border: '1px solid var(--semi-color-border)',
-                                    fontSize: '14px',
-                                }}
-                                allowCreate={true}
-                                multiple={true}
-                                filter={true}
-                                defaultActiveFirstOption
-                            ></Select>
                             <Row>
                                 <Col span={20}>
                                     <Input
@@ -243,6 +223,7 @@ export default function UpdateHttpProxy({
                             }} onClick={() => {
                                 values.locations = values.locations || [];
                                 values.locations.push({
+                                    serviceNames: [],
                                     path: '',
                                     loadType: LoadType.IpHash,
                                     addHeader: {},
@@ -262,6 +243,26 @@ export default function UpdateHttpProxy({
                                             padding: '10px',
                                             marginTop: '10px',
                                         }}>
+                                            <Select
+                                                field="locations.serviceNames"
+                                                initValue={arrayField.serviceNames}
+                                                label="域名"
+                                                rules={[{
+                                                    required: true,
+                                                    message: '域名不能为空',
+                                                }]}
+                                                style={{
+                                                    width: '100%',
+                                                    borderRadius: '8px',
+                                                    padding: '3px',
+                                                    border: '1px solid var(--semi-color-border)',
+                                                    fontSize: '14px',
+                                                }}
+                                                allowCreate={true}
+                                                multiple={true}
+                                                filter={true}
+                                                defaultActiveFirstOption
+                                            ></Select>
                                             {/* 关闭按钮 */}
                                             <div style={{
                                                 display: 'flex',

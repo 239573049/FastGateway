@@ -9,28 +9,11 @@ export default function HttpProxy() {
 
     const columns = [
         {
-            title: '域名',
-            dataIndex: 'serviceNames',
-            key: 'serviceNames',
-            render: (text: string[]) => {
-                return <a>
-                    {text.map((item, index) => {
-                        return <span key={index}>{item}</span>
-                    })}
-                </a>
-            },
-        },
-        {
             title: '端口',
             dataIndex: 'listen',
             key: 'listen',
-            render: (text: string, item: any) => {
-                const serviceName = item.serviceNames[0];
-                const protocol = item.isHttps ? 'https' : 'http';
-                return <span onClick={() => {
-                    // 打开新的页面
-                    window.open(`${protocol}://${serviceName}:${text}`);
-                }} style={{
+            render: (text: string) => {
+                return <span style={{
                     fontWeight: '600',
                     color: 'var(--semi-color-primary)',
                     cursor: 'pointer',

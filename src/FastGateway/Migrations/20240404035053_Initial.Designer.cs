@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FastGateway.Migrations
 {
     [DbContext(typeof(MasterDbContext))]
-    [Migration("20240403193258_Initial")]
+    [Migration("20240404035053_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -115,6 +115,10 @@ namespace FastGateway.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ServiceNames")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("TryFiles")
                         .HasColumnType("TEXT");
 
@@ -163,10 +167,6 @@ namespace FastGateway.Migrations
 
                     b.Property<ushort>("Listen")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("ServiceNames")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("SslCertificate")
                         .HasColumnType("TEXT");

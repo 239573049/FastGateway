@@ -53,7 +53,6 @@ namespace FastGateway.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
-                    ServiceNames = table.Column<string>(type: "TEXT", nullable: false),
                     Listen = table.Column<ushort>(type: "INTEGER", nullable: false),
                     EnableHttp3 = table.Column<bool>(type: "INTEGER", nullable: false),
                     IsHttps = table.Column<bool>(type: "INTEGER", nullable: false),
@@ -95,6 +94,7 @@ namespace FastGateway.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
+                    ServiceNames = table.Column<string>(type: "TEXT", nullable: false),
                     Path = table.Column<string>(type: "TEXT", nullable: false),
                     ServiceId = table.Column<string>(type: "TEXT", nullable: false),
                     ProxyPass = table.Column<string>(type: "TEXT", nullable: true),

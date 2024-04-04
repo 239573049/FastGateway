@@ -48,7 +48,6 @@ public static class ApiServiceService
             EnableBlacklist = input.EnableBlacklist,
             IsHttps = input.IsHttps,
             Listen = input.Listen,
-            ServiceNames = input.ServiceNames,
             SslCertificate = input.SslCertificate,
             SslCertificatePassword = input.SslCertificatePassword,
             Locations = input.Locations.Select(x => new Location()
@@ -57,6 +56,7 @@ public static class ApiServiceService
                 ServiceId = serviceId,
                 Id = Guid.NewGuid().ToString("N"),
                 Path = x.Path,
+                ServiceNames = x.ServiceNames,
                 ProxyPass = x.ProxyPass,
                 Root = x.Root,
                 Type = x.Type,
@@ -80,28 +80,32 @@ public static class ApiServiceService
     [Authorize]
     public static async Task UpdateAsync(string id, ServiceInput input, MasterDbContext masterDbContext)
     {
-        var service = await masterDbContext.Services.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id);
-
-        if (service == null)
-        {
-            throw new Exception("Service not found");
-        }
-
-        service.ServiceNames = input.ServiceNames;
-        service.Listen = input.Listen;
-        service.IsHttps = input.IsHttps;
-        service.EnableBlacklist = input.EnableBlacklist;
-        service.EnableWhitelist = input.EnableWhitelist;
-        service.EnableHttp3 = input.EnableHttp3;
-        service.Locations = input.Locations.Select(x => new Location()
+        masterDbContext.Services.Where(x => x.Id == id)
+            .ExecuteUpdateAsync(item =>
+                item.SetProperty(x => x.Listen, input.Listen)
+                    .SetProperty(x => x.IsHttps, input.IsHttps)
+                    .SetProperty(x => x.EnableBlacklist, input.EnableBlacklist)
+                    .SetProperty(x => x.EnableWhitelist, input.EnableWhitelist)
+                    .SetProperty(x => x.EnableHttp3, input.EnableHttp3)
+                    .SetProperty(x => x.Enable, input.Enable)
+                    .SetProperty(x => x.EnableTunnel, input.EnableTunnel)
+                    .SetProperty(x => x.SslCertificate, input.SslCertificate)
+                    .SetProperty(x => x.SslCertificatePassword, input.SslCertificatePassword)
+                    .SetProperty(x => x.EnableFlowMonitoring, input.EnableFlowMonitoring));
+        
+        
+        await masterDbContext.Locations.Where(x => x.ServiceId == id)
+            .ExecuteDeleteAsync();
+        
+        masterDbContext.Locations.AddRange(input.Locations.Select(x => new Location()
         {
             AddHeader = x.AddHeader,
-            Id = x.Id,
+            ServiceNames = x.ServiceNames,
+            Id = Guid.NewGuid().ToString("N"),
             Path = x.Path,
             ProxyPass = x.ProxyPass,
             Root = x.Root,
-            ServiceId = x.ServiceId,
+            ServiceId = id,
             Type = x.Type,
             TryFiles = x.TryFiles,
             UpStreams = x.UpStreams.Select(x => new UpStream()
@@ -110,15 +114,8 @@ public static class ApiServiceService
                 Weight = x.Weight
             }).ToList(),
             LoadType = x.LoadType,
-        }).ToList();
-        service.Enable = input.Enable;
-        service.EnableTunnel = input.EnableTunnel;
-        service.SslCertificate = input.SslCertificate;
-        service.SslCertificatePassword = input.SslCertificatePassword;
-        service.EnableFlowMonitoring = input.EnableFlowMonitoring;
-
-        masterDbContext.Update(service);
-
+        }));
+        
         await masterDbContext.SaveChangesAsync();
     }
 
@@ -214,20 +211,6 @@ public static class ApiServiceService
         var total = await masterDbContext.Services.CountAsync();
 
         return ResultDto<PageResultDto<Service>>.SuccessResult(new PageResultDto<Service>(result, total));
-    }
-
-    [Authorize]
-    public static async Task<ResultDto<List<ServiceSelectDto>>> GetSelectListAsync(MasterDbContext masterDbContext)
-    {
-        var result = await masterDbContext.Services
-            .AsNoTracking()
-            .Select(x => new ServiceSelectDto()
-            {
-                Value = x.Id,
-                Label = x.ServiceNames.First()
-            })
-            .ToListAsync();
-        return ResultDto<List<ServiceSelectDto>>.SuccessResult(result);
     }
 
     [Authorize]
@@ -344,7 +327,7 @@ public static class ApiServiceService
                     Match = new RouteMatch()
                     {
                         Path = location.Path.TrimEnd('/') + "/{**catch-all}",
-                        Hosts = service.ServiceNames
+                        Hosts = location.ServiceNames
                     }
                 };
                 routes.Add(route);

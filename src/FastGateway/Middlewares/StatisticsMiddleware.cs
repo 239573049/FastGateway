@@ -53,20 +53,11 @@ public sealed class StatisticsMiddleware(ICurrentContext currentContext) : IMidd
             ip = context.Request.Headers["X-Forwarded-For"];
         }
 
-        var ips = new string[]
-        {
-            "121.35.0.122",
-            "117.147.0.196",
-            "146.19.24.28",
-            "203.135.98.155",
-            "129.153.125.162"
-        };
-
         StatisticsBackgroundService.Write(new StatisticIpDto()
         {
             CreatedTime = DateTime.Now,
             // 如果是本地测试，就随机一个IP
-            Ip = ips[new Random().Next(0, ips.Length)],
+            Ip = ip,
             ServiceId = currentContext.ServiceId,
         });
     }

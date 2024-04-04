@@ -120,9 +120,6 @@ apiService.MapPut(string.Empty,
 apiService.MapDelete(string.Empty,
     ApiServiceService.DeleteAsync);
 
-apiService.MapGet("/SelectList",
-    ApiServiceService.GetSelectListAsync);
-
 apiService.MapPost("/StartService",
     ApiServiceService.StartServiceAsync);
 

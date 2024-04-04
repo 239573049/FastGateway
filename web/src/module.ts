@@ -4,7 +4,6 @@ export interface AuthorizeInput {
 
 export interface ServiceInput {
     id?: string;
-    serviceNames: string[];
     listen: number;
     enableHttp3: boolean;
     isHttps: boolean;
@@ -24,6 +23,7 @@ export interface LocationInput {
     serviceId?: string;
     path: string;
     proxyPass?: string | null;
+    serviceNames: string[];
     addHeader: { [key: string]: string; };
     root?: string | null;
     tryFiles?: string[] | null;

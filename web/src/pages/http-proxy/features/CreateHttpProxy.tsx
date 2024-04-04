@@ -53,27 +53,6 @@ export default function CreateHttpProxy({
                 {
                     ({ values, formApi }: IFormValues) => (
                         <>
-
-                            <Select
-                                field="serviceNames"
-                                label="域名"
-                                rules={[{
-                                    required: true,
-                                    message: '域名不能为空',
-                                }]}
-                                style={{
-                                    width: '100%',
-                                    borderRadius: '8px',
-                                    padding: '3px',
-                                    border: '1px solid var(--semi-color-border)',
-                                    fontSize: '14px',
-                                }}
-                                allowCreate={true}
-                                multiple={true}
-                                filter={true}
-                                onChange={v => console.log(v)}
-                                defaultActiveFirstOption
-                            ></Select>
                             <Row>
                                 <Col span={20}>
                                     <Input
@@ -109,7 +88,6 @@ export default function CreateHttpProxy({
                                         onChange={(v: any) => {
                                             values.isHttps = v;
                                             formApi.setValues(values);
-
                                         }}
                                         label="SSL"
                                         style={{
@@ -242,6 +220,7 @@ export default function CreateHttpProxy({
                                 values.locations = values.locations || [];
                                 values.locations.push({
                                     path: '',
+                                    serviceNames: [],
                                     loadType: LoadType.IpHash,
                                     addHeader: {},
                                     type: 1,
@@ -259,6 +238,32 @@ export default function CreateHttpProxy({
                                             padding: '10px',
                                             marginTop: '10px',
                                         }}>
+
+                                            <Select
+                                                field="serviceNames"
+                                                label="域名"
+                                                rules={[{
+                                                    required: true,
+                                                    message: '域名不能为空',
+                                                }]}
+                                                onChange={(v: any) => {
+                                                    console.log(v);
+                                                    
+                                                    arrayField.serviceNames = v;
+                                                    formApi.setValues(values);
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    borderRadius: '8px',
+                                                    padding: '3px',
+                                                    border: '1px solid var(--semi-color-border)',
+                                                    fontSize: '14px',
+                                                }}
+                                                allowCreate={true}
+                                                multiple={true}
+                                                filter={true}
+                                                defaultActiveFirstOption
+                                            ></Select>
                                             {/* 关闭按钮 */}
                                             <div style={{
                                                 display: 'flex',
@@ -282,6 +287,10 @@ export default function CreateHttpProxy({
                                                 label="路由绑定"
                                                 initValue={arrayField.path}
                                                 defaultValue={arrayField.path}
+                                                rules={[{
+                                                    required: true,
+                                                    message: '端口不能为空',
+                                                }]}
                                                 onChange={(v: any) => {
                                                     arrayField.path = v;
                                                     formApi.setValues(values);

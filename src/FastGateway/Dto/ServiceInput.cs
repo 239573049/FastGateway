@@ -4,10 +4,6 @@ public class ServiceInput
 {
     public string? Id { get; set; }
     
-    /// <summary>
-    /// 多个服务名称
-    /// </summary>
-    public string[] ServiceNames { get; set; }
 
     /// <summary>
     /// 服务端口

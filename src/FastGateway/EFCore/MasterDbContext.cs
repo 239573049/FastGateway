@@ -36,10 +36,6 @@ public class MasterDbContext : DbContext
 
             options.HasKey(x => x.Id);
 
-            options.Property(x => x.ServiceNames).HasConversion(
-                v => string.Join(';', v),
-                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries)
-            );
         });
 
         modelBuilder.Entity<Location>(options =>
@@ -55,6 +51,11 @@ public class MasterDbContext : DbContext
                 v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, JsonSerializerOptions)
             );
 
+            options.Property(x => x.ServiceNames).HasConversion(
+                v => string.Join(';', v),
+                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            );
+            
             options.Property(x => x.TryFiles).HasConversion(
                 v => string.Join(';', v),
                 v => v.Split(';', StringSplitOptions.RemoveEmptyEntries)
