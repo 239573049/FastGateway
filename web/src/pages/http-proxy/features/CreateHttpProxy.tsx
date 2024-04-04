@@ -21,6 +21,7 @@ export default function CreateHttpProxy({
     onClose,
     onOk,
 }: ICreateHttpProxyProps) {
+    
     return (
         <Modal
             title="新建HTTP代理"
@@ -164,7 +165,8 @@ export default function CreateHttpProxy({
                                     <Checkbox
                                         field="enableBlacklist"
                                         label={"黑名单：" + (values.enableBlacklist ? '启用' : '停用')}
-                                        initValue={false}
+                                        initValue={values.enableBlacklist}
+                                        defaultChecked={values.enableBlacklist}
                                         onChange={(v: any) => {
                                             values.enableBlacklist = v;
                                             formApi.setValues(values);
@@ -182,6 +184,8 @@ export default function CreateHttpProxy({
                                             values.enableWhitelist = v;
                                             formApi.setValues(values);
                                         }}
+                                        initValue={values.enableWhitelist}
+                                        defaultChecked={values.enableWhitelist}
                                         label={"白名单：" + (values.enableWhitelist ? '启用' : '停用')}
                                         style={{
                                             marginTop: '5px',
@@ -247,8 +251,6 @@ export default function CreateHttpProxy({
                                                     message: '域名不能为空',
                                                 }]}
                                                 onChange={(v: any) => {
-                                                    console.log(v);
-                                                    
                                                     arrayField.serviceNames = v;
                                                     formApi.setValues(values);
                                                 }}

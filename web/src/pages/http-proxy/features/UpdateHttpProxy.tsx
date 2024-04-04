@@ -136,7 +136,7 @@ export default function UpdateHttpProxy({
                                     <Checkbox
                                         field="enableBlacklist"
                                         label={"黑名单：" + (values.enableBlacklist ? '启用' : '停用')}
-                                        initValue={false}
+                                        initValue={values.enableBlacklist}
                                         onChange={(v: any) => {
                                             values.enableBlacklist = v;
                                             formApi.setValues(values);

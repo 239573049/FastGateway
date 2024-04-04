@@ -119,6 +119,9 @@ public static class ProtectionService
 
         await masterDbContext.SaveChangesAsync();
 
+        // 重新加载黑白名单
+        await LoadBlacklistAndWhitelistAsync(masterDbContext);
+        
         return ResultDto.SuccessResult();
     }
 
@@ -207,6 +210,8 @@ public static class ProtectionService
                     .SetProperty(i => i.Enable, blacklist.Enable)
                     .SetProperty(i => i.Type, blacklist.Type));
 
+        // 重新加载黑白名单
+        await LoadBlacklistAndWhitelistAsync(masterDbContext);
 
         return ResultDto.SuccessResult();
     }
@@ -217,6 +222,9 @@ public static class ProtectionService
             .ExecuteDeleteAsync();
 
         await masterDbContext.SaveChangesAsync();
+        
+        // 重新加载黑白名单
+        await LoadBlacklistAndWhitelistAsync(masterDbContext);
     }
 
     public static async Task<ResultDto<PageResultDto<BlacklistAndWhitelist>>> GetBlacklistListAsync(
@@ -240,5 +248,8 @@ public static class ProtectionService
         await masterDbContext.BlacklistAndWhitelists.Where(x => x.Id == id)
             .ExecuteUpdateAsync(x =>
                 x.SetProperty(i => i.Enable, enable));
+        
+        // 重新加载黑白名单
+        await LoadBlacklistAndWhitelistAsync(masterDbContext);
     }
 }
