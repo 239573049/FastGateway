@@ -78,7 +78,70 @@ services:
       - ./data:/data/
 ```
 
+## Linux使用`systemd`启动服务
 
+下载Linux压缩包，然后解压程序，使用nano创建`fastgateway.service`
+
+```shell
+nano /etc/systemd/system/fastgateway.service
+```
+
+填写以下内容的时候记得替换配置
+
+```tex
+[Unit]
+Description=FastGateway
+
+[Service]
+WorkingDirectory=你解压的目录
+ExecStart=/usr/bin/dotnet 你解压的目录/FastGateway.dll
+Restart=always
+# Restart service after 10 seconds if the dotnet service crashes:
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=dotnet-fastgateway
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+
+[Install]
+WantedBy=multi-user.target
+```
+
+接下来，重新加载 systemd 以使新的服务单元文件生效：
+
+```shell
+systemctl daemon-reload
+```
+
+现在你可以启动服务了：
+
+```shell
+systemctl start fastgateway.service
+```
+
+要使服务在系统启动时自动启动，请启用它：
+
+```shell
+systemctl enable fastgateway.service
+```
+
+你可以使用下命令检查服务的状态：
+
+```shell
+systemctl status fastgateway.service
+```
+
+如果你需要停止服务，可以使用：
+
+```shell
+systemctl stop fastgateway.service
+```
+
+如果你对服务做了更改并需要重新加载配置，可以重新启动服务：
+
+```shell
+systemctl restart fastgateway.service
+```
 
 ## 第三方下载
 
