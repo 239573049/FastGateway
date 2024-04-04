@@ -74,6 +74,23 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.Use(async (context, next) =>
+{
+    // 如果是/则重定向到index.html
+    if (context.Request.Path == "/")
+    {
+        context.Request.Path = "/index.html";
+    }
+
+    await next(context);
+
+    if (context.Response.StatusCode == 404)
+    {
+        context.Request.Path = "/index.html";
+        await next(context);
+    }
+});
+
 #region Authorize
 
 var authorizeService = app.MapGroup("/api/v1/Authorize");
@@ -142,6 +159,9 @@ certService.MapPut(string.Empty,
 
 certService.MapDelete(string.Empty,
     CertService.DeleteAsync);
+
+certService.MapPost("/Apply",
+    CertService.ApplyAsync);
 
 #endregion
 

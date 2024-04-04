@@ -90,13 +90,14 @@ public static class CertService
     /// 申请证书
     /// </summary>
     [Authorize]
-    public static async Task ApplyAsync(IMemoryCache memoryCache, MasterDbContext masterDbContext, string id)
+    public static async Task<ResultDto> ApplyAsync([FromServices] IMemoryCache memoryCache,
+        [FromServices] MasterDbContext masterDbContext, string id)
     {
         var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
 
         if (cert == null)
         {
-            throw new Exception("证书不存在");
+            return ResultDto.ErrorResult("证书不存在");
         }
 
         var context = await RegisterWithLetsEncrypt(cert.Email);
@@ -109,6 +110,8 @@ public static class CertService
         masterDbContext.Certs.Update(cert);
 
         await masterDbContext.SaveChangesAsync();
+        
+        return ResultDto.SuccessResult();
     }
 
 
