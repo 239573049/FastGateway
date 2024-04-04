@@ -52,6 +52,7 @@ services:
       - 443:443 # Https代理端口
     volumes:
       - ./data:/data/
+      - ./certs:/app/certs/
 ```
 
 如果并没有提供密码则默认
@@ -76,6 +77,7 @@ services:
       - 443:443/tcp # Https代理端口 Http3需要开启UDP和TCP，请注意防火墙设置是否允许
     volumes:
       - ./data:/data/
+      - ./certs:/app/certs/
 ```
 
 ## Linux使用`systemd`启动服务
