@@ -281,7 +281,7 @@ public static class ApiServiceService
         {
             var service = (Service)state;
 
-            var builder = WebApplication.CreateBuilder([]);
+            var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
 
             IContentTypeProvider defaultContentTypeProvider = new DefaultContentTypeProvider();
 

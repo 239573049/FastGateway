@@ -1,4 +1,7 @@
-﻿namespace FastGateway.Core;
+﻿using System.Net;
+using System.Runtime.Serialization.DataContracts;
+
+namespace FastGateway.Core;
 
 public class IpHelper
 {
@@ -74,7 +77,6 @@ public class IpHelper
 
             return true;
         }
-
     }
 
     /// <summary>
@@ -144,4 +146,5 @@ public class IpHelper
 
         return false;
     }
+
 }

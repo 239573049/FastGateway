@@ -2,7 +2,10 @@ using IP2Region.Net.Abstractions;
 using IP2Region.Net.XDB;
 using Directory = System.IO.Directory;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions()
+{
+    Args = args,
+});
 
 builder.Services.AddEnvironmentVariable();
 

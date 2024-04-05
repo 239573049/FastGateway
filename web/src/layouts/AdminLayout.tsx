@@ -9,7 +9,7 @@ export default function AdminLayout() {
     const { Header, Footer, Sider, Content } = Layout;
     const [key, setKey] = useState('DataStatistics');
     const navigate = useNavigate();
-    const [theme, setTheme] = useState(body.hasAttribute('theme-mode') ? true : false);
+    const [theme, setTheme] = useState(!body.hasAttribute('theme-mode') ? true : false);
 
     function selectKey(key: string, path: string) {
         setKey(key);
