@@ -12,7 +12,6 @@ public sealed class CertDataHandler : TypeHandler<List<CertData>>
             {
                 return new();
             }
-
             return JsonSerializer.Deserialize<List<CertData>>(str);
         }
 

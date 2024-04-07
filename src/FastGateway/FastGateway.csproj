@@ -17,15 +17,13 @@
     <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.2.820" />
     <PackageReference Include="IP2Region.Net" Version="2.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.3" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.3" />
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
     <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FastGateway.Core\FastGateway.Core.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <None Update="gateway.pfx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

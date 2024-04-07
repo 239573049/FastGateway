@@ -1,8 +1,8 @@
 using FastGateway.TypeHelper;
+using FreeSql;
 using FreeSql.Internal;
 using IP2Region.Net.Abstractions;
 using IP2Region.Net.XDB;
-using GlobalFilter = FreeSql.Internal.GlobalFilter;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions()
 {
@@ -34,9 +34,11 @@ builder.Services.AddHostedService<StatisticsBackgroundService>();
 
 builder.Services.AddSingleton<IFreeSql>((_) =>
 {
-    var freeSql = new FreeSql.FreeSqlBuilder()
-        .UseConnectionString(FreeSql.DataType.Sqlite, builder.Configuration.GetConnectionString("Default"))
-        .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) //监听SQL语句
+    var freeSql = new FreeSqlBuilder()
+        .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("Default"))
+#if DEBUG
+        .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) 
+#endif
         .UseAutoSyncStructure(true)
         .Build();
 
@@ -250,5 +252,7 @@ FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>(),
     app.Services.GetRequiredService<IMemoryCache>());
 
 app.UseStaticFiles();
+
+// GC.Collect();
 
 await app.RunAsync();
