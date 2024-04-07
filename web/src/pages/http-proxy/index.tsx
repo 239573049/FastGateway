@@ -201,7 +201,7 @@ export default function HttpProxy() {
                 const result = e.target.result;
                 const data = yaml.load(result);
                 // 创建服务
-                CreateApiService(data).then(() => {
+                CreateApiService(data as any).then(() => {
                     LoadData();
                     Notification.success({
                         title: '导入成功'
