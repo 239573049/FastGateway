@@ -3,10 +3,12 @@
 /// <summary>
 /// 证书管理
 /// </summary>
+[Table(Name = "cert")]
 public sealed class Cert
 {
     public string Id { get; set; }
 
+    [Column(MapType = typeof(string), StringLength = -1)]
     public string[] Domains { get; set; }
 
     /// <summary>
@@ -44,6 +46,7 @@ public sealed class Cert
     /// </summary>
     public DateTime? NotAfter { get; set; }
 
+    [Column(MapType = typeof(string), StringLength = -1)]
     public List<CertData> Certs { get; set; } = new();
 
     public void AddCert(CertData certData)

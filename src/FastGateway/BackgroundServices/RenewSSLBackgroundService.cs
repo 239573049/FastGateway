@@ -11,12 +11,12 @@ public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider, 
 
         using var scope = serviceProvider.CreateScope();
 
-        var masterDbContext = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
+        var freeSql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var certs = await masterDbContext.Certs.Where(x => x.AutoRenew)
-                .ToListAsync(cancellationToken: stoppingToken);
+            var certs = await freeSql.Select<Cert>()
+                .ToListAsync(stoppingToken);
 
             // 如果证书过期或者快过期，就续期
             foreach (var certItem in certs.Where(x => x.NotAfter == null || x.NotAfter < DateTime.Now.AddDays(7)))
@@ -29,13 +29,16 @@ public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider, 
                     // 申请证书
                     await CertService.ApplyForCert(memoryCache, context, certItem);
 
-                    // 保存证书信息
-                    masterDbContext.Certs.Update(certItem);
-
-                    await masterDbContext.SaveChangesAsync(stoppingToken);
-
+                    await freeSql.Update<Cert>()
+                        .Set(x => x.RenewStats, certItem.RenewStats)
+                        .Set(x => x.RenewTime, certItem.RenewTime)
+                        .Set(x => x.NotAfter, certItem.NotAfter)
+                        .Set(x => x.Expired, certItem.Expired)
+                        .Where(x => x.Id == certItem.Id)
+                        .ExecuteAffrowsAsync(stoppingToken);
+                    
                     // 成功以后需要刷新证书列表
-                    await CertService.LoadCerts(masterDbContext);
+                    await CertService.LoadCerts(freeSql);
                 }
                 catch (Exception e)
                 {
@@ -44,10 +47,14 @@ public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider, 
                     certItem.NotAfter = DateTime.Now.AddDays(-1);
                     certItem.Expired = true;
                     certItem.ClearCerts();
-
-                    masterDbContext.Certs.Update(certItem);
-
-                    await masterDbContext.SaveChangesAsync(stoppingToken);
+                    
+                    await freeSql.Update<Cert>()
+                        .Set(x => x.RenewStats, certItem.RenewStats)
+                        .Set(x => x.RenewTime, certItem.RenewTime)
+                        .Set(x => x.NotAfter, certItem.NotAfter)
+                        .Set(x => x.Expired, certItem.Expired)
+                        .Where(x => x.Id == certItem.Id)
+                        .ExecuteAffrowsAsync(stoppingToken);
 
                     Console.WriteLine($"域名：{string.Join(';', certItem.Domains)} 证书续期失败：" + e.Message);
                 }

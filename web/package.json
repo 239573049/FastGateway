@@ -12,12 +12,14 @@
   "dependencies": {
     "@douyinfe/semi-ui": "^2.55.2",
     "echarts": "^5.5.0",
+    "js-yaml": "^4.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",
     "reset-css": "^5.0.2"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.2.0",

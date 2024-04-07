@@ -8,34 +8,41 @@ export interface ServiceInput {
     enableHttp3: boolean;
     isHttps: boolean;
     enableFlowMonitoring: boolean;
-    enableRequestSource: boolean;
     enable: boolean;
     enableTunnel: boolean;
     enableBlacklist: boolean;
     enableWhitelist: boolean;
     locations: LocationInput[];
-    sslCertificate: string | null;
-    sslCertificatePassword: string | null;
+}
+export interface LocationInput {
+    id?: string | null;
+    serviceId?: string;
+    serviceNames: string[];
+    locationService: LocationServiceDto[];
 }
 
-export interface LocationInput {
-    id?: string;
-    serviceId?: string;
-    path: string;
-    proxyPass?: string | null;
-    serviceNames: string[];
+export interface LocationServiceDto {
     addHeader: { [key: string]: string; };
-    root?: string | null;
-    tryFiles?: string[] | null;
+    root: string | null;
+    path: string;
+    proxyPass: string | null;
+    tryFiles: string[] | null;
+    type: ApiServiceType;
     loadType: LoadType;
-    upStreams?: UpStreamInput[];
-    type?: number;
+    upStreams: UpStreamInput[];
+}
+
+export enum ApiServiceType {
+    StaticProxy = 1,
+    SingleService = 2,
+    LoadBalance = 3
 }
 
 export interface UpStreamInput {
     server: string | null;
     weight: number;
 }
+
 
 export enum LoadType {
     IpHash = 1,

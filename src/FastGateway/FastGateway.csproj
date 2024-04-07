@@ -14,25 +14,16 @@
 
   <ItemGroup>
     <PackageReference Include="Certes" Version="3.0.4" />
+    <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.2.820" />
     <PackageReference Include="IP2Region.Net" Version="2.0.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.3">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.3">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.3" />
-    <PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.8" />
     <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FastGateway.Core\FastGateway.Core.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <None Update="gateway.pfx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

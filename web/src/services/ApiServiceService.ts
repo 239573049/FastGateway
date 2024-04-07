@@ -71,7 +71,7 @@ export function StartService(id: string) {
  */
 export function StopService(id: string) {
     return post('/api/v1/ApiService/StopService?id=' + id);
-}   
+}
 
 /**
  * 重启服务。
@@ -89,6 +89,10 @@ export function RestartService(id: string) {
  * @param id - The ID of the service.
  * @returns A Promise that resolves to the log.
  */
-export function GetSelectList(){
+export function GetSelectList() {
     return get('/api/v1/ApiService/SelectList')
+}
+
+export function RestartConfig(id: string) {
+    return post('/api/v1/ApiService/RestartConfig/' + id);
 }

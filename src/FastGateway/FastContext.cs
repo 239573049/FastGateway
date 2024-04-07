@@ -11,4 +11,5 @@ public static class FastContext
         QpsService = qpsService;
         MemoryCache = memoryCache;
     }
+    
 }

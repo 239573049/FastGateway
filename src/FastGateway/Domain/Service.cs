@@ -1,10 +1,14 @@
-﻿namespace FastGateway.Domain;
+﻿using FreeSql.DataAnnotations;
+
+namespace FastGateway.Domain;
 
 /// <summary>
 /// 服务管理
 /// </summary>
+[Table(Name = "service")]
 public class Service
 {
+    [Column(IsIdentity = true)]
     public string Id { get; set; }
 
     /// <summary>
@@ -55,15 +59,6 @@ public class Service
     /// <summary>
     /// 服务配置
     /// </summary>
+    [Navigate(nameof(Location.ServiceId))]
     public virtual List<Location> Locations { get; set; }
-
-    /// <summary>
-    /// 证书地址
-    /// </summary>
-    public string? SslCertificate { get; set; }
-
-    /// <summary>
-    /// 证书密码
-    /// </summary>
-    public string? SslCertificatePassword { get; set; }
 }

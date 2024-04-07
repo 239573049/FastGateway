@@ -1,7 +1,9 @@
 ﻿namespace FastGateway.Domain;
 
+[Table(Name = "statistic_request_count")]
 public sealed class StatisticRequestCount
 {
+    [Column(IsIdentity = true)]
     public long Id { get; set; }
     
     public string ServiceId { get; set; }
@@ -27,5 +29,6 @@ public sealed class StatisticRequestCount
     /// </summary>
     public byte Day { get; set; }
     
+    [Navigate(nameof(ServiceId))]
     public Service Service { get; set; }
 }
