@@ -1,6 +1,8 @@
+using FastGateway.TypeHelper;
+using FreeSql.Internal;
 using IP2Region.Net.Abstractions;
 using IP2Region.Net.XDB;
-using Directory = System.IO.Directory;
+using GlobalFilter = FreeSql.Internal.GlobalFilter;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions()
 {
@@ -30,23 +32,19 @@ builder.Services.AddSingleton<IQpsService, QpsService>();
 builder.Services.AddHostedService<RenewSslBackgroundService>();
 builder.Services.AddHostedService<StatisticsBackgroundService>();
 
+builder.Services.AddSingleton<IFreeSql>((_) =>
+{
+    var freeSql = new FreeSql.FreeSqlBuilder()
+        .UseConnectionString(FreeSql.DataType.Sqlite, builder.Configuration.GetConnectionString("Default"))
+        .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) //监听SQL语句
+        .UseAutoSyncStructure(true)
+        .Build();
+
+    return freeSql;
+});
+
 builder.Services.AddResponseCompression(options => { options.Providers.Add<BrotliCompressionProvider>(); });
 
-builder.Services.AddDbContext<MasterDbContext>(options =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("Default");
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        connectionString = "Data Source=/data/FastGateway.db";
-    }
-
-    if (!Directory.Exists("/data/"))
-    {
-        Directory.CreateDirectory("/data/");
-    }
-
-    options.UseSqlite(connectionString);
-});
 
 builder.Services
     .AddAuthorization()
@@ -57,16 +55,42 @@ var app = builder.Build();
 #region 数据库迁移
 
 using var scope = app.Services.CreateScope();
-var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
-Console.WriteLine("数据库迁移中...");
-await db.Database.MigrateAsync();
-Console.WriteLine("数据库迁移完成");
+var freeSql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
 
-await ProtectionService.LoadBlacklistAndWhitelistAsync(db);
+#region FreeSql类型转换
 
-await CertService.LoadCerts(db);
+Utils.TypeHandlers.TryAdd(typeof(Dictionary<string, string>),
+    new StringJsonHandler<Dictionary<string, string>>());
 
-await ApiServiceService.LoadServices(db);
+Utils.TypeHandlers.TryAdd(typeof(string[]),
+    new StringHandler());
+
+Utils.TypeHandlers.TryAdd(typeof(List<UpStream>),
+    new UpStreamHandler());
+
+Utils.TypeHandlers.TryAdd(typeof(List<CertData>),
+    new CertDataHandler());
+
+Utils.TypeHandlers.TryAdd(typeof(List<string>),
+    new StringJsonHandler<List<string>>());
+
+Utils.TypeHandlers.TryAdd(typeof(List<LocationService>),
+    new LocationServiceHandler());
+
+#endregion
+
+freeSql.CodeFirst.SyncStructure<Service>();
+freeSql.CodeFirst.SyncStructure<BlacklistAndWhitelist>();
+freeSql.CodeFirst.SyncStructure<Cert>();
+freeSql.CodeFirst.SyncStructure<StatisticRequestCount>();
+freeSql.CodeFirst.SyncStructure<StatisticIp>();
+freeSql.CodeFirst.SyncStructure<Location>();
+
+await ProtectionService.LoadBlacklistAndWhitelistAsync(freeSql);
+
+await CertService.LoadCerts(freeSql);
+
+await ApiServiceService.LoadServices(freeSql);
 
 #endregion
 
@@ -99,14 +123,16 @@ app.Use(async (context, next) =>
 var authorizeService = app.MapGroup("/api/v1/Authorize");
 
 authorizeService.MapPost(string.Empty,
-    AuthorizeService.CreateAsync);
+        AuthorizeService.CreateAsync)
+    .AddEndpointFilter<ExceptionFilter>();
 
 #endregion
 
 #region ApiService
 
 var apiService = app.MapGroup("/api/v1/ApiService")
-    .RequireAuthorization();
+    .RequireAuthorization()
+    .AddEndpointFilter<ExceptionFilter>();
 
 apiService.MapGet("/List",
     ApiServiceService.GetListAsync);
@@ -132,6 +158,9 @@ apiService.MapPost("/StopService",
 apiService.MapPost("/RestartService",
     ApiServiceService.RestartServiceAsync);
 
+apiService.MapPost("/RestartConfig/{id}",
+    ApiServiceService.RestartConfigAsync);
+
 apiService.MapPost("/ServiceStats",
     ApiServiceService.ServiceStats);
 
@@ -143,7 +172,8 @@ apiService.MapPost("/CheckDirectoryExistence",
 #region Cert
 
 var certService = app.MapGroup("/api/v1/Cert")
-    .RequireAuthorization();
+    .RequireAuthorization()
+    .AddEndpointFilter<ExceptionFilter>();
 
 certService.MapGet("/List",
     CertService.GetListAsync);
@@ -168,7 +198,8 @@ certService.MapPost("/Apply",
 #region Qps
 
 var apiQpsService = app.MapGroup("/api/v1/Qps")
-    .RequireAuthorization();
+    .RequireAuthorization()
+    .AddEndpointFilter<ExceptionFilter>();
 
 apiQpsService.MapGet(string.Empty,
     ApiQpsService.GetAsync);
@@ -178,7 +209,8 @@ apiQpsService.MapGet(string.Empty,
 #region Statistic
 
 var statisticService = app.MapGroup("/api/v1/Statistic")
-    .RequireAuthorization();
+    .RequireAuthorization()
+    .AddEndpointFilter<ExceptionFilter>();
 
 statisticService.MapGet("/DayRequestCount",
     StatisticRequestService.GetDayStatisticAsync);
@@ -194,7 +226,8 @@ statisticService.MapGet("/Location",
 #region Protection
 
 var protectionService = app.MapGroup("/api/v1/Protection")
-    .RequireAuthorization();
+    .RequireAuthorization()
+    .AddEndpointFilter<ExceptionFilter>();
 
 protectionService.MapPost("/BlacklistAndWhitelist",
     ProtectionService.CreateBlacklistAndWhitelistAsync);

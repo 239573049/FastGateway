@@ -5,17 +5,21 @@ public static class StatisticRequestService
     /// <summary>
     /// 获取今天的统计数据
     /// </summary>
-    public static async Task<ResultDto<StatisticRequestCountDto>> GetDayStatisticAsync(MasterDbContext masterDbContext,
+    public static async Task<ResultDto<StatisticRequestCountDto>> GetDayStatisticAsync(IFreeSql freeSql,
         string? serviceId)
     {
         var now = DateTime.Now;
         var today = new DateTime(now.Year, now.Month, now.Day);
+        
+        var year = today.Year;
+        var month = today.Month;
+        var day = today.Day;
 
-        var statistic = await masterDbContext.StatisticRequestCounts
-            .Where(x => (string.IsNullOrEmpty(serviceId) || x.ServiceId == serviceId) && x.Year == today.Year &&
-                        x.Month == today.Month &&
-                        x.Day == today.Day)
-            .FirstOrDefaultAsync();
+        var statistic = await freeSql.Select<StatisticRequestCount>()
+            .Where(x => (string.IsNullOrEmpty(serviceId) || x.ServiceId == serviceId) && x.Year == year &&
+                        x.Month == month &&
+                        x.Day == day)
+            .FirstAsync();
 
         var currentStatistic = StatisticsBackgroundService.GetCurrentRequestCount(serviceId);
 
@@ -38,10 +42,10 @@ public static class StatisticRequestService
     }
 
     public static async Task<ResultDto<StatisticRequestCountDto>> GetTotalStatisticAsync(
-        MasterDbContext masterDbContext,
+        IFreeSql freeSql,
         string? serviceId)
     {
-        var query = masterDbContext.StatisticRequestCounts.Where(x =>
+        var query = freeSql.Select<StatisticRequestCount>().Where(x =>
             string.IsNullOrEmpty(serviceId) || x.ServiceId == serviceId);
 
         var currentStatistic = StatisticsBackgroundService.GetCurrentRequestCount(serviceId);
@@ -54,32 +58,27 @@ public static class StatisticRequestService
 
         return ResultDto<StatisticRequestCountDto>.SuccessResult(new StatisticRequestCountDto
         {
-            RequestCount = requestCount + currentStatistic.RequestCount,
-            Error4xxCount = error4XxCount + currentStatistic.Error4xxCount,
-            Error5xxCount = error5XxCount + currentStatistic.Error5xxCount,
+            RequestCount = (int)(requestCount + currentStatistic.RequestCount),
+            Error4xxCount = (int)(error4XxCount + currentStatistic.Error4xxCount),
+            Error5xxCount = (int)(error5XxCount + currentStatistic.Error5xxCount),
         });
     }
 
-    public static async Task<List<StatisticLocationDto>> GetStatisticLocationAsync(MasterDbContext masterDbContext)
+    public static async Task<List<StatisticLocationDto>> GetStatisticLocationAsync(IFreeSql freeSql)
     {
-        var query = from ip in masterDbContext.StatisticIps
-            group ip by ip.Location
-            into g
-            orderby g.Sum(x => x.Count) descending
-            select new StatisticLocationDto
-            {
-                Location = g.Key,
-                Count = g.Sum(x => x.Count)
-            };
-
-
-        var result = await query
+        var result = await freeSql.Select<StatisticIp>()
+            .GroupBy(e => e.Location)
+            .OrderByDescending(e => e.Sum(e.Value.Count))
             .Take(10)
-            .ToListAsync();
+            .ToListAsync(e => new StatisticLocationDto
+            {
+                Location = e.Key,
+                Count = e.Sum(e.Value.Count)
+            });
 
         // 计算比例
         var total = result.Sum(x => x.Count);
-        result.ForEach(x => x.Ratio = Math.Round(((double)x.Count / total) * 100, 2));
+        result.ForEach(x => x.Ratio = Math.Round((x.Count / total) * 100, 2));
 
         return result;
     }

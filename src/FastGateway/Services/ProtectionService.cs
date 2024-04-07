@@ -4,10 +4,10 @@ public static class ProtectionService
 {
     private static List<BlacklistAndWhitelist> _blacklistAndWhitelists = new(1);
 
-    public static async Task LoadBlacklistAndWhitelistAsync(MasterDbContext masterDbContext)
+    public static async Task LoadBlacklistAndWhitelistAsync(IFreeSql masterDbContext)
     {
         _blacklistAndWhitelists = await masterDbContext
-            .BlacklistAndWhitelists
+            .Select<BlacklistAndWhitelist>()
             .Where(x => x.Enable)
             .ToListAsync();
     }
@@ -30,7 +30,7 @@ public static class ProtectionService
         });
     }
 
-    public static async Task<ResultDto> CreateBlacklistAndWhitelistAsync(MasterDbContext masterDbContext,
+    public static async Task<ResultDto> CreateBlacklistAndWhitelistAsync(IFreeSql freeSql,
         BlacklistAndWhitelist blacklist)
     {
         // 校验ips格式是否符合 ip范围 ip端 但个ip的格式
@@ -115,17 +115,17 @@ public static class ProtectionService
             Type = blacklist.Type
         };
 
-        await masterDbContext.BlacklistAndWhitelists.AddAsync(blacklistEntity);
-
-        await masterDbContext.SaveChangesAsync();
-
+        await freeSql.Insert<BlacklistAndWhitelist>()
+            .AppendData(blacklistEntity)
+            .ExecuteInsertedAsync();
+        
         // 重新加载黑白名单
-        await LoadBlacklistAndWhitelistAsync(masterDbContext);
+        await LoadBlacklistAndWhitelistAsync(freeSql);
         
         return ResultDto.SuccessResult();
     }
 
-    public static async Task<ResultDto> UpdateBlacklistAsync(MasterDbContext masterDbContext,
+    public static async Task<ResultDto> UpdateBlacklistAsync(IFreeSql freeSql,
         BlacklistAndWhitelist blacklist)
     {
         // 校验ips格式是否符合 ip范围 ip端 但个ip的格式
@@ -201,55 +201,55 @@ public static class ProtectionService
             }
         }
 
-        await masterDbContext.BlacklistAndWhitelists
-            .Where(x => x.Id == blacklist.Id)
-            .ExecuteUpdateAsync(x =>
-                x.SetProperty(i => i.Name, blacklist.Name)
-                    .SetProperty(i => i.Description, blacklist.Description)
-                    .SetProperty(i => i.Ips, blacklist.Ips)
-                    .SetProperty(i => i.Enable, blacklist.Enable)
-                    .SetProperty(i => i.Type, blacklist.Type));
-
+        await freeSql.Update<BlacklistAndWhitelist>()
+            .Set(x=>x.Name, blacklist.Name)
+            .Set(x=>x.Description, blacklist.Description)
+            .Set(x=>x.Ips, blacklist.Ips)
+            .Set(x=>x.Enable, blacklist.Enable)
+            .Set(x=>x.Type, blacklist.Type)
+            .ExecuteUpdatedAsync();
+        
         // 重新加载黑白名单
-        await LoadBlacklistAndWhitelistAsync(masterDbContext);
+        await LoadBlacklistAndWhitelistAsync(freeSql);
 
         return ResultDto.SuccessResult();
     }
 
-    public static async Task DeleteBlacklistAsync(MasterDbContext masterDbContext, long id)
+    public static async Task DeleteBlacklistAsync(IFreeSql freeSql, long id)
     {
-        await masterDbContext.BlacklistAndWhitelists.Where(x => x.Id == id)
-            .ExecuteDeleteAsync();
+        await freeSql.Delete<BlacklistAndWhitelist>()
+            .Where(x => x.Id == id)
+            .ExecuteAffrowsAsync();
 
-        await masterDbContext.SaveChangesAsync();
-        
         // 重新加载黑白名单
-        await LoadBlacklistAndWhitelistAsync(masterDbContext);
+        await LoadBlacklistAndWhitelistAsync(freeSql);
     }
 
     public static async Task<ResultDto<PageResultDto<BlacklistAndWhitelist>>> GetBlacklistListAsync(
-        MasterDbContext masterDbContext,
+        IFreeSql freeSql,
         int page, int pageSize)
     {
-        var items = await masterDbContext.BlacklistAndWhitelists
+        var items = await freeSql.
+            Select<BlacklistAndWhitelist>()
             .OrderBy(x => x.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        var total = await masterDbContext.BlacklistAndWhitelists.CountAsync();
+        var total = await freeSql.Select<BlacklistAndWhitelist>().CountAsync();
 
         return ResultDto<PageResultDto<BlacklistAndWhitelist>>.SuccessResult(
             new PageResultDto<BlacklistAndWhitelist>(items, total));
     }
 
-    public static async Task EnableBlacklistAndWhitelistAsync(MasterDbContext masterDbContext, long id, bool enable)
+    public static async Task EnableBlacklistAndWhitelistAsync(IFreeSql freeSql, long id, bool enable)
     {
-        await masterDbContext.BlacklistAndWhitelists.Where(x => x.Id == id)
-            .ExecuteUpdateAsync(x =>
-                x.SetProperty(i => i.Enable, enable));
+        await freeSql.Update<BlacklistAndWhitelist>()
+            .Where(x => x.Id == id)
+            .Set(x => x.Enable, enable)
+            .ExecuteAffrowsAsync();
         
         // 重新加载黑白名单
-        await LoadBlacklistAndWhitelistAsync(masterDbContext);
+        await LoadBlacklistAndWhitelistAsync(freeSql);
     }
 }

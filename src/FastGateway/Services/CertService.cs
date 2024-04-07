@@ -6,42 +6,43 @@ public static class CertService
 {
     public static Dictionary<string, CertData> Certs { get; private set; } = [];
 
-    public static async Task LoadCerts(MasterDbContext masterDbContext)
+    public static async Task LoadCerts(IFreeSql freeSql)
     {
-        var cert = (await masterDbContext.Certs
-            .Where(x => x.AutoRenew && x.Expired == false)
-            .Select(x => x.Certs)
-            .ToListAsync()).SelectMany(x => x);
+        var cert = (await freeSql.Select<Cert>()
+                .Where(x => x.AutoRenew && x.Expired == false)
+                .ToListAsync())
+            .SelectMany(x => x.Certs);
 
         Certs = cert.ToDictionary(x => x.Domain, x => x);
     }
 
     [Authorize]
     public static async Task<ResultDto<PageResultDto<Cert>>> GetListAsync(int page, int pageSize,
-        [FromServices] MasterDbContext masterDbContext)
+        [FromServices] IFreeSql freeSql)
     {
-        var query = masterDbContext.Certs.AsQueryable();
+        var total = await freeSql.Select<Cert>().CountAsync();
 
-        var total = await query.CountAsync();
-
-        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var items = await freeSql.Select<Cert>()
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .ToListAsync();
 
         return ResultDto<PageResultDto<Cert>>.SuccessResult(new PageResultDto<Cert>(items, total));
     }
 
     [Authorize]
-    public static async Task<Cert> GetAsync(MasterDbContext masterDbContext, string id)
+    public static async Task<Cert> GetAsync(IFreeSql freeSql, string id)
     {
-        var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
+        var cert = await freeSql.Select<Cert>().Where(x => x.Id == id)
+            .FirstAsync();
 
         return cert;
     }
 
     [Authorize]
-    public static async Task<ResultDto> CreateAsync(MasterDbContext masterDbContext, CertInput input)
+    public static async Task<ResultDto> CreateAsync(IFreeSql freeSql, CertInput input)
     {
-        // 判断是否存在相同的域名
-        var certs = await masterDbContext.Certs.ToListAsync();
+        var certs = await freeSql.Select<Cert>()
+            .ToListAsync();
 
         // 判断是否存在相同的域名
         if (certs.Any(c => c.Domains.Any(x => input.Domains.Contains(x))))
@@ -59,31 +60,32 @@ public static class CertService
             RenewStats = RenewStats.None,
         };
 
-        await masterDbContext.Certs.AddAsync(cert);
-
-        await masterDbContext.SaveChangesAsync();
+        await freeSql.Insert<Cert>(cert)
+            .ExecuteAffrowsAsync();
 
         return ResultDto.SuccessResult();
     }
 
     [Authorize]
-    public static async Task<Cert> UpdateAsync(MasterDbContext masterDbContext, Cert cert)
+    public static async Task<Cert> UpdateAsync(IFreeSql freeSql, Cert cert)
     {
-        masterDbContext.Certs.Update(cert);
-
-        await masterDbContext.SaveChangesAsync();
+        await freeSql.Update<Cert>()
+            .Where(x => x.Id == cert.Id)
+            .Set(x => x.AutoRenew, cert.AutoRenew)
+            .Set(x => x.Email, cert.Email)
+            .Set(x => x.Domains, cert.Domains)
+            .Set(x => x.Certs, cert.Certs)
+            .ExecuteAffrowsAsync();
 
         return cert;
     }
 
     [Authorize]
-    public static async Task DeleteAsync(MasterDbContext masterDbContext, string id)
+    public static async Task DeleteAsync(IFreeSql freeSql, string id)
     {
-        var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
-
-        masterDbContext.Certs.Remove(cert);
-
-        await masterDbContext.SaveChangesAsync();
+        await freeSql.Delete<Cert>()
+            .Where(x => x.Id == id)
+            .ExecuteAffrowsAsync();
     }
 
     /// <summary>
@@ -91,9 +93,11 @@ public static class CertService
     /// </summary>
     [Authorize]
     public static async Task<ResultDto> ApplyAsync([FromServices] IMemoryCache memoryCache,
-        [FromServices] MasterDbContext masterDbContext, string id)
+        [FromServices] IFreeSql freeSql, string id)
     {
-        var cert = await masterDbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
+        var cert = await freeSql.Select<Cert>()
+            .Where(x => x.Id == id)
+            .FirstAsync();
 
         if (cert == null)
         {
@@ -104,13 +108,17 @@ public static class CertService
 
         if (await ApplyForCert(memoryCache, context, cert))
         {
-            await LoadCerts(masterDbContext);
+            await LoadCerts(freeSql);
         }
 
-        masterDbContext.Certs.Update(cert);
+        await freeSql.Update<Cert>()
+            .Set(x => x.RenewStats, cert.RenewStats)
+            .Set(x => x.RenewTime, cert.RenewTime)
+            .Set(x => x.NotAfter, cert.NotAfter)
+            .Set(x => x.Expired, cert.Expired)
+            .Where(x => x.Id == cert.Id)
+            .ExecuteAffrowsAsync();
 
-        await masterDbContext.SaveChangesAsync();
-        
         return ResultDto.SuccessResult();
     }
 

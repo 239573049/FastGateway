@@ -1,12 +1,15 @@
 ﻿namespace FastGateway.Domain;
 
 /// <summary>
-/// 黑名单
+/// 黑白名单
 /// </summary>
+[Table(Name = "blacklist_and_whitelist")]
 public sealed class BlacklistAndWhitelist
 {
+    [Column(IsIdentity = true)]
     public long Id { get; set; }
-
+    
+    [Column(MapType = typeof(string), StringLength = -1)]
     public List<string> Ips { get; set; }
 
     public string Name { get; set; }

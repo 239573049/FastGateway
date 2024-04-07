@@ -1,4 +1,4 @@
-import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row } from "@douyinfe/semi-ui";
+import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row, Tag } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, ServiceInput } from "../../../module";
 import { CheckDirecotryExistence, CreateApiService } from "../../../services/ApiServiceService";
 
@@ -21,7 +21,7 @@ export default function CreateHttpProxy({
     onClose,
     onOk,
 }: ICreateHttpProxyProps) {
-    
+
     return (
         <Modal
             title="新建HTTP代理"
@@ -105,20 +105,6 @@ export default function CreateHttpProxy({
                                         label="启用流量监控"
                                         onChange={(v: any) => {
                                             values.enableFlowMonitoring = v;
-                                            formApi.setValues(values);
-                                        }}
-                                        style={{
-                                            marginTop: '5px',
-                                            marginLeft: '10px',
-                                        }}
-                                    ></Checkbox>
-                                </Col>
-                                <Col span={12}>
-                                    <Checkbox
-                                        field="enableRequestSource"
-                                        label="启用请求来源"
-                                        onChange={(v: any) => {
-                                            values.enableRequestSource = v;
                                             formApi.setValues(values);
                                         }}
                                         style={{
@@ -221,13 +207,12 @@ export default function CreateHttpProxy({
                                 justifyContent: 'center',
                                 marginTop: '20px',
                             }} onClick={() => {
-                                values.locations = values.locations || [];
+                                if (values.locations === undefined) {
+                                    values.locations = [];
+                                }
                                 values.locations.push({
-                                    path: '',
                                     serviceNames: [],
-                                    loadType: LoadType.IpHash,
-                                    addHeader: {},
-                                    type: 1,
+                                    locationService: []
                                 });
                                 formApi.setValues(values);
                             }}>
@@ -235,8 +220,10 @@ export default function CreateHttpProxy({
                             </div>
                             <Collapse>
                                 {
-                                    values.locations?.map((arrayField: LocationInput, index: number) => {
-                                        return (<Collapse.Panel header={arrayField.path === '' ? "未填写路由" : arrayField.path} itemKey={index.toString()} key={index} style={{
+                                    values.locations?.map((location: LocationInput, index: number) => {
+                                        return (<Collapse.Panel header={location.serviceNames.map(x => {
+                                            return <Tag >{x}</Tag>;
+                                        })} itemKey={index.toString()} key={index} style={{
                                             border: '1px solid var(--semi-color-border)',
                                             borderRadius: '8px',
                                             padding: '10px',
@@ -251,7 +238,7 @@ export default function CreateHttpProxy({
                                                     message: '域名不能为空',
                                                 }]}
                                                 onChange={(v: any) => {
-                                                    arrayField.serviceNames = v;
+                                                    location.serviceNames = v;
                                                     formApi.setValues(values);
                                                 }}
                                                 style={{
@@ -264,230 +251,247 @@ export default function CreateHttpProxy({
                                                 allowCreate={true}
                                                 multiple={true}
                                                 filter={true}
-                                                defaultActiveFirstOption
-                                            ></Select>
-                                            {/* 关闭按钮 */}
-                                            <div style={{
-                                                display: 'flex',
-                                                justifyContent: 'flex-end',
-                                            }}>
-                                                <Button
-                                                    size='small'
-                                                    type='secondary'
-                                                    style={{
-                                                        padding: '0',
-                                                        width: '20px',
-                                                        height: '20px',
-                                                    }}
-                                                    onClick={() => {
-                                                        values.locations = values.locations.filter((item: any) => item !== arrayField);
-                                                        formApi.setValues(values);
-                                                    }}
-                                                >X</Button>
-                                            </div>
-                                            <Input
-                                                label="路由绑定"
-                                                initValue={arrayField.path}
-                                                defaultValue={arrayField.path}
-                                                rules={[{
-                                                    required: true,
-                                                    message: '端口不能为空',
-                                                }]}
-                                                onChange={(v: any) => {
-                                                    arrayField.path = v;
-                                                    formApi.setValues(values);
-                                                }}
-                                                field="path" />
-                                            <Select
-                                                label="代理类型"
-                                                field="type"
-                                                style={{
-                                                    width: '100%',
-                                                    borderRadius: '8px',
-                                                    padding: '3px',
-                                                    border: '1px solid var(--semi-color-border)',
-                                                    fontSize: '14px',
-                                                }}
-                                                initValue={arrayField.type}
-                                                onChange={(v: any) => {
-                                                    arrayField.type = v;
-                                                    formApi.setValues(values);
-                                                }}
-                                                optionList={[{
-                                                    label: '静态代理',
-                                                    value: 1,
-                                                }, {
-                                                    label: '单个服务',
-                                                    value: 2,
-                                                }, {
-                                                    label: '负载均衡代理',
-                                                    value: 3,
-                                                }]}
-                                            />
-                                            {
-                                                arrayField.type === 1 && (
-                                                    <>
-                                                        <InputGroup>
-                                                            <Input
-                                                                label="根目录"
-                                                                initValue={arrayField.root}
-                                                                defaultValue={arrayField.root}
-                                                                onChange={(v: any) => {
-                                                                    arrayField.root = v;
-                                                                    formApi.setValues(values);
-                                                                }}
-                                                                field="root" />
-                                                            <Button onClick={() => {
-                                                                CheckDirecotryExistence(arrayField.root as string)
-                                                                    .then((res) => {
-                                                                        if (res.success) {
-                                                                            Notification.success({
-                                                                                title: '目录存在',
-                                                                                content: '目录存在',
-                                                                            })
-                                                                        } else {
-                                                                            Notification.error({
-                                                                                title: res.message,
-                                                                            })
-                                                                        }
-                                                                    })
-                                                            }} style={{
-                                                                marginTop: '24px',
-                                                                marginLeft: '10px',
-                                                            }}>检查目录是否存在</Button>
-                                                        </InputGroup>
-                                                        <Select
-                                                            label="try_files"
-                                                            field="tryFiles"
-                                                            multiple={true}
-                                                            initValue={['index.html', 'index.htm']}
-                                                            allowCreate={true}
-                                                            onChange={(v: any) => {
-                                                                arrayField.tryFiles = v;
-                                                                formApi.setValues(values);
-                                                            }}
-                                                            filter={true}
-                                                            style={{
-                                                                width: '100%',
-                                                                borderRadius: '8px',
-                                                                padding: '3px',
-                                                                border: '1px solid var(--semi-color-border)',
-                                                                fontSize: '14px',
-                                                            }}
-                                                        />
-                                                    </>
-                                                )
-                                            }
-                                            {
-                                                arrayField.type === 2 && (
-                                                    <Input
-                                                        label="代理地址"
-                                                        initValue={arrayField.proxyPass}
-                                                        defaultValue={arrayField.proxyPass}
-                                                        onChange={(v: any) => {
-                                                            arrayField.proxyPass = v;
+                                                suffix={
+                                                    <Button
+                                                        size='small'
+                                                        type='secondary'
+                                                        style={{
+                                                            padding: '0',
+                                                            width: '20px',
+                                                            color: 'red',
+                                                            height: '20px',
+                                                        }}
+                                                        onClick={() => {
+                                                            values.locations = values.locations.filter((item: any) => item !== location);
                                                             formApi.setValues(values);
                                                         }}
-                                                        field="proxyPass" />
-                                                )
-                                            }
-                                            {
-                                                arrayField.type === 3 && (
-                                                    <>
-                                                        <Select
-                                                            label="负载均衡"
-                                                            field="loadType"
-                                                            initValue={arrayField.loadType}
-                                                            onChange={(v: any) => {
-                                                                arrayField.loadType = v;
-                                                                formApi.setValues(values);
-                                                            }}
-                                                            style={{
-                                                                width: '100%',
-                                                                borderRadius: '8px',
-                                                                padding: '3px',
-                                                                border: '1px solid var(--semi-color-border)',
-                                                                fontSize: '14px',
-                                                            }}
-                                                            optionList={[{
-                                                                label: 'IP哈希',
-                                                                value: LoadType.IpHash,
-                                                            }, {
-                                                                label: '轮询',
-                                                                value: LoadType.RoundRobin,
-                                                            }, {
-                                                                label: '加权轮询',
-                                                                value: LoadType.WeightRoundRobin,
-                                                            }]}
-                                                        />
-                                                        <Divider></Divider>
-                                                        <Button
-                                                            onClick={() => {
-                                                                arrayField.upStreams = arrayField.upStreams || [];
-                                                                arrayField.upStreams.push({
-                                                                    server: '',
-                                                                    weight: 1,
-                                                                });
-                                                                formApi.setValues(values);
-                                                            }}
-                                                            style={{
-                                                                marginBottom: '10px',
-                                                                marginTop: '10px',
-                                                            }}
-                                                            block>添加服务</Button>
-                                                        <Collapse>
+                                                    >X</Button>
+                                                }
+                                                defaultActiveFirstOption
+                                            ></Select>
+                                            <Button block onClick={() => {
+                                                location.locationService.push({
+                                                    addHeader: {},
+                                                    path: '',
+                                                    proxyPass: '',
+                                                    tryFiles: [],
+                                                    type: 1,
+                                                    loadType: 1,
+                                                    upStreams: [],
+                                                    root: '',
+                                                });
+                                                formApi.setValues(values);
+                                            }}>
+                                                添加路由绑定
+                                            </Button>
+                                            <Collapse>
+                                                {
+                                                    location.locationService.map((service, index) => {
+                                                        return (<Collapse.Panel itemKey={"location-service" + index.toString()} header={service.path} key={index} style={{}}>
+                                                            <Input
+                                                                label="路由绑定"
+                                                                initValue={service.path}
+                                                                defaultValue={service.path}
+                                                                onChange={(v: any) => {
+                                                                    service.path = v;
+                                                                    formApi.setValues(values);
+                                                                }}
+                                                                field="path" />
+                                                            <Select
+                                                                label="代理类型"
+                                                                field="type"
+                                                                initValue={service.type}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    borderRadius: '8px',
+                                                                    padding: '3px',
+                                                                    border: '1px solid var(--semi-color-border)',
+                                                                    fontSize: '14px',
+                                                                }}
+                                                                onChange={(v: any) => {
+                                                                    service.type = v;
+                                                                    formApi.setValues(values);
+                                                                }}
+                                                                optionList={[{
+                                                                    label: '静态代理',
+                                                                    value: 1,
+                                                                }, {
+                                                                    label: '单个服务',
+                                                                    value: 2,
+                                                                }, {
+                                                                    label: '负载均衡代理',
+                                                                    value: 3,
+                                                                }]}
+                                                            />
                                                             {
-                                                                arrayField.upStreams?.map((upStream: any, index: number) => {
-                                                                    return (
-                                                                        <Collapse.Panel itemKey={index.toString()} header={upStream.server === '' ? "未填写地址" : upStream.server}>
-                                                                            <Row>
-                                                                                <Col span={12}>
-                                                                                    <Input
-                                                                                        label="服务地址"
-                                                                                        field="server"
-                                                                                        initValue={upStream.server}
-                                                                                        onChange={(v: any) => {
-                                                                                            upStream.server = v;
-                                                                                            formApi.setValues(values);
-                                                                                        }}
-                                                                                    />
-                                                                                </Col>
-                                                                                <Col span={9} style={{
-                                                                                    marginLeft: '10px',
-                                                                                }}>
-                                                                                    <Input
-                                                                                        label="权重"
-                                                                                        field="weight"
-                                                                                        type="number"
-                                                                                        initValue={upStream.weight}
-                                                                                        onChange={(v: any) => {
-                                                                                            upStream.weight = v;
-                                                                                            formApi.setValues(values);
-                                                                                        }}
-                                                                                    />
-                                                                                </Col>
-                                                                                <Col span={2}>
-                                                                                    <Button
-                                                                                        onClick={() => {
-                                                                                            arrayField.upStreams = arrayField.upStreams?.filter((item: any) => item !== upStream);
-                                                                                            formApi.setValues(values);
-                                                                                        }}
-                                                                                        type='danger'
-                                                                                        style={{
-                                                                                            marginTop: '36px',
-                                                                                            marginLeft: '10px',
-
-                                                                                        }}
-                                                                                    >删除服务</Button>
-                                                                                </Col>
-                                                                            </Row>
-                                                                        </Collapse.Panel>)
-                                                                })
+                                                                service.type === 1 && (
+                                                                    <>
+                                                                        <InputGroup>
+                                                                            <Input
+                                                                                label="根目录"
+                                                                                initValue={service.root}
+                                                                                defaultValue={service.root}
+                                                                                onChange={(v: any) => {
+                                                                                    service.root = v;
+                                                                                    formApi.setValues(values);
+                                                                                }}
+                                                                                field="root" />
+                                                                            <Button onClick={() => {
+                                                                                CheckDirecotryExistence(service.root as string)
+                                                                                    .then((res) => {
+                                                                                        if (res.success) {
+                                                                                            Notification.success({
+                                                                                                title: '目录存在',
+                                                                                                content: '目录存在',
+                                                                                            })
+                                                                                        } else {
+                                                                                            Notification.error({
+                                                                                                title: res.message,
+                                                                                            })
+                                                                                        }
+                                                                                    })
+                                                                            }} style={{
+                                                                                marginTop: '24px',
+                                                                                marginLeft: '10px',
+                                                                            }}>检查目录是否存在</Button>
+                                                                        </InputGroup>
+                                                                        <Select
+                                                                            label="try_files"
+                                                                            field="tryFiles"
+                                                                            multiple={true}
+                                                                            initValue={['index.html', 'index.htm']}
+                                                                            allowCreate={true}
+                                                                            onChange={(v: any) => {
+                                                                                service.tryFiles = v;
+                                                                                formApi.setValues(values);
+                                                                            }}
+                                                                            filter={true}
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                borderRadius: '8px',
+                                                                                padding: '3px',
+                                                                                border: '1px solid var(--semi-color-border)',
+                                                                                fontSize: '14px',
+                                                                            }}
+                                                                        />
+                                                                    </>
+                                                                )
                                                             }
-                                                        </Collapse>
-                                                    </>
-                                                )
-                                            }
+                                                            {
+                                                                service.type === 2 && (
+                                                                    <Input
+                                                                        label="代理地址"
+                                                                        initValue={service.proxyPass}
+                                                                        defaultValue={service.proxyPass}
+                                                                        onChange={(v: any) => {
+                                                                            service.proxyPass = v;
+                                                                            formApi.setValues(values);
+                                                                        }}
+                                                                        field="proxyPass" />
+                                                                )
+                                                            }
+                                                            {
+                                                                service.type === 3 && (
+                                                                    <>
+                                                                        <Select
+                                                                            label="负载均衡"
+                                                                            field="loadType"
+                                                                            initValue={service.loadType}
+                                                                            onChange={(v: any) => {
+                                                                                service.loadType = v;
+                                                                                formApi.setValues(values);
+                                                                            }}
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                borderRadius: '8px',
+                                                                                padding: '3px',
+                                                                                border: '1px solid var(--semi-color-border)',
+                                                                                fontSize: '14px',
+                                                                            }}
+                                                                            optionList={[{
+                                                                                label: 'IP哈希',
+                                                                                value: LoadType.IpHash,
+                                                                            }, {
+                                                                                label: '轮询',
+                                                                                value: LoadType.RoundRobin,
+                                                                            }, {
+                                                                                label: '加权轮询',
+                                                                                value: LoadType.WeightRoundRobin,
+                                                                            }]}
+                                                                        />
+                                                                        <Divider></Divider>
+                                                                        <Button
+                                                                            onClick={() => {
+                                                                                service.upStreams = service.upStreams || [];
+                                                                                service.upStreams.push({
+                                                                                    server: '',
+                                                                                    weight: 1,
+                                                                                });
+                                                                                formApi.setValues(values);
+                                                                            }}
+                                                                            style={{
+                                                                                marginBottom: '10px',
+                                                                                marginTop: '10px',
+                                                                            }}
+                                                                            block>添加服务</Button>
+                                                                        <Collapse>
+                                                                            {
+                                                                                service.upStreams?.map((upStream: any, index: number) => {
+                                                                                    return (
+                                                                                        <Collapse.Panel itemKey={index.toString()} header={upStream.server === '' ? "未填写地址" : upStream.server}>
+                                                                                            <Row>
+                                                                                                <Col span={12}>
+                                                                                                    <Input
+                                                                                                        label="服务地址"
+                                                                                                        field="server"
+                                                                                                        initValue={upStream.server}
+                                                                                                        onChange={(v: any) => {
+                                                                                                            upStream.server = v;
+                                                                                                            formApi.setValues(values);
+                                                                                                        }}
+                                                                                                    />
+                                                                                                </Col>
+                                                                                                <Col span={9} style={{
+                                                                                                    marginLeft: '10px',
+                                                                                                }}>
+                                                                                                    <Input
+                                                                                                        label="权重"
+                                                                                                        field="weight"
+                                                                                                        type="number"
+                                                                                                        initValue={upStream.weight}
+                                                                                                        onChange={(v: any) => {
+                                                                                                            upStream.weight = v;
+                                                                                                            formApi.setValues(values);
+                                                                                                        }}
+                                                                                                    />
+                                                                                                </Col>
+                                                                                                <Col span={2}>
+                                                                                                    <Button
+                                                                                                        onClick={() => {
+                                                                                                            service.upStreams = service.upStreams?.filter((item: any) => item !== upStream);
+                                                                                                            formApi.setValues(values);
+                                                                                                        }}
+                                                                                                        type='danger'
+                                                                                                        style={{
+                                                                                                            marginTop: '36px',
+                                                                                                            marginLeft: '10px',
+
+                                                                                                        }}
+                                                                                                    >删除服务</Button>
+                                                                                                </Col>
+                                                                                            </Row>
+                                                                                        </Collapse.Panel>)
+                                                                                })
+                                                                            }
+                                                                        </Collapse>
+                                                                    </>
+                                                                )
+                                                            }
+
+                                                        </Collapse.Panel>)
+                                                    })
+                                                }
+                                            </Collapse>
 
                                         </Collapse.Panel>)
                                     })

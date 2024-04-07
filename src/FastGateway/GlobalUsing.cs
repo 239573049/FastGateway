@@ -1,6 +1,4 @@
-﻿global using FastGateway.EFCore;
-global using Microsoft.EntityFrameworkCore;
-global using FastGateway.Domain;
+﻿global using FastGateway.Domain;
 global using FastGateway.Dto;
 global using System.Text.Json;
 global using FastGateway.Core;
@@ -19,3 +17,4 @@ global using Certes.Acme;
 global using Certes.Acme.Resource;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Mvc;
+global using FreeSql.DataAnnotations;

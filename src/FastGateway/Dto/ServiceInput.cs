@@ -26,11 +26,6 @@ public class ServiceInput
     public bool EnableFlowMonitoring { get; set; }
 
     /// <summary>
-    /// 是否启用请求来源分析
-    /// </summary>
-    public bool EnableRequestSource { get; set; }
-
-    /// <summary>
     /// 启用黑名单
     /// </summary>
     public bool EnableBlacklist { get; set; }
@@ -54,14 +49,4 @@ public class ServiceInput
     /// 服务配置
     /// </summary>
     public virtual List<LocationInput> Locations { get; set; }
-
-    /// <summary>
-    /// 证书地址
-    /// </summary>
-    public string? SslCertificate { get; set; }
-
-    /// <summary>
-    /// 证书密码
-    /// </summary>
-    public string? SslCertificatePassword { get; set; }
 }

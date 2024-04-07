@@ -1,9 +1,10 @@
-import { Button, Dropdown, Table, Tag } from "@douyinfe/semi-ui";
+import { Button, Dropdown, Notification, Table, Tag } from "@douyinfe/semi-ui";
 import { useEffect, useState } from "react";
 import { IconMore } from '@douyinfe/semi-icons';
-import { GetApiServiceList, ServiceStats, DeleteApiService, StartService, StopService, RestartService } from "../../services/ApiServiceService";
+import { GetApiServiceList, ServiceStats, DeleteApiService, StartService, StopService, RestartService, CreateApiService, RestartConfig } from "../../services/ApiServiceService";
 import CreateHttpProxy from "./features/CreateHttpProxy";
 import UpdateHttpProxy from "./features/UpdateHttpProxy";
+import yaml from 'js-yaml';
 
 export default function HttpProxy() {
 
@@ -67,7 +68,7 @@ export default function HttpProxy() {
                 return <Dropdown
                     render={
                         <Dropdown.Menu>
-                            <Dropdown.Item onClick={()=>{
+                            <Dropdown.Item onClick={() => {
                                 setUpdateHttpProxyData(item);
                                 setUpdateHttpProxyVisible(true);
                             }}>
@@ -85,6 +86,12 @@ export default function HttpProxy() {
                                     启动
                                 </Dropdown.Item>
                             }
+                            <Dropdown.Item onClick={() => ExportYAMLConfig(item)}>
+                                导出YARP配置
+                            </Dropdown.Item>
+                            <Dropdown.Item onClick={() => onRestartConfig(item.id)}>
+                                重载配置
+                            </Dropdown.Item>
                             <Dropdown.Item onClick={() => deleteService(item.id)}>
                                 删除
                             </Dropdown.Item>
@@ -106,6 +113,29 @@ export default function HttpProxy() {
         page: 1,
         pageSize: 10,
     });
+
+    function onRestartConfig(id: string) {
+        RestartConfig(id).then(() => {
+            LoadData();
+            Notification.success({
+                title: '重载配置成功'
+            });
+        });
+    }
+
+    /**
+     * 导出YAML配置
+     */
+    function ExportYAMLConfig(value: any) {
+        const y = yaml.dump(value);
+        const blob = new Blob([y], { type: 'text/yaml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'fast-gateway.yaml';
+        a.click();
+
+    }
 
     function LoadData() {
         setLoading(true);
@@ -159,6 +189,30 @@ export default function HttpProxy() {
         })
     }
 
+    function ImportYARPConfig() {
+        // 用户导入yaml文件
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.yaml';
+        input.onchange = (e: any) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e: any) => {
+                const result = e.target.result;
+                const data = yaml.load(result);
+                // 创建服务
+                CreateApiService(data).then(() => {
+                    LoadData();
+                    Notification.success({
+                        title: '导入成功'
+                    });
+                });
+            }
+            reader.readAsText(file);
+        }
+        input.click();
+
+    }
 
 
     return (
@@ -177,14 +231,25 @@ export default function HttpProxy() {
                     fontSize: '24px',
                     fontWeight: '600'
                 }}>共{total}个站点</span>
-                <Button
-                    onClick={() => setCreateHttpProxyVisible(true)}
-                    style={{
-                        color: 'var(--semi-color-primary)',
-                        border: '1px solid var(--semi-color-primary)',
-                        borderRadius: '5px',
-                    }}
-                >新增站点</Button>
+
+                <Dropdown
+                    render={
+                        <Dropdown.Menu>
+                            <Dropdown.Item onClick={()=>{
+                                ImportYARPConfig()
+                            }}>导入YAML</Dropdown.Item>
+                        </Dropdown.Menu>
+                    }
+                >
+                    <Button
+                        onClick={() => setCreateHttpProxyVisible(true)}
+                        style={{
+                            color: 'var(--semi-color-primary)',
+                            border: '1px solid var(--semi-color-primary)',
+                            borderRadius: '5px',
+                        }}
+                    >新增站点</Button>
+                </Dropdown>
             </div>
             <Table loading={loading} columns={columns} dataSource={data} pagination={
                 {
@@ -204,12 +269,12 @@ export default function HttpProxy() {
                 setCreateHttpProxyVisible(false);
                 LoadData();
             }} />
-            <UpdateHttpProxy values={updateHttpProxyData} visible={updateHttpProxyVisible} onClose={()=> setUpdateHttpProxyVisible(false)}
-                onOk={()=>{
+            <UpdateHttpProxy values={updateHttpProxyData} visible={updateHttpProxyVisible} onClose={() => setUpdateHttpProxyVisible(false)}
+                onOk={() => {
                     setUpdateHttpProxyVisible(false);
                     LoadData();
                 }}
-                />
+            />
         </>
     );
 }

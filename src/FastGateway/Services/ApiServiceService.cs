@@ -13,7 +13,7 @@ public static class ApiServiceService
 {
     private static readonly Dictionary<string, WebApplication> WebApplications = new();
 
-    public static async Task LoadServices(MasterDbContext masterDbContext)
+    public static async Task LoadServices(IFreeSql freeSql)
     {
         foreach (var application in WebApplications)
         {
@@ -22,9 +22,8 @@ public static class ApiServiceService
 
         WebApplications.Clear();
 
-        var services = await masterDbContext.Services
-            .AsNoTracking()
-            .Include(x => x.Locations)
+        var services = await freeSql.Select<Service>()
+            .IncludeMany(x => x.Locations)
             .ToListAsync();
 
         foreach (var service in services)
@@ -34,8 +33,20 @@ public static class ApiServiceService
     }
 
     [Authorize]
-    public static async Task CreateAsync(ServiceInput input, MasterDbContext masterDbContext)
+    public static async Task CreateAsync(ServiceInput input, IFreeSql freeSql)
     {
+        if (await freeSql.Select<Service>().Where(x => x.Listen == input.Listen).CountAsync() > 0)
+        {
+            throw new Exception("端口已被占用");
+        }
+
+        // 可能是更新
+        if (!string.IsNullOrEmpty(input.Id) && await freeSql.Select<Service>().AnyAsync(x => x.Id == input.Id))
+        {
+            await UpdateAsync(input.Id, input, freeSql);
+            return;
+        }
+
         var serviceId = Guid.NewGuid().ToString("N");
         var service = new Service()
         {
@@ -48,15 +59,64 @@ public static class ApiServiceService
             EnableBlacklist = input.EnableBlacklist,
             IsHttps = input.IsHttps,
             Listen = input.Listen,
-            SslCertificate = input.SslCertificate,
-            SslCertificatePassword = input.SslCertificatePassword,
             Locations = input.Locations.Select(x => new Location()
             {
-                AddHeader = x.AddHeader,
                 ServiceId = serviceId,
                 Id = Guid.NewGuid().ToString("N"),
-                Path = x.Path,
                 ServiceNames = x.ServiceNames,
+                LocationService = x.LocationService.Select(x => new LocationService()
+                {
+                    AddHeader = x.AddHeader,
+                    Path = x.Path,
+                    ProxyPass = x.ProxyPass,
+                    Root = x.Root,
+                    Type = x.Type,
+                    TryFiles = x.TryFiles,
+                    LoadType = x.LoadType,
+                    UpStreams = x.UpStreams.Select(x => new UpStream()
+                    {
+                        Server = x.Server,
+                        Weight = x.Weight
+                    }).ToList()
+                }).ToList()
+            }).ToList()
+        };
+
+        await freeSql.Insert(service).ExecuteAffrowsAsync();
+
+        await freeSql.Insert(service.Locations).ExecuteAffrowsAsync();
+
+        await Task.Factory.StartNew(BuilderService, service);
+    }
+
+    [Authorize]
+    public static async Task UpdateAsync(string id, ServiceInput input, IFreeSql freeSql)
+    {
+        await freeSql.Update<Service>()
+            .Where(x => x.Id == id)
+            .Set(x => x.Listen, input.Listen)
+            .Set(x => x.IsHttps, input.IsHttps)
+            .Set(x => x.EnableBlacklist, input.EnableBlacklist)
+            .Set(x => x.EnableWhitelist, input.EnableWhitelist)
+            .Set(x => x.EnableHttp3, input.EnableHttp3)
+            .Set(x => x.Enable, input.Enable)
+            .Set(x => x.EnableTunnel, input.EnableTunnel)
+            .Set(x => x.EnableFlowMonitoring, input.EnableFlowMonitoring)
+            .ExecuteAffrowsAsync();
+
+        await freeSql.Delete<Location>()
+            .Where(x => x.ServiceId == id)
+            .ExecuteAffrowsAsync();
+
+        await freeSql.Insert(input.Locations.Select(x => new Location()
+        {
+            ServiceNames = x.ServiceNames.Where(x => !string.IsNullOrEmpty(x)).ToArray(),
+            Id = Guid.NewGuid().ToString("N"),
+            ServiceId = id,
+            LocationService = x.LocationService.Select(x => new LocationService()
+            {
+                AddHeader = x.AddHeader,
+                Path = x.Path,
                 ProxyPass = x.ProxyPass,
                 Root = x.Root,
                 Type = x.Type,
@@ -68,84 +128,24 @@ public static class ApiServiceService
                 }).ToList(),
                 LoadType = x.LoadType,
             }).ToList()
-        };
-
-        await masterDbContext.Services.AddAsync(service);
-
-        await masterDbContext.SaveChangesAsync();
-
-        await Task.Factory.StartNew(BuilderService, service);
+        })).ExecuteAffrowsAsync();
     }
 
     [Authorize]
-    public static async Task UpdateAsync(string id, ServiceInput input, MasterDbContext masterDbContext)
+    public static async Task DeleteAsync(string id, IFreeSql freeSql)
     {
-        masterDbContext.Services.Where(x => x.Id == id)
-            .ExecuteUpdateAsync(item =>
-                item.SetProperty(x => x.Listen, input.Listen)
-                    .SetProperty(x => x.IsHttps, input.IsHttps)
-                    .SetProperty(x => x.EnableBlacklist, input.EnableBlacklist)
-                    .SetProperty(x => x.EnableWhitelist, input.EnableWhitelist)
-                    .SetProperty(x => x.EnableHttp3, input.EnableHttp3)
-                    .SetProperty(x => x.Enable, input.Enable)
-                    .SetProperty(x => x.EnableTunnel, input.EnableTunnel)
-                    .SetProperty(x => x.SslCertificate, input.SslCertificate)
-                    .SetProperty(x => x.SslCertificatePassword, input.SslCertificatePassword)
-                    .SetProperty(x => x.EnableFlowMonitoring, input.EnableFlowMonitoring));
-        
-        
-        await masterDbContext.Locations.Where(x => x.ServiceId == id)
-            .ExecuteDeleteAsync();
-        
-        masterDbContext.Locations.AddRange(input.Locations.Select(x => new Location()
+        if (WebApplications.Remove(id, out var app))
         {
-            AddHeader = x.AddHeader,
-            ServiceNames = x.ServiceNames,
-            Id = Guid.NewGuid().ToString("N"),
-            Path = x.Path,
-            ProxyPass = x.ProxyPass,
-            Root = x.Root,
-            ServiceId = id,
-            Type = x.Type,
-            TryFiles = x.TryFiles,
-            UpStreams = x.UpStreams.Select(x => new UpStream()
-            {
-                Server = x.Server,
-                Weight = x.Weight
-            }).ToList(),
-            LoadType = x.LoadType,
-        }));
-        
-        await masterDbContext.SaveChangesAsync();
-    }
-
-    [Authorize]
-    public static async Task DeleteAsync(string id, MasterDbContext masterDbContext)
-    {
-        try
-        {
-            await masterDbContext.Database.BeginTransactionAsync();
-
-            if (WebApplications.Remove(id, out var app))
-            {
-                await app.DisposeAsync();
-            }
-
-
-            await masterDbContext.Services.Where(x => x.Id == id)
-                .ExecuteDeleteAsync();
-
-            await masterDbContext.Locations.Where(x => x.ServiceId == id)
-                .ExecuteDeleteAsync();
-
-            await masterDbContext.Database.CommitTransactionAsync();
+            await app.DisposeAsync();
         }
-        catch (Exception e)
-        {
-            await masterDbContext.Database.RollbackTransactionAsync();
 
-            throw e;
-        }
+        await freeSql.Delete<Service>()
+            .Where(x => x.Id == id)
+            .ExecuteAffrowsAsync();
+
+        await freeSql.Delete<Location>()
+            .Where(x => x.ServiceId == id)
+            .ExecuteAffrowsAsync();
     }
 
     /// <summary>
@@ -178,16 +178,17 @@ public static class ApiServiceService
     }
 
     [Authorize]
-    public static async Task<Service?> GetAsync(string id, MasterDbContext masterDbContext)
+    public static async Task<Service?> GetAsync(string id, IFreeSql freeSql)
     {
-        return await masterDbContext.Services.AsNoTracking()
-            .Include(x => x.Locations)
-            .FirstOrDefaultAsync(x => x.Id == id);
+        return await freeSql.Select<Service>()
+            .IncludeMany(x => x.Locations)
+            .Where(x => x.Id == id)
+            .FirstAsync();
     }
 
     [Authorize]
     public static async Task<ResultDto<PageResultDto<Service>>> GetListAsync(int page, int pageSize,
-        MasterDbContext masterDbContext)
+        IFreeSql freeSql)
     {
         if (page < 1)
         {
@@ -201,14 +202,13 @@ public static class ApiServiceService
             _ => pageSize
         };
 
-        var result = await masterDbContext.Services
-            .AsNoTracking()
-            .Include(x => x.Locations)
+        var result = await freeSql.Select<Service>()
+            .IncludeMany(x => x.Locations)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        var total = await masterDbContext.Services.CountAsync();
+        var total = await freeSql.Select<Service>().CountAsync();
 
         return ResultDto<PageResultDto<Service>>.SuccessResult(new PageResultDto<Service>(result, total));
     }
@@ -230,7 +230,7 @@ public static class ApiServiceService
     }
 
     [Authorize]
-    public static async Task StartServiceAsync(string id, MasterDbContext masterDbContext)
+    public static async Task StartServiceAsync(string id, IFreeSql freeSql)
     {
         if (WebApplications.TryGetValue(id, out var app))
         {
@@ -238,7 +238,7 @@ public static class ApiServiceService
         }
         else
         {
-            var service = await GetAsync(id, masterDbContext);
+            var service = await GetAsync(id, freeSql);
 
             await Task.Factory.StartNew(BuilderService, service);
 
@@ -257,7 +257,7 @@ public static class ApiServiceService
     }
 
     [Authorize]
-    public static async Task RestartServiceAsync(string id, MasterDbContext masterDbContext)
+    public static async Task RestartServiceAsync(string id, IFreeSql freeSql)
     {
         if (WebApplications.TryGetValue(id, out var app))
         {
@@ -267,11 +267,31 @@ public static class ApiServiceService
 
             WebApplications.Remove(id, out _);
 
-            var service = await GetAsync(id, masterDbContext);
+            var service = await GetAsync(id, freeSql);
 
             await Task.Factory.StartNew(BuilderService, service);
 
             await Task.Delay(500);
+        }
+    }
+
+    [Authorize]
+    public static async Task RestartConfigAsync(string id, IFreeSql freeSql)
+    {
+        var service = await GetAsync(id, freeSql);
+
+        if (service == null)
+        {
+            return;
+        }
+
+        if (WebApplications.TryGetValue(id, out var app))
+        {
+            var (routes, clusters) = BuilderGateway(service);
+
+            var memoryConfigProvider = app.Services.GetRequiredService<InMemoryConfigProvider>();
+
+            memoryConfigProvider.Update(routes, clusters);
         }
     }
 
@@ -283,7 +303,7 @@ public static class ApiServiceService
 
             var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
 
-            IContentTypeProvider defaultContentTypeProvider = new DefaultContentTypeProvider();
+            var defaultContentTypeProvider = new DefaultContentTypeProvider();
 
             builder.WebHost.UseKestrel(options =>
             {
@@ -313,67 +333,13 @@ public static class ApiServiceService
                 });
             });
 
-            var routes = new List<RouteConfig>();
-            var clusters = new List<ClusterConfig>();
-
-            // 绑定路由到service
-            foreach (var location in service.Locations)
-            {
-                var clusterId = location.Id;
-                var route = new RouteConfig()
-                {
-                    RouteId = location.Id,
-                    ClusterId = clusterId,
-                    Match = new RouteMatch()
-                    {
-                        Path = location.Path.TrimEnd('/') + "/{**catch-all}",
-                        Hosts = location.ServiceNames
-                    }
-                };
-                routes.Add(route);
-                var destinations = new Dictionary<string, DestinationConfig>();
-
-                var cluster = new ClusterConfig()
-                {
-                    Destinations = destinations,
-                    ClusterId = clusterId
-                };
-
-
-                if (location.Type == ApiServiceType.SingleService)
-                {
-                    destinations.Add(location.ProxyPass, new DestinationConfig()
-                    {
-                        Address = location.ProxyPass,
-                        Host = new Uri(location.ProxyPass).Host,
-                    });
-                    clusters.Add(cluster);
-                    continue;
-                }
-
-                if (location.Type == ApiServiceType.LoadBalance)
-                {
-                    foreach (var upStream in location.UpStreams.Where(x => !string.IsNullOrEmpty(x.Server)))
-                    {
-                        destinations.Add(upStream.Server!, new DestinationConfig()
-                        {
-                            Address = upStream.Server!,
-                        });
-                    }
-
-                    clusters.Add(cluster);
-                }
-                else if (location.Type == ApiServiceType.StaticProxy)
-                {
-                    routes.Remove(route);
-                }
-            }
+            var (routes, clusters) = BuilderGateway(service);
 
             builder.Services.AddSingleton<ICurrentContext>(new CurrentContext()
             {
                 ServiceId = service.Id,
             }).AddSingleton<StatisticsMiddleware>();
-            
+
             builder.Services.AddReverseProxy()
                 .LoadFromMemory(routes, clusters)
                 // 删除所有代理的前缀
@@ -437,7 +403,8 @@ public static class ApiServiceService
             // 用于HTTPS证书签名校验
             app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
 
-            foreach (var location in service.Locations.Where(x => x.Type == ApiServiceType.StaticProxy))
+            foreach (var location in service.Locations.SelectMany(x => x.LocationService)
+                         .Where(x => x.Type == ApiServiceType.StaticProxy))
             {
                 app.Map(location.Path.TrimEnd('/'), app =>
                 {
@@ -487,5 +454,67 @@ public static class ApiServiceService
         {
             Console.WriteLine(e);
         }
+    }
+
+    private static (List<RouteConfig>, List<ClusterConfig>) BuilderGateway(Service service)
+    {
+        var routes = new List<RouteConfig>();
+        var clusters = new List<ClusterConfig>();
+        // 绑定路由到service
+        foreach (var location in service.Locations)
+        {
+            var clusterId = location.Id;
+            var destinations = new Dictionary<string, DestinationConfig>();
+
+            var cluster = new ClusterConfig()
+            {
+                Destinations = destinations,
+                ClusterId = clusterId,
+            };
+            clusters.Add(cluster);
+            foreach (var locationService in location.LocationService)
+            {
+                var route = new RouteConfig()
+                {
+                    RouteId = Guid.NewGuid().ToString("N"),
+                    ClusterId = clusterId,
+                    Match = new RouteMatch()
+                    {
+                        Path = locationService.Path.TrimEnd('/') + "/{**catch-all}",
+                        Hosts = location.ServiceNames
+                    }
+                };
+                routes.Add(route);
+
+
+                if (locationService.Type == ApiServiceType.SingleService)
+                {
+                    destinations.Add(Guid.NewGuid().ToString("N"), new DestinationConfig()
+                    {
+                        Address = locationService.ProxyPass,
+                        Host = new Uri(locationService.ProxyPass).Host,
+                    });
+                    continue;
+                }
+
+                if (locationService.Type == ApiServiceType.LoadBalance)
+                {
+                    foreach (var upStream in locationService.UpStreams.Where(x => !string.IsNullOrEmpty(x.Server)))
+                    {
+                        destinations.Add(upStream.Server!, new DestinationConfig()
+                        {
+                            Address = upStream.Server!,
+                        });
+                    }
+                }
+                else if (locationService.Type == ApiServiceType.StaticProxy)
+                {
+                    routes.Remove(route);
+                    clusters.Remove(cluster);
+                }
+            }
+        }
+
+        return (routes, clusters);
     }
 }

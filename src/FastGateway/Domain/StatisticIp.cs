@@ -1,7 +1,9 @@
 ﻿namespace FastGateway.Domain;
 
+[Table(Name = "statistic_ip")]
 public sealed class StatisticIp
 {
+    [Column(IsIdentity = true)]
     public long Id { get; set; }
     
     public string Ip { get; set; }

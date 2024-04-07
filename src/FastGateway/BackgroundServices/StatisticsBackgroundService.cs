@@ -37,7 +37,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
     private async Task StatisticIpAsync()
     {
         await using var scope = serviceProvider.CreateAsyncScope();
-        var masterDbContext = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
+        var freeSql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
         while (await StatisticIpChannel.Reader.WaitToReadAsync())
         {
             var ipDto = await StatisticIpChannel.Reader.ReadAsync();
@@ -49,9 +49,9 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
 
                 foreach (var item in IpDic)
                 {
-                    await CheckAddOrUpdateAsync(masterDbContext, item.Value);
+                    await CheckAddOrUpdateAsync(freeSql, item.Value);
                 }
-                
+
                 IpDic.Clear();
             }
 
@@ -87,7 +87,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
     private async Task RequestCountAsync()
     {
         await using var scope = serviceProvider.CreateAsyncScope();
-        var masterDbContext = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
+        var freeSql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
         while (await StatisticRequestChannel.Reader.WaitToReadAsync())
         {
             var requestCount = await StatisticRequestChannel.Reader.ReadAsync();
@@ -98,7 +98,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
                 _statisticLastTime = DateTime.Now;
                 foreach (var item in RequestCountDic)
                 {
-                    await CheckAddOrUpdateAsync(masterDbContext, item.Value);
+                    await CheckAddOrUpdateAsync(freeSql, item.Value);
                 }
 
                 RequestCountDic.Clear();
@@ -144,80 +144,85 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
         };
     }
 
-    private static async ValueTask CheckAddOrUpdateAsync(MasterDbContext masterDbContext,
+    private static async ValueTask CheckAddOrUpdateAsync(IFreeSql freeSql,
         StatisticIpDto requestCountDto)
     {
+        var year = (ushort)requestCountDto.CreatedTime.Year;
+        var month = (byte)requestCountDto.CreatedTime.Month;
+        var day = (byte)requestCountDto.CreatedTime.Day;
         // 判断数据库是否存在今年今月今日的数据
-        if (await masterDbContext.StatisticIps
+        if (await freeSql.Select<StatisticIp>()
                 .AnyAsync(x => x.ServiceId == requestCountDto.ServiceId
                                && x.Ip == requestCountDto.Ip
-                               && x.Year == requestCountDto.CreatedTime.Year
-                               && x.Month == requestCountDto.CreatedTime.Month
-                               && x.Day == requestCountDto.CreatedTime.Day))
+                               && x.Year == year
+                               && x.Month == month
+                               && x.Day == day))
         {
             // 更新
-            await masterDbContext.StatisticIps
+            await freeSql.Update<StatisticIp>()
                 .Where(x => x.ServiceId == requestCountDto.ServiceId
-                            && x.Year == requestCountDto.CreatedTime.Year
-                            && x.Month == requestCountDto.CreatedTime.Month
-                            && x.Day == requestCountDto.CreatedTime.Day)
-                .ExecuteUpdateAsync(x =>
-                    x.SetProperty(y => y.Count, y => y.Count + requestCountDto.Count));
+                            && x.Year == year
+                            && x.Month == month
+                            && x.Day == day)
+                .Set(y => y.Count + requestCountDto.Count)
+                .ExecuteAffrowsAsync();
         }
         else
         {
             // 直接添加
-            await masterDbContext.StatisticIps.AddAsync(new StatisticIp()
-            {
-                ServiceId = requestCountDto.ServiceId,
-                Count = requestCountDto.Count,
-                Year = (ushort)requestCountDto.CreatedTime.Year,
-                Month = (byte)requestCountDto.CreatedTime.Month,
-                Day = (byte)requestCountDto.CreatedTime.Day,
-                Ip = requestCountDto.Ip,
-                Location = requestCountDto.Location,
-            });
-
-            await masterDbContext.SaveChangesAsync();
+            await freeSql.Insert(new StatisticIp()
+                {
+                    ServiceId = requestCountDto.ServiceId,
+                    Count = requestCountDto.Count,
+                    Year = year,
+                    Month = month,
+                    Day = day,
+                    Ip = requestCountDto.Ip,
+                    Location = requestCountDto.Location,
+                })
+                .ExecuteAffrowsAsync();
         }
     }
 
-    private static async ValueTask CheckAddOrUpdateAsync(MasterDbContext masterDbContext,
+    private static async ValueTask CheckAddOrUpdateAsync(IFreeSql freeSql,
         StatisticRequestCountDto requestCountDto)
     {
+        var year = (ushort)requestCountDto.CreatedTime.Year;
+        var month = (byte)requestCountDto.CreatedTime.Month;
+        var day = (byte)requestCountDto.CreatedTime.Day;
+        
         // 判断数据库是否存在今年今月今日的数据
-        if (await masterDbContext.StatisticRequestCounts
+        if (await freeSql.Select<StatisticRequestCount>()
                 .AnyAsync(x => x.ServiceId == requestCountDto.ServiceId
-                               && x.Year == requestCountDto.CreatedTime.Year
-                               && x.Month == requestCountDto.CreatedTime.Month
-                               && x.Day == requestCountDto.CreatedTime.Day))
+                               && x.Year == year
+                               && x.Month == month
+                               && x.Day == day))
         {
             // 更新
-            await masterDbContext.StatisticRequestCounts
-                .Where(x => x.ServiceId == requestCountDto.ServiceId
-                            && x.Year == requestCountDto.CreatedTime.Year
-                            && x.Month == requestCountDto.CreatedTime.Month
-                            && x.Day == requestCountDto.CreatedTime.Day)
-                .ExecuteUpdateAsync(x =>
-                    x.SetProperty(y => y.RequestCount, y => y.RequestCount + requestCountDto.RequestCount)
-                        .SetProperty(y => y.Error4xxCount, y => y.Error4xxCount + requestCountDto.Error4xxCount)
-                        .SetProperty(y => y.Error5xxCount, y => y.Error5xxCount + requestCountDto.Error5xxCount));
+            await freeSql.Update<StatisticRequestCount>()
+                    .Where(x => x.ServiceId == requestCountDto.ServiceId
+                                && x.Year == year
+                                && x.Month == month
+                                && x.Day == day)
+                    .Set(x => x.Error5xxCount + requestCountDto.Error5xxCount)
+                    .Set(x => x.Error4xxCount + requestCountDto.Error4xxCount)
+                    .Set(x => x.RequestCount + requestCountDto.RequestCount)
+                    .ExecuteAffrowsAsync()
+                ;
         }
         else
         {
             // 直接添加
-            await masterDbContext.StatisticRequestCounts.AddAsync(new StatisticRequestCount
+            await freeSql.Insert(new StatisticRequestCount
             {
                 ServiceId = requestCountDto.ServiceId,
                 RequestCount = requestCountDto.RequestCount,
                 Error4xxCount = requestCountDto.Error4xxCount,
                 Error5xxCount = requestCountDto.Error5xxCount,
-                Year = (ushort)requestCountDto.CreatedTime.Year,
-                Month = (byte)requestCountDto.CreatedTime.Month,
-                Day = (byte)requestCountDto.CreatedTime.Day
-            });
-
-            await masterDbContext.SaveChangesAsync();
+                Year = year,
+                Month = month,
+                Day = day
+            }).ExecuteAffrowsAsync();
         }
     }
 }
