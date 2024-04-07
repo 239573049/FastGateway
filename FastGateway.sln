@@ -1,5 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.34607.79
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9BBA9B8C-370F-4334-9E88-D5B246139818}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "solution items", "solution items", "{9C1B1C3B-F530-4345-B61E-FDB2A38612AE}"
@@ -8,15 +11,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "solution items", "solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway", "src\FastGateway\FastGateway.csproj", "{0503A140-FADC-491A-8141-13FF103B205E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FastGateway", "src\FastGateway\FastGateway.csproj", "{0503A140-FADC-491A-8141-13FF103B205E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway.Core", "src\FastGateway.Core\FastGateway.Core.csproj", "{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FastGateway.Core", "src\FastGateway.Core\FastGateway.Core.csproj", "{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common", "common", "{C8495474-1C78-4A80-A429-9C0F6D0FFF87}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark", "benchmark", "{CF414ACD-BE24-4A57-BF8D-0415F60A290A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmark.FastGateway", "benchmark\Benchmark.FastGateway\Benchmark.FastGateway.csproj", "{E7C80088-0A08-4B57-A944-EDBAEAFA333D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmark.FastGateway", "benchmark\Benchmark.FastGateway\Benchmark.FastGateway.csproj", "{E7C80088-0A08-4B57-A944-EDBAEAFA333D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -37,9 +40,12 @@ Global
 		{E7C80088-0A08-4B57-A944-EDBAEAFA333D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E7C80088-0A08-4B57-A944-EDBAEAFA333D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{0503A140-FADC-491A-8141-13FF103B205E} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
-		{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
+		{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6} = {C8495474-1C78-4A80-A429-9C0F6D0FFF87}
 		{E7C80088-0A08-4B57-A944-EDBAEAFA333D} = {CF414ACD-BE24-4A57-BF8D-0415F60A290A}
 	EndGlobalSection
 EndGlobal

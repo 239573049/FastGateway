@@ -4,7 +4,7 @@ using FreeSql.Internal;
 using IP2Region.Net.Abstractions;
 using IP2Region.Net.XDB;
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions()
+var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions()
 {
     Args = args,
 });
@@ -253,6 +253,5 @@ FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>(),
 
 app.UseStaticFiles();
 
-// GC.Collect();
 
 await app.RunAsync();
