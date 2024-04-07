@@ -3,6 +3,7 @@ using FreeSql;
 using FreeSql.Internal;
 using IP2Region.Net.Abstractions;
 using IP2Region.Net.XDB;
+using Directory = System.IO.Directory;
 
 var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions()
 {
@@ -34,13 +35,25 @@ builder.Services.AddHostedService<StatisticsBackgroundService>();
 
 builder.Services.AddSingleton<IFreeSql>((_) =>
 {
+    if (!Directory.Exists("/data"))
+    {
+        Directory.CreateDirectory("/data");
+    }
+
+    var @default = builder.Configuration.GetConnectionString("Default");
+
+    if (string.IsNullOrEmpty(@default))
+    {
+        @default = "Data Source=fast-gateway.db";
+    }
+
     var freeSql = new FreeSqlBuilder()
-        .UseConnectionString(DataType.Sqlite, builder.Configuration.GetConnectionString("Default"))
+    .UseConnectionString(DataType.Sqlite, @default)
 #if DEBUG
         .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) 
 #endif
-        .UseAutoSyncStructure(true)
-        .Build();
+    .UseAutoSyncStructure(true)
+    .Build();
 
     return freeSql;
 });
