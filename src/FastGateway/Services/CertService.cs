@@ -116,6 +116,7 @@ public static class CertService
             .Set(x => x.RenewTime, cert.RenewTime)
             .Set(x => x.NotAfter, cert.NotAfter)
             .Set(x => x.Expired, cert.Expired)
+            .Set(x=>x.Certs, cert.Certs)
             .Where(x => x.Id == cert.Id)
             .ExecuteAffrowsAsync();
 

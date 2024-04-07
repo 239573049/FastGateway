@@ -34,6 +34,7 @@ public sealed class RenewSslBackgroundService(IServiceProvider serviceProvider, 
                         .Set(x => x.RenewTime, certItem.RenewTime)
                         .Set(x => x.NotAfter, certItem.NotAfter)
                         .Set(x => x.Expired, certItem.Expired)
+                        .Set(x=>x.Certs, certItem.Certs)
                         .Where(x => x.Id == certItem.Id)
                         .ExecuteAffrowsAsync(stoppingToken);
                     
