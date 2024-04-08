@@ -180,27 +180,6 @@ export default function UpdateHttpProxy({
                                     ></Checkbox>
                                 </Col>
                             </Row>
-                            {
-                                values.isHttps && (
-                                    <Row>
-                                        <Col span={12}>
-                                            <Checkbox
-                                                field="enableHttp3"
-                                                label="启用H3"
-                                                initValue={false}
-                                                onChange={(v: any) => {
-                                                    values.enableHttp3 = v;
-                                                    formApi.setValues(values);
-                                                }}
-                                                style={{
-                                                    marginTop: '5px',
-                                                    marginLeft: '10px',
-                                                }}
-                                            ></Checkbox>
-                                        </Col>
-                                    </Row>
-                                )
-                            }
                             <Divider></Divider>
                             <div style={{
                                 display: 'flex',

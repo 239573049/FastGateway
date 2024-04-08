@@ -6,7 +6,6 @@ namespace Benchmark.FastGateway;
 
 [SimpleJob(RuntimeMoniker.Net80)]
 [MemoryDiagnoser, MaxColumn]
-
 public class CheckIpInIp
 {
     // 帮我提供一百个ip ip范围 ip段的案例
@@ -14,14 +13,11 @@ public class CheckIpInIp
 
     private static string IpRanges;
 
-    private static string IpSegments;
-
     [GlobalSetup]
     public void Setup()
     {
         Ips = $"192.168.2.10";
         IpRanges = $"192.168.2.1-192.168.2.100";
-        IpSegments = $"192.168.2.1/24";
     }
 
     [Benchmark]
@@ -32,14 +28,4 @@ public class CheckIpInIp
             IpHelper.UnsafeCheckIpInIpRange(Ips, IpRanges);
         }
     }
-
-    [Benchmark]
-    public void CheckIpInIpRange()
-    {
-        for (var i = 0; i < 10000; i++)
-        {
-            IpHelper.CheckIpInIpRange(Ips, IpRanges);
-        }
-    }
-
 }

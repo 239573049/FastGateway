@@ -17,11 +17,6 @@ public class Service
     public ushort Listen { get; set; }
 
     /// <summary>
-    /// 是否启用HTTP3 | 强制HTTPS才能启用
-    /// </summary>
-    public bool EnableHttp3 { get; set; }
-
-    /// <summary>
     /// 是否HTTPS
     /// </summary>
     public bool IsHttps { get; set; }
