@@ -1,9 +1,10 @@
-import { Divider, Progress, Tag } from '@douyinfe/semi-ui'
+import { Divider, Progress, Tag, Tooltip } from '@douyinfe/semi-ui'
 import './index.css'
 import { useEffect, useState } from 'react';
 import * as echarts from 'echarts';
 import { getQpsChart } from '../../services/QpsService';
-import { DayRequestCount, GetLocation, TotalRequestCount } from '../../services/StatisticRequestService';
+import { DayRequestCount, GetDayStatisticLocationCount, GetLocation, TotalRequestCount } from '../../services/StatisticRequestService';
+import { bytesToSize } from '../../utils/data-util';
 
 export default function DataStatistics() {
   const [qps, setQps] = useState(0)
@@ -18,6 +19,13 @@ export default function DataStatistics() {
     error4xxCount: 0,
     error5xxCount: 0,
   })
+
+  const [netWork, setNetWork] = useState({
+    upload: 0,
+    download: 0
+  })
+
+  const [dayStatisticLocationCount, setDayStatisticLocationCount] = useState([] as any[]);
   const [qps_chartData] = useState({
     tooltip: {
       trigger: 'axis',
@@ -95,6 +103,10 @@ export default function DataStatistics() {
         qps_chartData.series[0].data.shift();
         qps_chartData.series[0].data.push(data.qps);
         setQps(data.qps);
+        setNetWork({
+          upload: data.upload,
+          download: data.download
+        })
         qps_chart?.setOption(qps_chartData);
       }
     }
@@ -114,12 +126,23 @@ export default function DataStatistics() {
 
     loading()
 
+    loadDayStatisticLocationCount()
+
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('resize', resizeHandler);
     }
 
   }, []);
+
+  function loadDayStatisticLocationCount() {
+    GetDayStatisticLocationCount()
+      .then((res) => {
+        setDayStatisticLocationCount(res)
+      }).catch((err) => {
+        console.log(err)
+      })
+  }
 
   function loading() {
     GetLocation()
@@ -192,7 +215,20 @@ export default function DataStatistics() {
             justifyContent: 'space-between',
             marginBottom: '3px'
           }}>
-            实时QPS <Tag color='green' >{qps}</Tag>
+            实时QPS
+            <span>
+              <Tag style={{
+                marginRight: '10px'
+              }} color='green' >
+                上传{bytesToSize(netWork.upload)}
+              </Tag>
+              <Tag style={{
+                marginRight: '10px'
+              }} color='blue' >
+                下载{bytesToSize(netWork.download)}
+              </Tag>
+              <Tag color='green' >{qps}</Tag>
+            </span>
           </div>
           <div
             id='qps_chart'
@@ -209,20 +245,32 @@ export default function DataStatistics() {
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            lineHeight: '50px'
+            lineHeight: '50px',
+            overflow: 'hidden'
           }}>
             请求来源
           </div>
           <Divider />
           <div style={{
             justifyContent: 'space-between',
-            lineHeight: '50px'
+            lineHeight: '50px',
+            maxHeight: 'calc(100% - 60px)',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            userSelect: 'none',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'transparent transparent',
           }}>
             <ul>
               {
                 locationData.map((item, index) => {
-                  return <li key={index}>
-                    <span>{item.location}</span>
+                  return <li style={{
+                    padding: '0 10px',
+                  }} key={index}>
+                    <Tooltip style={{
+                    }} content={"请求数量" + item.count}>
+                      <span>{item.location}</span>
+                    </Tooltip>
                     <Progress showInfo={true} percent={item.ratio} stroke="var(--semi-color-warning)" aria-label="disk usage" />
                   </li>
                 })
@@ -230,11 +278,62 @@ export default function DataStatistics() {
             </ul>
           </div>
         </div>
-        <div className="stat-block" style={{}}>
+        <div className="stat-block large" style={{}}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            lineHeight: '50px',
+            overflow: 'hidden'
+          }}>
+            七天内IP请求排名
+          </div>
+          <Divider />
+          <div style={{
+            justifyContent: 'space-between',
+            lineHeight: '50px',
+            maxHeight: 'calc(100% - 60px)',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            userSelect: 'none',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'transparent transparent',
 
-        </div>
-        <div className="stat-block" style={{}}>
+          }}>
+            <ul>
+              {
+                dayStatisticLocationCount.map(x => {
+                  console.log(x);
+                  return (<div style={{
+                    width: '100%',
+                    padding: '0 10px',
+                    // 好看的边框样式
+                    borderBottom: '1px solid var(--semi-color-border)',
+                  }}>
 
+                    <div style={{
+                      width: '90%',
+                      display: 'inline-block',
+                      textAlign: 'left'
+                    }}>
+                      <Tooltip content={x.location}>
+                        {x.ip}
+                      </Tooltip>
+                    </div>
+                    <span style={{
+                      top: '50%',
+                      right: '20px',
+                      borderRadius: '10px',
+                      padding: '0 8px',
+                      backgroundColor: 'var(--semi-color-bg-3)',
+                      color: 'var(--semi-color-success)',
+                    }}>
+                      {x.count}
+                    </span>
+                  </div>)
+                })
+              }
+            </ul>
+          </div>
         </div>
       </div>
     </div>

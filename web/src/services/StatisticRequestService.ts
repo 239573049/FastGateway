@@ -20,3 +20,10 @@ export function TotalRequestCount(){
 export function GetLocation(){
     return get('/api/v1/Statistic/Location');
 }
+
+/**
+ * 获取今日ip统计
+ */
+export function GetDayStatisticLocationCount(){
+    return get('/api/v1/Statistic/DayStatisticLocationCount');
+}

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Net.NetworkInformation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FastGateway.Services;
@@ -77,11 +78,50 @@ public sealed class ApiQpsService
 
         for (var i = 0; i < 10; i++)
         {
+            // 获取所有网络接口
+            var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+
+            // 存储每个接口的初始值
+            long initialBytesSent = 0;
+            long initialBytesReceived = 0;
+
+            // 只考虑活动的和支持IPv4的网络接口
+            foreach (var ni in networkInterfaces)
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up ||
+                    !ni.Supports(NetworkInterfaceComponent.IPv4)) continue;
+                var interfaceStats = ni.GetIPv4Statistics();
+                initialBytesSent += interfaceStats.BytesSent;
+                initialBytesReceived += interfaceStats.BytesReceived;
+            }
+
             await Task.Delay(1000);
+
+
+            // 存储每个接口1秒后的值
+            long bytesSentAfter1Sec = 0;
+            long bytesReceivedAfter1Sec = 0;
+
+            // 再次遍历网络接口
+            foreach (var ni in networkInterfaces)
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up ||
+                    !ni.Supports(NetworkInterfaceComponent.IPv4)) continue;
+                var interfaceStats = ni.GetIPv4Statistics();
+                bytesSentAfter1Sec += interfaceStats.BytesSent;
+                bytesReceivedAfter1Sec += interfaceStats.BytesReceived;
+            }
+
+            // 计算1秒内发送和接收的总字节
+            var upload = bytesSentAfter1Sec - initialBytesSent;
+            var download = bytesReceivedAfter1Sec - initialBytesReceived;
+
             await context.Response.WriteAsync($"data:{JsonSerializer.Serialize(new
             {
                 qps = qpsService.GetServiceQps(),
-                now = DateTime.Now.ToString("HH:mm:ss")
+                now = DateTime.Now.ToString("HH:mm:ss"),
+                upload,
+                download
             })}\n\n");
             await context.Response.Body.FlushAsync();
         }

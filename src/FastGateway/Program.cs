@@ -236,6 +236,9 @@ statisticService.MapGet("/TotalRequestCount",
 statisticService.MapGet("/Location",
     StatisticRequestService.GetStatisticLocationAsync);
 
+statisticService.MapGet("/DayStatisticLocationCount",
+    StatisticRequestService.GetDayStatisticLocationCountAsync);
+
 #endregion
 
 #region Protection

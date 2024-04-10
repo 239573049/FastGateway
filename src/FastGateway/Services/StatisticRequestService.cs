@@ -10,7 +10,7 @@ public static class StatisticRequestService
     {
         var now = DateTime.Now;
         var today = new DateTime(now.Year, now.Month, now.Day);
-        
+
         var year = today.Year;
         var month = today.Month;
         var day = today.Day;
@@ -79,6 +79,32 @@ public static class StatisticRequestService
         // 计算比例
         var total = result.Sum(x => x.Count);
         result.ForEach(x => x.Ratio = Math.Round((x.Count / total) * 100, 2));
+
+        return result;
+    }
+
+    public static async Task<List<DayStatisticLocationCountDto>> GetDayStatisticLocationCountAsync(IFreeSql freeSql)
+    {
+        var now = DateTime.Now.AddDays(-7);
+        var today = new DateTime(now.Year, now.Month, now.Day);
+
+        var year = today.Year;
+        var month = today.Month;
+        var day = today.Day;
+
+        var result = await freeSql.Select<StatisticIp>()
+            .Where(x => x.Year == year &&
+                        x.Month == month &&
+                        x.Day >= day)
+            .GroupBy(e => e.Ip)
+            .OrderByDescending(e => e.Sum(e.Value.Count))
+            .Take(10)
+            .ToListAsync(e => new DayStatisticLocationCountDto
+            {
+                Ip = e.Key,
+                Count = e.Sum(e.Value.Count),
+                Location = e.Value.Location
+            });
 
         return result;
     }
