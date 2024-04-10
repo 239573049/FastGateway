@@ -53,7 +53,6 @@ public static class ApiServiceService
             Id = serviceId,
             Enable = input.Enable,
             EnableFlowMonitoring = input.EnableFlowMonitoring,
-            EnableHttp3 = input.EnableHttp3,
             EnableTunnel = input.EnableTunnel,
             EnableWhitelist = input.EnableWhitelist,
             EnableBlacklist = input.EnableBlacklist,
@@ -98,7 +97,6 @@ public static class ApiServiceService
             .Set(x => x.IsHttps, input.IsHttps)
             .Set(x => x.EnableBlacklist, input.EnableBlacklist)
             .Set(x => x.EnableWhitelist, input.EnableWhitelist)
-            .Set(x => x.EnableHttp3, input.EnableHttp3)
             .Set(x => x.Enable, input.Enable)
             .Set(x => x.EnableTunnel, input.EnableTunnel)
             .Set(x => x.EnableFlowMonitoring, input.EnableFlowMonitoring)
@@ -324,12 +322,7 @@ public static class ApiServiceService
 
                     listenOptions.UseHttps();
 
-                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-
-                    if (service.EnableHttp3)
-                    {
-                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                    }
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
                 });
             });
 

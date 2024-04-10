@@ -20,7 +20,7 @@ FastGateway提供了基本的管理服务，提供简单的登录授权，和实
 
 - Asp.Net 8.0 用于提供基础服务
 - Yarp 用于提供反向代理服务
-- EntityFrameworkCore用于提供数据库服务
+- FreeSql用于提供数据库服务
 - JWT 用于提供登录授权服务
 - MiniApis 提供WebApi服务
 
