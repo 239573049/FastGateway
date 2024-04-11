@@ -229,7 +229,7 @@ export default function CreateRateLimitPage({
                                                     ]}
                                                 />
                                                 <Input
-                                                    label="m(分钟)|h(小时)|d(天)|s(秒)"
+                                                    label="s(秒)|m(分钟)|h(小时)|d(天)"
                                                     field="period"
                                                     initValue={rule.period}
                                                     defaultValue={rule.period}
@@ -240,7 +240,7 @@ export default function CreateRateLimitPage({
                                                     rules={[
                                                         { required: true, message: '请输入周期' },
                                                         {
-                                                            pattern: /^[1-9]\d*[mhd]$/,
+                                                            pattern: /^[1-9]\d*[mhds]$/,
                                                             message: '请输入正确的周期，示例: 1m, 1h, 1d, 1s'
                                                         }
                                                     ]}
