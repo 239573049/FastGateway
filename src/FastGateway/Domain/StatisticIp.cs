@@ -1,6 +1,9 @@
 ﻿namespace FastGateway.Domain;
 
 [Table(Name = "statistic_ip")]
+[Index("statistic_ip_year", "Year")]
+[Index("statistic_ip_month", "Month")]
+[Index("statistic_ip_day", "Day")]
 public sealed class StatisticIp
 {
     [Column(IsIdentity = true)]

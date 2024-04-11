@@ -48,12 +48,12 @@ builder.Services.AddSingleton<IFreeSql>((_) =>
     }
 
     var freeSql = new FreeSqlBuilder()
-    .UseConnectionString(DataType.Sqlite, @default)
+        .UseConnectionString(DataType.Sqlite, @default)
 #if DEBUG
-        .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}")) 
+        .UseMonitorCommand(cmd => Console.WriteLine($"Sql：{cmd.CommandText}"))
 #endif
-    .UseAutoSyncStructure(true)
-    .Build();
+        .UseAutoSyncStructure(true)
+        .Build();
 
     return freeSql;
 });
@@ -92,6 +92,9 @@ Utils.TypeHandlers.TryAdd(typeof(List<string>),
 Utils.TypeHandlers.TryAdd(typeof(List<LocationService>),
     new LocationServiceHandler());
 
+Utils.TypeHandlers.TryAdd(typeof(List<GeneralRules>)
+    , new StringJsonHandler<List<GeneralRules>>());
+
 #endregion
 
 freeSql.CodeFirst.SyncStructure<Service>();
@@ -100,6 +103,7 @@ freeSql.CodeFirst.SyncStructure<Cert>();
 freeSql.CodeFirst.SyncStructure<StatisticRequestCount>();
 freeSql.CodeFirst.SyncStructure<StatisticIp>();
 freeSql.CodeFirst.SyncStructure<Location>();
+freeSql.CodeFirst.SyncStructure<RateLimit>();
 
 await ProtectionService.LoadBlacklistAndWhitelistAsync(freeSql);
 
@@ -261,6 +265,30 @@ protectionService.MapPut("/BlacklistAndWhitelist",
 
 protectionService.MapPost("/BlacklistAndWhitelist/Enable/{id}",
     ProtectionService.EnableBlacklistAndWhitelistAsync);
+
+#endregion
+
+
+#region RateLimit
+
+var rateLimitService = app.MapGroup("/api/v1/RateLimit")
+    .RequireAuthorization()
+    .AddEndpointFilter<ExceptionFilter>();
+
+rateLimitService.MapPost(string.Empty,
+    RateLimitService.CreateAsync);
+
+rateLimitService.MapPut("{name}",
+    RateLimitService.UpdateAsync);
+
+rateLimitService.MapDelete("{name}",
+    RateLimitService.DeleteAsync);
+
+rateLimitService.MapGet("/List",
+    RateLimitService.GetListAsync);
+
+rateLimitService.MapGet("/Names",
+    RateLimitService.GetNamesAsync);
 
 #endregion
 

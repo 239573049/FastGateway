@@ -1,7 +1,10 @@
 ﻿using System.Net;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading.RateLimiting;
+using AspNetCoreRateLimit;
 using FastGateway.Infrastructures;
 using FastGateway.Middlewares;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
@@ -26,8 +29,15 @@ public static class ApiServiceService
             .IncludeMany(x => x.Locations)
             .ToListAsync();
 
+        var rateLimitIds = services.Select(x => x.RateLimitName).Distinct().ToArray();
+
+        var rateLimits = await freeSql.Select<RateLimit>()
+            .Where(x => rateLimitIds.Contains(x.Name))
+            .ToListAsync();
+
         foreach (var service in services)
         {
+            service.RateLimit = rateLimits.FirstOrDefault(x => x.Name == service.RateLimitName);
             await Task.Factory.StartNew(BuilderService, service);
         }
     }
@@ -55,6 +65,7 @@ public static class ApiServiceService
             EnableFlowMonitoring = input.EnableFlowMonitoring,
             EnableTunnel = input.EnableTunnel,
             EnableWhitelist = input.EnableWhitelist,
+            RateLimitName = input.RateLimitName,
             EnableBlacklist = input.EnableBlacklist,
             IsHttps = input.IsHttps,
             Listen = input.Listen,
@@ -84,8 +95,6 @@ public static class ApiServiceService
         await freeSql.Insert(service).ExecuteAffrowsAsync();
 
         await freeSql.Insert(service.Locations).ExecuteAffrowsAsync();
-
-        await Task.Factory.StartNew(BuilderService, service);
     }
 
     [Authorize]
@@ -99,6 +108,7 @@ public static class ApiServiceService
             .Set(x => x.EnableWhitelist, input.EnableWhitelist)
             .Set(x => x.Enable, input.Enable)
             .Set(x => x.EnableTunnel, input.EnableTunnel)
+            .Set(x => x.RateLimitName, input.RateLimitName)
             .Set(x => x.EnableFlowMonitoring, input.EnableFlowMonitoring)
             .ExecuteAffrowsAsync();
 
@@ -178,10 +188,19 @@ public static class ApiServiceService
     [Authorize]
     public static async Task<Service?> GetAsync(string id, IFreeSql freeSql)
     {
-        return await freeSql.Select<Service>()
+        var service = await freeSql.Select<Service>()
             .IncludeMany(x => x.Locations)
             .Where(x => x.Id == id)
             .FirstAsync();
+
+        if (service == null)
+            return default;
+
+        service.RateLimit = await freeSql.Select<RateLimit>()
+            .Where(x => x.Name == service.RateLimitName)
+            .FirstAsync();
+
+        return service;
     }
 
     [Authorize]
@@ -333,6 +352,41 @@ public static class ApiServiceService
                 ServiceId = service.Id,
             }).AddSingleton<StatisticsMiddleware>();
 
+            if (service.RateLimit != null && service.RateLimit.Enable)
+            {
+                builder.Services.AddMemoryCache();
+                builder.Services.Configure<IpRateLimitOptions>
+                (options =>
+                {
+                    options.GeneralRules = service.RateLimit.GeneralRules.Select(x => new RateLimitRule()
+                    {
+                        Endpoint = x.Endpoint,
+                        Period = x.Period,
+                        Limit = x.Limit,
+                    }).ToList();
+
+                    options.ClientWhitelist = service.RateLimit.ClientWhitelist;
+                    options.ClientIdHeader = service.RateLimit.ClientIdHeader;
+                    options.DisableRateLimitHeaders = service.RateLimit.DisableRateLimitHeaders;
+                    options.EnableEndpointRateLimiting = service.RateLimit.EnableEndpointRateLimiting;
+                    options.EnableRegexRuleMatching = service.RateLimit.EnableRegexRuleMatching;
+                    options.EndpointWhitelist = service.RateLimit.EndpointWhitelist;
+                    options.IpWhitelist = service.RateLimit.IpWhitelist;
+                    options.RealIpHeader = service.RateLimit.RealIpHeader;
+                    options.RateLimitCounterPrefix = service.RateLimit.RateLimitCounterPrefix;
+                    options.RequestBlockedBehaviorAsync = async (context, _, _, _) =>
+                    {
+                        context.Response.StatusCode = service.RateLimit.HttpStatusCode;
+                        context.Response.ContentType = service.RateLimit.RateLimitContentType;
+                        await context.Response.WriteAsync(service.RateLimit.QuotaExceededMessage);
+                    };
+                });
+                builder.Services.AddSingleton<IRateLimitConfiguration,
+                    RateLimitConfiguration>();
+                builder.Services.AddInMemoryRateLimiting();
+            }
+
+
             builder.Services.AddReverseProxy()
                 .LoadFromMemory(routes, clusters)
                 // 删除所有代理的前缀
@@ -346,6 +400,28 @@ public static class ApiServiceService
                 });
 
             var app = builder.Build();
+
+            if (service.RateLimit is { Enable: true })
+            {
+                app.Use((async (context, next) =>
+                {
+                    // 获取ip
+                    var ip = context.Connection.RemoteIpAddress?.MapToIPv4()?.ToString();
+
+                    // 如果请求头中包含X-Forwarded-For则使用X-Forwarded-For
+                    if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+                    {
+                        ip = forwardedFor;
+                    }
+
+                    // 设置到 X-Real-IP
+                    context.Request.Headers["X-Real-IP"] = ip;
+
+                    await next(context);
+                }));
+
+                app.UseIpRateLimiting();
+            }
 
             WebApplications.Add(service.Id, app);
 

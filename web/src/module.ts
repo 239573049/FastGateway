@@ -12,6 +12,7 @@ export interface ServiceInput {
     enableTunnel: boolean;
     enableBlacklist: boolean;
     enableWhitelist: boolean;
+    rateLimitName: string | null;
     locations: LocationInput[];
 }
 export interface LocationInput {
@@ -120,4 +121,12 @@ export interface BlacklistAndWhitelist {
 export enum ProtectionType {
     Blacklist = 1,
     Whitelist = 2
+}
+
+
+export enum RateLimitType {
+    Concurrent = 1,
+    TokenBucket = 2,
+    SlidingWindow = 3,
+    FixedWindow = 4
 }

@@ -4,6 +4,7 @@
 /// 服务节点管理
 /// </summary>
 [Table(Name = "location")]
+[Index("location_serviceid", "ServiceId")]
 public class Location
 {
     public string Id { get; set; }
@@ -35,7 +36,7 @@ public sealed class LocationService
     /// </summary>
     [Column(MapType = typeof(string), StringLength = -1)]
     public Dictionary<string, string> AddHeader { get; set; } = new();
-    
+
     /// <summary>
     /// 静态文件或目录
     /// </summary>

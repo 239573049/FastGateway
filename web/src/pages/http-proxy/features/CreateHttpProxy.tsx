@@ -1,6 +1,9 @@
 import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row, Tag } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, ServiceInput } from "../../../module";
 import { CheckDirecotryExistence, CreateApiService } from "../../../services/ApiServiceService";
+import { useEffect, useState } from "react";
+import { GetNames } from "../../../services/RateLimitService";
+
 
 interface ICreateHttpProxyProps {
     visible: boolean;
@@ -21,6 +24,17 @@ export default function CreateHttpProxy({
     onClose,
     onOk,
 }: ICreateHttpProxyProps) {
+
+    const [names, setNames] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (visible) {
+            GetNames()
+                .then((res) => {
+                    setNames(res);
+                })
+        }
+    }, [visible]);
 
     return (
         <Modal
@@ -180,6 +194,25 @@ export default function CreateHttpProxy({
                                     ></Checkbox>
                                 </Col>
                             </Row>
+                            <Select 
+                                field="rateLimitName"
+                                label="选择限流策略"
+                                multiple={false}
+                                style={{
+                                    width: '100%',
+                                    borderRadius: '8px',
+                                    padding: '3px',
+                                    border: '1px solid var(--semi-color-border)',
+                                    fontSize: '14px',
+                                }}
+                                optionList={names?.map(x => {
+                                    return {
+                                        label: x,
+                                        value: x,
+                                    }
+                                })}
+                                initValue={values.rateLimitName}
+                                />
                             <Divider></Divider>
                             <div style={{
                                 display: 'flex',
@@ -271,6 +304,22 @@ export default function CreateHttpProxy({
                                                                 label="路由绑定"
                                                                 initValue={service.path}
                                                                 defaultValue={service.path}
+                                                                suffix={
+                                                                    <Button
+                                                                        size='small'
+                                                                        type='secondary'
+                                                                        style={{
+                                                                            padding: '0',
+                                                                            width: '20px',
+                                                                            color: 'red',
+                                                                            height: '20px',
+                                                                        }}
+                                                                        onClick={() => {
+                                                                            location.locationService = location.locationService.filter((item: any) => item !== service);
+                                                                            formApi.setValues(values);
+                                                                        }}
+                                                                    >X</Button>
+                                                                }
                                                                 onChange={(v: any) => {
                                                                     service.path = v;
                                                                     formApi.setValues(values);

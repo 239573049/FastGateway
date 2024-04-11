@@ -7,6 +7,7 @@ import HttpProxy from './pages/http-proxy';
 import Setting from './pages/setting';
 import Cert from './pages/cert';
 import Protection from './pages/protection';
+import RateLimit from './pages/rate-limit';
 
 const theme = localStorage.getItem('theme');
 const body = document.body;
@@ -40,6 +41,10 @@ const routes = createBrowserRouter([{
     {
       path: '/protection',
       element: <Protection />
+    },
+    {
+      path: '/rate-limit',
+      element: <RateLimit />
     },
   ]
 }, {
