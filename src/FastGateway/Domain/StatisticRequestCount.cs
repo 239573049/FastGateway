@@ -1,6 +1,9 @@
 ﻿namespace FastGateway.Domain;
 
 [Table(Name = "statistic_request_count")]
+[Index("statistic_request_count_year", "Year")]
+[Index("statistic_request_count_month", "Month")]
+[Index("statistic_request_count_day", "Day")]
 public sealed class StatisticRequestCount
 {
     [Column(IsIdentity = true)]

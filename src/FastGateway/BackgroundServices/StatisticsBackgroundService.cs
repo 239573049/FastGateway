@@ -11,7 +11,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
         Channel.CreateUnbounded<StatisticRequestCountDto>();
 
     private static readonly ConcurrentDictionary<string, StatisticRequestCountDto> RequestCountDic = new(-1, 5);
-    private static readonly ConcurrentDictionary<string, StatisticIpDto> IpDic = new();
+    private static readonly ConcurrentDictionary<string, StatisticIpDto> IpDic = new(-1,5);
 
     private static readonly Channel<StatisticIpDto> StatisticIpChannel = Channel.CreateUnbounded<StatisticIpDto>();
 

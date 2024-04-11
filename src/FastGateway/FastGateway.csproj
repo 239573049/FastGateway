@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="Certes" Version="3.0.4" />
     <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.2.820" />
     <PackageReference Include="IP2Region.Net" Version="2.0.2" />

@@ -28,6 +28,8 @@ export default function AdminLayout() {
             setKey('cert');
         } else if (path === '/protection') {
             setKey('protection');
+        } else if (path === '/rate-limit') {
+            setKey('rate-limit');
         }
 
     }, []);
@@ -85,7 +87,7 @@ export default function AdminLayout() {
                                 marginRight: '20px',
                             }} checkedText={<IconMoon />} uncheckedText={<IconSun />} size="large" />
                             <Avatar color="orange" size="small">
-                                Gateway
+                                FG
                             </Avatar>
                         </Nav.Footer>
                     </Nav>
@@ -127,6 +129,14 @@ export default function AdminLayout() {
                                 icon: <IconShield size="large" />,
                                 onClick: () => {
                                     selectKey('protection', '/protection');
+                                }
+                            },
+                            {
+                                itemKey: 'rate-limit',
+                                text: '限流管理',
+                                icon: <IconShield size="large" />,
+                                onClick: () => {
+                                    selectKey('rate-limit', '/rate-limit');
                                 }
                             },
                             {

@@ -119,7 +119,6 @@ export default function Protection() {
 
     return (
         <>
-
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',

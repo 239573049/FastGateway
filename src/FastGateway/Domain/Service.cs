@@ -1,4 +1,5 @@
-﻿using FreeSql.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using FreeSql.DataAnnotations;
 
 namespace FastGateway.Domain;
 
@@ -56,4 +57,9 @@ public class Service
     /// </summary>
     [Navigate(nameof(Location.ServiceId))]
     public virtual List<Location> Locations { get; set; }
+
+    public string? RateLimitName { get; set; }
+
+    [Column(IsIgnore = true)]
+    public virtual RateLimit? RateLimit { get; set; }
 }

@@ -1,62 +1,91 @@
-﻿using System.Threading.RateLimiting;
-
-namespace FastGateway.Domain;
+﻿namespace FastGateway.Domain;
 
 public sealed class RateLimit
 {
-    public RateLimitType Type { get; set; }
-
-    #region 固定窗口限制器
-
-    public int? PermitLimit { get; set; }
+    /// <summary>
+    /// 限流策略名称
+    /// </summary>
+    [Column(IsIdentity = true)]
+    public string Name { get; set; }
 
     /// <summary>
-    /// 限流时间窗口
+    /// 是否启用
     /// </summary>
-    public TimeSpan? Window { get; set; }
+    public bool Enable { get; set; }
 
     /// <summary>
-    /// QueueProcessingOrder
+    /// 通用规则列表
     /// </summary>
-    public QueueProcessingOrder? QueueProcessingOrder { get; set; }
+    [Column(MapType = typeof(string), StringLength = -1)]
+    public List<GeneralRules> GeneralRules { get; set; }
 
     /// <summary>
-    /// QueueLimit
+    /// 端点白名单
     /// </summary>
-    public int? QueueLimit { get; set; }
-
-    #endregion
-
-    #region 滑动窗口限制器
+    [Column(MapType = typeof(string), StringLength = -1)]
+    public List<string> EndpointWhitelist { get; set; }
 
     /// <summary>
-    /// SegmentsPerWindow 
+    /// 客户端ID头部
     /// </summary>
-    public int? SegmentsPerWindow { get; set; }
-
-    #endregion
-
-    #region 令牌桶限制器
+    public string ClientIdHeader { get; set; } = "X-ClientId";
 
     /// <summary>
-    /// TokenLimit
+    /// 客户端白名单
     /// </summary>
-    public int? TokenLimit { get; set; }
+    [Column(MapType = typeof(string), StringLength = -1)]
+    public List<string> ClientWhitelist { get; set; }
 
     /// <summary>
-    /// TokensPerPeriod
+    /// 真实IP头部
     /// </summary>
-    public int? TokensPerPeriod { get; set; }
+    public string RealIpHeader { get; set; } = "X-Real-IP";
 
     /// <summary>
-    /// AutoReplenishment
+    /// IP白名单
     /// </summary>
-    public bool? AutoReplenishment { get; set; }
-
-    #endregion
+    [Column(MapType = typeof(string), StringLength = -1)]
+    public List<string> IpWhitelist { get; set; }
 
     /// <summary>
-    /// 拒绝响应状态码
+    /// HTTP状态码
     /// </summary>
-    public int RejectionStatusCode { get; set; }
+    public int HttpStatusCode { get; set; } = 429;
+
+    /// <summary>
+    /// 超出配额消息
+    /// </summary>
+    public string QuotaExceededMessage { get; set; }
+
+    /// <summary>
+    /// 错误内容类型
+    /// </summary>
+    public string RateLimitContentType { get; set; } = "text/html";
+
+    /// <summary>
+    /// 速率限制计数器前缀
+    /// </summary>
+    public string RateLimitCounterPrefix { get; set; } = "crlc";
+
+    /// <summary>
+    /// 启用端点速率限制
+    /// </summary>
+    public bool EnableEndpointRateLimiting { get; set; }
+
+    /// <summary>
+    /// 禁用速率限制头部
+    /// </summary>
+    public bool DisableRateLimitHeaders { get; set; }
+
+    /// <summary>
+    /// 启用正则规则匹配
+    /// </summary>
+    public bool EnableRegexRuleMatching { get; set; }
+}
+
+public class GeneralRules
+{
+    public string Endpoint { get; set; }
+    public string Period { get; set; }
+    public int Limit { get; set; }
 }

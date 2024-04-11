@@ -40,6 +40,8 @@ public class ServiceInput
     /// </summary>
     public bool EnableTunnel { get; set; }
 
+    public string RateLimitName { get; set; }
+    
     /// <summary>
     /// 服务配置
     /// </summary>
