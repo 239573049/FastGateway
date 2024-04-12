@@ -1,42 +1,44 @@
-# FastGateway 管理端
+# FastGateway Management Console
 
-FastGateway提供了基本的管理服务，提供简单的登录授权，和实时配置管理，从而实现动态路由的管理。
+FastGateway provides basic management services, including simple login authorization and real-time configuration management, thereby enabling the management of dynamic routing.
 
-## 支持功能
+## Supported Features
 
-- [x] 登录授权
-- [x] 自动申请HTTPS证书
-- [x] 自动续期HTTPS证书
-- [x] dashboard监控
-- [x] 静态文件服务
-- [x] 单服务代理
-- [x] 集群代理
-- [x] 请求来源分析
-- [x] 支持yaml导入导出
+- [x] Login authorization
+- [x] Automatic HTTPS certificate application
+- [x] Automatic HTTPS certificate renewal
+- [x] Dashboard monitoring
+- [x] Static file service
+- [x] Single service proxy
+- [x] Cluster proxy
+- [x] Request source analysis
+- [x] Support for YAML import/export
+- [x] Support for custom rate limiting policies
+- [x] Support for black and white lists
 
-## 技术栈
+## Technology Stack
 
-### 后端技术栈
+### Backend Technology Stack
 
-- Asp.Net 8.0 用于提供基础服务
-- Yarp 用于提供反向代理服务
-- FreeSql用于提供数据库服务
-- JWT 用于提供登录授权服务
-- MiniApis 提供WebApi服务
+- Asp.Net 8.0 for providing basic services
+- Yarp for providing reverse proxy services
+- FreeSql for database services
+- JWT for login authorization services
+- MiniApis for providing WebApi services
 
-### 前端技术栈
+### Frontend Technology Stack
 
-- reset-css 用于重置浏览器默认样式
-- semi 用于提供基础组件
-- react-router-dom 用于路由管理
+- reset-css for resetting default browser styles
+- semi for providing basic components
+- react-router-dom for routing management
 
-## 快速运行Gateway
+## Quick Start Gateway
 
 ```bash
 docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0
 ```
 
-## Docker-Compose文件
+## Docker-Compose File
 
 ```yml
 
@@ -48,19 +50,19 @@ services:
     environment:
       PASSWORD: Aa123456
     ports:
-      - 8080:8080 # 提供给web端调用的管理接口
-      - 80:80 # Http代理端口
-      - 443:443 # Https代理端口
+      - 8080:8080 # Management interface for web client
+      - 80:80 # HTTP proxy port
+      - 443:443 # HTTPS proxy port
     volumes:
       - ./data:/data/
       - ./certs:/app/certs/
 ```
 
-如果并没有提供密码则默认
+If no password is provided, the default is:
 
-密码：Aa123456
+Password: Aa123456
 
-## 支持HTTP3的docker-compose
+## Docker-compose Supporting HTTP3
 
 ```yml
 
@@ -72,32 +74,32 @@ services:
     environment:
       PASSWORD: Aa123456
     ports:
-      - 8080:8080 # web管理端
-      - 80:80 # Http代理端口
-      - 443:443/udp # Https代理端口
-      - 443:443/tcp # Https代理端口 Http3需要开启UDP和TCP，请注意防火墙设置是否允许
+      - 8080:8080 # Web management end
+      - 80:80 # HTTP proxy port
+      - 443:443/udp # HTTPS proxy port
+      - 443:443/tcp # HTTPS proxy port HTTP3 requires both UDP and TCP to be enabled, please check if the firewall settings allow this
     volumes:
       - ./data:/data/
       - ./certs:/app/certs/
 ```
 
-## Linux使用`systemd`启动服务
+## Using `systemd` to Start Services on Linux
 
-下载Linux压缩包，然后解压程序，使用nano创建`fastgateway.service`
+Download the Linux zip file, then unzip the program, and use nano to create `fastgateway.service`
 
 ```shell
 nano /etc/systemd/system/fastgateway.service
 ```
 
-填写以下内容的时候记得替换配置
+Remember to replace the configuration when filling in the following content:
 
 ```tex
 [Unit]
 Description=FastGateway
 
 [Service]
-WorkingDirectory=你解压的目录
-ExecStart=/usr/bin/dotnet 你解压的目录/FastGateway.dll
+WorkingDirectory=Your unzipped directory
+ExecStart=/usr/bin/dotnet Your unzipped directory/FastGateway.dll
 Restart=always
 # Restart service after 10 seconds if the dotnet service crashes:
 RestartSec=10
@@ -110,42 +112,42 @@ Environment=ASPNETCORE_ENVIRONMENT=Production
 WantedBy=multi-user.target
 ```
 
-接下来，重新加载 systemd 以使新的服务单元文件生效：
+Next, reload systemd to make the new service unit file take effect:
 
 ```shell
 systemctl daemon-reload
 ```
 
-现在你可以启动服务了：
+Now you can start the service:
 
 ```shell
 systemctl start fastgateway.service
 ```
 
-要使服务在系统启动时自动启动，请启用它：
+To enable the service to start automatically at system boot, enable it:
 
 ```shell
 systemctl enable fastgateway.service
 ```
 
-你可以使用下命令检查服务的状态：
+You can check the status of the service with the following command:
 
 ```shell
 systemctl status fastgateway.service
 ```
 
-如果你需要停止服务，可以使用：
+If you need to stop the service, you can use:
 
 ```shell
 systemctl stop fastgateway.service
 ```
 
-如果你对服务做了更改并需要重新加载配置，可以重新启动服务：
+If you have made changes to the service and need to reload the configuration, you can restart the service:
 
 ```shell
 systemctl restart fastgateway.service
 ```
 
-## 第三方下载
+## Third-Party Downloads
 
-- [ip2region.xdb](https://tokenfile.oss-cn-beijing.aliyuncs.com/ip2region.xdb) 用于ip离线归属地
+- [ip2region.xdb](https://tokenfile.oss-cn-beijing.aliyuncs.com/ip2region.xdb) for offline IP attribution
