@@ -12,7 +12,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     
   <!--    尝试减少内存总量占用使用dynamic adaptive gc-->
-    <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <GarbageCollectionAdapatationMode>1</GarbageCollectionAdapatationMode>
   </PropertyGroup>
 
   <ItemGroup>
