@@ -10,7 +10,9 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-
+    
+  <!--    尝试减少内存总量占用使用dynamic adaptive gc-->
+    <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
   </PropertyGroup>
 
   <ItemGroup>
