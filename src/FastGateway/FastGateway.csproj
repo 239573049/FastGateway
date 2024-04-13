@@ -24,6 +24,7 @@
     <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.2.820" />
     <PackageReference Include="IP2Region.Net" Version="2.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.3" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.0" />
     <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)" />
   </ItemGroup>
 
