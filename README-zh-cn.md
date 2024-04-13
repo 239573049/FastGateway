@@ -151,6 +151,12 @@ systemctl stop fastgateway.service
 systemctl restart fastgateway.service
 ```
 
+## 镜像列表
+
+- 默认镜像：registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0
+- 提供HTTP3镜像：registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0-h3
+- ARM64镜像：registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0-arm64
+
 ## 第三方下载
 
 - [ip2region.xdb](https://tokenfile.oss-cn-beijing.aliyuncs.com/ip2region.xdb) 用于ip离线归属地
