@@ -116,7 +116,7 @@ public static class CertService
             .Set(x => x.RenewTime, cert.RenewTime)
             .Set(x => x.NotAfter, cert.NotAfter)
             .Set(x => x.Expired, cert.Expired)
-            .Set(x=>x.Certs, cert.Certs)
+            .Set(x => x.Certs, cert.Certs)
             .Where(x => x.Id == cert.Id)
             .ExecuteAffrowsAsync();
 
@@ -126,78 +126,86 @@ public static class CertService
 
     public static async ValueTask<bool> ApplyForCert(IMemoryCache memoryCache, AcmeContext context, Cert certItem)
     {
-        certItem.ClearCerts();
-
-        foreach (var domain in certItem.Domains)
+        try
         {
-            var order = await context.NewOrder(new[] { domain });
+            certItem.ClearCerts();
 
-            var authz = (await order.Authorizations()).First();
-            var httpChallenge = await authz.Http();
-
-            // 保存验证信息
-            memoryCache.Set(httpChallenge.Token, httpChallenge.KeyAuthz, TimeSpan.FromMinutes(20));
-
-            await Task.Delay(1000);
-
-            var challenge = await httpChallenge.Validate();
-
-            for (int i = 0; i < 50; i++)
+            foreach (var domain in certItem.Domains)
             {
-                if (challenge.Status == ChallengeStatus.Valid)
+                var order = await context.NewOrder(new[] { domain });
+
+                var authz = (await order.Authorizations()).First();
+                var httpChallenge = await authz.Http();
+
+                // 保存验证信息
+                memoryCache.Set(httpChallenge.Token, httpChallenge.KeyAuthz, TimeSpan.FromMinutes(20));
+
+                await Task.Delay(1000);
+
+                var challenge = await httpChallenge.Validate();
+
+                for (int i = 0; i < 50; i++)
                 {
-                    break;
+                    if (challenge.Status == ChallengeStatus.Valid)
+                    {
+                        break;
+                    }
+
+                    if (challenge.Status == ChallengeStatus.Invalid)
+                    {
+                        throw new Exception("验证失败，请检查域名是否正确配置");
+                    }
+
+                    await Task.Delay(5000);
+                    // 更新验证状态
+                    challenge = await httpChallenge.Resource();
                 }
 
-                if (challenge.Status == ChallengeStatus.Invalid)
+                var privateKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
+                var cert = await order.Generate(new CsrInfo
                 {
-                    throw new Exception("验证失败，请检查域名是否正确配置");
+                    CountryName = "CA",
+                    State = "Ontario",
+                    Locality = "Toronto",
+                    Organization = "Certes",
+                    OrganizationUnit = "Dev",
+                    CommonName = domain
+                }, privateKey);
+
+                var certPassword = "Aa123456";
+                var pfxBuilder = cert.ToPfx(privateKey);
+                var pfx = pfxBuilder.Build("my-cert", certPassword);
+
+
+                // // 获取证书文件目录
+                var certPath = Path.Combine(AppContext.BaseDirectory, "certs");
+                if (!Directory.Exists(certPath))
+                {
+                    Directory.CreateDirectory(certPath);
                 }
 
-                await Task.Delay(5000);
-                // 更新验证状态
-                challenge = await httpChallenge.Resource();
+                // 保存证书文件
+                var certFile = Path.Combine(certPath, $"{domain}.pfx");
+                await File.WriteAllBytesAsync(certFile, pfx);
+
+                // 更新证书信息
+                certItem.NotAfter = DateTime.Now.AddMonths(3);
+                certItem.RenewTime = DateTime.Now;
+                certItem.Expired = false;
+                certItem.RenewStats = RenewStats.Success;
+
+                certItem.AddCert(new CertData
+                {
+                    File = certFile,
+                    Domain = domain,
+                    Password = certPassword
+                });
             }
-
-            var privateKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
-            var cert = await order.Generate(new CsrInfo
-            {
-                CountryName = "CA",
-                State = "Ontario",
-                Locality = "Toronto",
-                Organization = "Certes",
-                OrganizationUnit = "Dev",
-                CommonName = domain
-            }, privateKey);
-
-            var certPassword = "Aa123456";
-            var pfxBuilder = cert.ToPfx(privateKey);
-            var pfx = pfxBuilder.Build("my-cert", certPassword);
-
-
-            // // 获取证书文件目录
-            var certPath = Path.Combine(AppContext.BaseDirectory, "certs");
-            if (!Directory.Exists(certPath))
-            {
-                Directory.CreateDirectory(certPath);
-            }
-
-            // 保存证书文件
-            var certFile = Path.Combine(certPath, $"{domain}.pfx");
-            await File.WriteAllBytesAsync(certFile, pfx);
-
-            // 更新证书信息
-            certItem.NotAfter = DateTime.Now.AddMonths(3);
-            certItem.RenewTime = DateTime.Now;
-            certItem.Expired = false;
-            certItem.RenewStats = RenewStats.Success;
-
-            certItem.AddCert(new CertData
-            {
-                File = certFile,
-                Domain = domain,
-                Password = certPassword
-            });
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
         }
 
         return true;
