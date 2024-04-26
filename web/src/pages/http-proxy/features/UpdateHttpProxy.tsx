@@ -1,6 +1,6 @@
 import { Button, Col, Collapse, Divider, Form, InputGroup, Modal, Notification, Row, Tag } from "@douyinfe/semi-ui";
 import { LoadType, LocationInput, Service, ServiceInput } from "../../../module";
-import { CheckDirecotryExistence, UpdateApiService } from "../../../services/ApiServiceService";
+import { CheckDirecotryExistence, ClientConnect, UpdateApiService } from "../../../services/ApiServiceService";
 import { useEffect, useState } from "react";
 import { GetNames } from "../../../services/RateLimitService";
 
@@ -11,7 +11,7 @@ interface IUpdateHttpProxyProps {
     values?: Service;
 }
 
-const { Select, Input, Checkbox, } = Form;
+const { Select, Input, Checkbox, AutoComplete} = Form;
 
 interface IFormValues {
     formState: any;
@@ -27,6 +27,7 @@ export default function UpdateHttpProxy({
 }: IUpdateHttpProxyProps) {
     
     const [names, setNames] = useState<string[]>([]);
+    const [clients, setClients] = useState<string[]>([]);
 
     useEffect(() => {
         if (visible) {
@@ -36,6 +37,15 @@ export default function UpdateHttpProxy({
                 })
         }
     }, [visible]);
+
+    useEffect(() => {
+        if(values?.id){
+            ClientConnect(values.id)
+                .then((res) => {
+                    setClients(res);
+                })
+        }
+    },[values?.id])
     
     return (
         <Modal
@@ -409,8 +419,9 @@ export default function UpdateHttpProxy({
                                                             }
                                                             {
                                                                 service.type === 2 && (
-                                                                    <Input
+                                                                    <AutoComplete
                                                                         label="代理地址"
+                                                                        data={clients}
                                                                         initValue={service.proxyPass}
                                                                         defaultValue={service.proxyPass}
                                                                         onChange={(v: any) => {

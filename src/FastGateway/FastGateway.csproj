@@ -33,6 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\common\FastGateway.TunnelServer\FastGateway.TunnelServer.csproj" />
     <ProjectReference Include="..\FastGateway.Core\FastGateway.Core.csproj" />
   </ItemGroup>
 

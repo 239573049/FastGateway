@@ -64,10 +64,10 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
             {
                 IpDic.TryAdd(ipDto.Ip, ipDto);
 
-                var locations = searcher.Search(ipDto.Ip).Split("|", StringSplitOptions.RemoveEmptyEntries);
+                var locations = searcher.Search(ipDto.Ip)?.Split("|", StringSplitOptions.RemoveEmptyEntries);
                 // 删除0
-                locations = locations.Where(x => x != "0").ToArray();
-                if (locations.Length == 0)
+                locations = locations?.Where(x => x != "0").ToArray();
+                if (locations?.Length == 0)
                 {
                     ipDto.Location = "未知";
                     continue;

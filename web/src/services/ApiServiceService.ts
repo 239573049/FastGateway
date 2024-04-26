@@ -93,6 +93,18 @@ export function GetSelectList() {
     return get('/api/v1/ApiService/SelectList')
 }
 
+/**
+ * 重载配置。
+ * @param id 
+ * @returns 
+ */
 export function RestartConfig(id: string) {
     return post('/api/v1/ApiService/RestartConfig/' + id);
+}
+
+/**
+ * 获取链接的客户端
+ */
+export function ClientConnect(serviceId: string) {
+    return get('/api/v1/ApiService/ClientConnect?serviceId=' + serviceId);
 }

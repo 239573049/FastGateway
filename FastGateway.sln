@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "solution items", "solution items", "{9C1B1C3B-F530-4345-B61E-FDB2A38612AE}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
+		README-zh-cn.md = README-zh-cn.md
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -20,6 +21,12 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark", "benchmark", "{CF414ACD-BE24-4A57-BF8D-0415F60A290A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmark.FastGateway", "benchmark\Benchmark.FastGateway\Benchmark.FastGateway.csproj", "{E7C80088-0A08-4B57-A944-EDBAEAFA333D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FastGateway.TunnelServer", "common\FastGateway.TunnelServer\FastGateway.TunnelServer.csproj", "{B35B88F3-E870-4493-9290-F6F75FB76AE3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FastGateway.TunnelClient", "common\FastGateway.TunnelClient\FastGateway.TunnelClient.csproj", "{F7E81E04-5013-4425-94FF-BE20EF9B3DEE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway.WinUI.Client", "src\FastGateway.WinUI.Client\FastGateway.WinUI.Client.csproj", "{E2ABC321-9B22-4617-85DA-09D5AD840745}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +46,18 @@ Global
 		{E7C80088-0A08-4B57-A944-EDBAEAFA333D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E7C80088-0A08-4B57-A944-EDBAEAFA333D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E7C80088-0A08-4B57-A944-EDBAEAFA333D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B35B88F3-E870-4493-9290-F6F75FB76AE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B35B88F3-E870-4493-9290-F6F75FB76AE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B35B88F3-E870-4493-9290-F6F75FB76AE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B35B88F3-E870-4493-9290-F6F75FB76AE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7E81E04-5013-4425-94FF-BE20EF9B3DEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7E81E04-5013-4425-94FF-BE20EF9B3DEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7E81E04-5013-4425-94FF-BE20EF9B3DEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7E81E04-5013-4425-94FF-BE20EF9B3DEE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2ABC321-9B22-4617-85DA-09D5AD840745}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2ABC321-9B22-4617-85DA-09D5AD840745}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2ABC321-9B22-4617-85DA-09D5AD840745}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2ABC321-9B22-4617-85DA-09D5AD840745}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -47,5 +66,8 @@ Global
 		{0503A140-FADC-491A-8141-13FF103B205E} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
 		{9EE939F2-5D0E-4AA1-80DA-43BF0111C3C6} = {C8495474-1C78-4A80-A429-9C0F6D0FFF87}
 		{E7C80088-0A08-4B57-A944-EDBAEAFA333D} = {CF414ACD-BE24-4A57-BF8D-0415F60A290A}
+		{B35B88F3-E870-4493-9290-F6F75FB76AE3} = {C8495474-1C78-4A80-A429-9C0F6D0FFF87}
+		{F7E81E04-5013-4425-94FF-BE20EF9B3DEE} = {C8495474-1C78-4A80-A429-9C0F6D0FFF87}
+		{E2ABC321-9B22-4617-85DA-09D5AD840745} = {9BBA9B8C-370F-4334-9E88-D5B246139818}
 	EndGlobalSection
 EndGlobal

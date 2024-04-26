@@ -186,7 +186,7 @@ export default function AdminLayout() {
                     }}
                 >
                     <span>
-                        © 2021 Token Team. All rights reserved.
+                        © 2024 Token Team. All rights reserved.
                     </span>
                 </span>
                 <span>

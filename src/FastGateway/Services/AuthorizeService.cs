@@ -11,7 +11,7 @@ public static class AuthorizeService
     public static ResultDto CreateAsync(AuthorizeInput input)
     {
         // 获取环境变量
-        var password = Environment.GetEnvironmentVariable("PASSWORD", EnvironmentVariableTarget.Machine) ?? "Aa123456";
+        var password = Environment.GetEnvironmentVariable("PASSWORD") ?? "Aa123456";
 
         if (input.Password != password)
         {

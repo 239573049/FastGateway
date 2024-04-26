@@ -1,11 +1,14 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 using AspNetCoreRateLimit;
 using FastGateway.Infrastructures;
 using FastGateway.Middlewares;
+using FastGateway.TunnelServer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Newtonsoft.Json;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Directory = System.IO.Directory;
@@ -15,6 +18,11 @@ namespace FastGateway.Services;
 public static class ApiServiceService
 {
     private static readonly Dictionary<string, WebApplication> WebApplications = new();
+
+    /// <summary>
+    /// 客户端连接
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, List<string>> ClientConnections = new();
 
     public static async Task LoadServices(IFreeSql freeSql)
     {
@@ -312,6 +320,19 @@ public static class ApiServiceService
         }
     }
 
+    [Authorize]
+    public static List<string> ClientConnect(string serviceId)
+    {
+        if (ClientConnections.TryGetValue(serviceId, out var list))
+        {
+            return list;
+        }
+
+        return new()
+        {
+        };
+    }
+
     private static async Task BuilderService(object state)
     {
         try
@@ -352,7 +373,7 @@ public static class ApiServiceService
                 ServiceId = service.Id,
             }).AddSingleton<StatisticsMiddleware>();
 
-            if (service.RateLimit != null && service.RateLimit.Enable)
+            if (service.RateLimit is { Enable: true })
             {
                 builder.Services.AddMemoryCache();
                 builder.Services.Configure<IpRateLimitOptions>
@@ -392,12 +413,19 @@ public static class ApiServiceService
                 // 删除所有代理的前缀
                 .AddTransforms(context =>
                 {
-                    var prefix = context.Route.Match.Path?.Replace("/{**catch-all}", "");
+                    var prefix = context.Route.Match.Path?
+                        .Replace("/{**catch-all}", "")
+                        .Replace("{**catch-all}", "");
                     if (!string.IsNullOrEmpty(prefix))
                     {
                         context.AddPathRemovePrefix(prefix);
                     }
                 });
+
+            if (service.EnableTunnel)
+            {
+                builder.Services.AddTunnelServices();
+            }
 
             var app = builder.Build();
 
@@ -468,6 +496,29 @@ public static class ApiServiceService
             }
 
             app.UseMiddleware<StatisticsMiddleware>();
+
+            if (service.EnableTunnel)
+            {
+                // app.MapWebSocketTunnel("/gateway/connect-ws");
+
+                // Auth可以添加到这个端点，我们可以将它限制在某些点上
+                // 避免外部流量撞击它
+                app.MapHttp2Tunnel("/gateway/connect-h2", connection =>
+                {
+                    ClientConnections.AddOrUpdate(service.Id, [connection], (s, list) =>
+                    {
+                        list.Add(connection);
+                        return list;
+                    });
+                }, disconnection =>
+                {
+                    // 移除连接
+                    if (ClientConnections.TryGetValue(service.Id, out var list))
+                    {
+                        list.Remove(disconnection);
+                    }
+                });
+            }
 
             // 用于HTTPS证书签名校验
             app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);

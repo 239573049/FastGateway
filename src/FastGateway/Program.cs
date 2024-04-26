@@ -58,7 +58,7 @@ builder.Services.AddSingleton<IFreeSql>((_) =>
     return freeSql;
 });
 
-builder.Services.AddResponseCompression(options => { options.Providers.Add<BrotliCompressionProvider>(); });
+builder.Services.AddResponseCompression();
 
 
 builder.Services
@@ -180,6 +180,9 @@ apiService.MapPost("/RestartService",
 apiService.MapPost("/RestartConfig/{id}",
     ApiServiceService.RestartConfigAsync);
 
+apiService.MapGet("/ClientConnect",
+    ApiServiceService.ClientConnect);
+
 apiService.MapPost("/ServiceStats",
     ApiServiceService.ServiceStats);
 
@@ -296,6 +299,5 @@ FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>(),
     app.Services.GetRequiredService<IMemoryCache>());
 
 app.UseStaticFiles();
-
 
 await app.RunAsync();
