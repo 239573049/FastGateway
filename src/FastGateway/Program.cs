@@ -122,6 +122,24 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
+app.Use((async (context, next) =>
+{
+    // 解决react软路由问题
+
+    if (context.Request.Path == "/")
+    {
+        context.Request.Path = "/index.html";
+    }
+
+    await next();
+
+    if (context.Response.StatusCode == 404)
+    {
+        context.Request.Path = "/index.html";
+        await next();
+    }
+}));
+
 #region Authorize
 
 var authorizeService = app.MapGroup("/api/v1/Authorize");
@@ -285,6 +303,5 @@ FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>(),
 
 app.UseStaticFiles();
 
-app.UseDefaultFiles("/index.html");
 
 await app.RunAsync();

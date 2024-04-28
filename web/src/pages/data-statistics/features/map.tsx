@@ -24,7 +24,7 @@ export default function Map(
         
         let list; 
         if(isGlobal){
-            list = data.reduce((arr, cur, index) => {
+            list = data.reduce((arr, cur) => {
                 let hasValue = arr.findIndex((a: { name: any; }) => a.name === cur.country);
                 hasValue === -1 && arr.push({ name: cur.country, value: cur.count });
                 hasValue !== -1 && (arr[hasValue].value = arr[hasValue].value + cur.count);
@@ -33,7 +33,7 @@ export default function Map(
 
             
         }else{
-            list = data.filter((item) => item.country === '中国').reduce((arr, cur, index) => {
+            list = data.filter((item) => item.country === '中国').reduce((arr, cur) => {
                 let hasValue = arr.findIndex((a: { name: any; }) => a.name === cur.country);
                 hasValue === -1 && arr.push({ name: cur.country, value: cur.count });
                 hasValue !== -1 && (arr[hasValue].value = arr[hasValue].value + cur.count);
@@ -53,7 +53,7 @@ export default function Map(
             // 提示框组件
             tooltip: {
                 triggerOn: "mousemove",
-                formatter: function (e: any, t: any, n: any) {
+                formatter: function (e: any) {
                     return e.seriesName + "<br />" + e.name + "：" + (e.value || 0);
                 },
             },
@@ -109,7 +109,7 @@ export default function Map(
         return () => {
             myEcharts.dispose();
         }
-        
+
     }, [isGlobal,data])
 
     return (<div style={{

@@ -28,7 +28,7 @@ export default function DataStatistics() {
     download: 0
   })
   const [isGlobal, setIsGlobal] = useState(true)
-  const [dayStatisticLocationCount, setDayStatisticLocationCount] = useState([] as any[]);
+  // const [dayStatisticLocationCount, setDayStatisticLocationCount] = useState([] as any[]);
   const [qps_chartData] = useState({
     tooltip: {
       trigger: 'axis',
@@ -141,9 +141,9 @@ export default function DataStatistics() {
 
   function loadDayStatisticLocationCount() {
     GetDayStatisticLocationCount()
-      .then((res) => {
-        setDayStatisticLocationCount(res)
-      }).catch((err) => {
+      .then(() => {
+        // setDayStatisticLocationCount(res)
+      }).catch(() => {
 
       })
   }
@@ -265,7 +265,7 @@ export default function DataStatistics() {
                 marginRight: '10px'
               }}
               size='large'
-              defaultChecked={isGlobal} onChange={(v, e) => 
+              defaultChecked={isGlobal} onChange={(v) => 
               setIsGlobal(v)
             } ></Switch>
           </div>

@@ -121,7 +121,7 @@ export default function MapList({
                                 fontSize: 12,
                             },
                         },
-                        formatter: function (a: any, b: any) {
+                        formatter: function (a: any) {
                             return "{a|" + a.name + "}";
                         }
                     },
