@@ -2,6 +2,7 @@
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0.3-alpine3.18-amd64 AS base
 USER root
+RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo Asia/Shanghai > /etc/timezone
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081

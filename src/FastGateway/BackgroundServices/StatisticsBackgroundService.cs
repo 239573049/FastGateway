@@ -11,7 +11,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
         Channel.CreateUnbounded<StatisticRequestCountDto>();
 
     private static readonly ConcurrentDictionary<string, StatisticRequestCountDto> RequestCountDic = new(-1, 5);
-    private static readonly ConcurrentDictionary<string, StatisticIpDto> IpDic = new(-1,5);
+    private static readonly ConcurrentDictionary<string, StatisticIpDto> IpDic = new(-1, 5);
 
     private static readonly Channel<StatisticIpDto> StatisticIpChannel = Channel.CreateUnbounded<StatisticIpDto>();
 
@@ -67,7 +67,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
                 var locations = searcher.Search(ipDto.Ip)?.Split("|", StringSplitOptions.RemoveEmptyEntries);
                 // 删除0
                 locations = locations?.Where(x => x != "0").ToArray();
-                if (locations?.Length == 0)
+                if (locations == null || locations?.Length == 0)
                 {
                     ipDto.Location = "未知";
                     continue;
@@ -76,10 +76,12 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
                 // 然后去掉最后一个
                 var location = locations.Distinct().ToArray();
 
-                ipDto.Location = string.Join("", location)
+                ipDto.Location = string.Join("|", location)
                     .Replace("电信", "")
                     .Replace("联通", "")
-                    .Replace("移动", "");
+                    .Replace("移动", "")
+                    .TrimStart('|')
+                    .TrimEnd('|');
             }
         }
     }
@@ -150,7 +152,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
         var year = (ushort)requestCountDto.CreatedTime.Year;
         var month = (byte)requestCountDto.CreatedTime.Month;
         var day = (byte)requestCountDto.CreatedTime.Day;
-        // 判断数据库是否存在今年今月今日的数据
+        // 判断数据库是否存在今年今月今日小时的数据
         if (await freeSql.Select<StatisticIp>()
                 .AnyAsync(x => x.ServiceId == requestCountDto.ServiceId
                                && x.Ip == requestCountDto.Ip
@@ -190,20 +192,23 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
         var year = (ushort)requestCountDto.CreatedTime.Year;
         var month = (byte)requestCountDto.CreatedTime.Month;
         var day = (byte)requestCountDto.CreatedTime.Day;
-        
+        var hour = (byte)requestCountDto.CreatedTime.Hour;
+
         // 判断数据库是否存在今年今月今日的数据
         if (await freeSql.Select<StatisticRequestCount>()
                 .AnyAsync(x => x.ServiceId == requestCountDto.ServiceId
                                && x.Year == year
                                && x.Month == month
-                               && x.Day == day))
+                               && x.Day == day
+                               && x.Hour == hour))
         {
             // 更新
             await freeSql.Update<StatisticRequestCount>()
                     .Where(x => x.ServiceId == requestCountDto.ServiceId
                                 && x.Year == year
                                 && x.Month == month
-                                && x.Day == day)
+                                && x.Day == day
+                                && x.Hour == hour)
                     .Set(x => x.Error5xxCount + requestCountDto.Error5xxCount)
                     .Set(x => x.Error4xxCount + requestCountDto.Error4xxCount)
                     .Set(x => x.RequestCount + requestCountDto.RequestCount)
@@ -219,6 +224,7 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
                 RequestCount = requestCountDto.RequestCount,
                 Error4xxCount = requestCountDto.Error4xxCount,
                 Error5xxCount = requestCountDto.Error5xxCount,
+                Hour = hour,
                 Year = year,
                 Month = month,
                 Day = day

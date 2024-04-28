@@ -1,14 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading.RateLimiting;
 using AspNetCoreRateLimit;
 using FastGateway.Infrastructures;
 using FastGateway.Middlewares;
 using FastGateway.TunnelServer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Newtonsoft.Json;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Directory = System.IO.Directory;
@@ -18,6 +15,11 @@ namespace FastGateway.Services;
 public static class ApiServiceService
 {
     private static readonly Dictionary<string, WebApplication> WebApplications = new();
+    
+    /// <summary>
+    /// 默认的内容类型提供程序
+    /// </summary>
+    private static readonly DefaultContentTypeProvider DefaultContentTypeProvider = new ();
 
     /// <summary>
     /// 客户端连接
@@ -26,6 +28,7 @@ public static class ApiServiceService
 
     public static async Task LoadServices(IFreeSql freeSql)
     {
+        // 停止所有服务
         foreach (var application in WebApplications)
         {
             await application.Value.DisposeAsync();
@@ -339,9 +342,9 @@ public static class ApiServiceService
         {
             var service = (Service)state;
 
+            // 使用最小的配置
             var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
 
-            var defaultContentTypeProvider = new DefaultContentTypeProvider();
 
             builder.WebHost.UseKestrel(options =>
             {
@@ -373,6 +376,7 @@ public static class ApiServiceService
                 ServiceId = service.Id,
             }).AddSingleton<StatisticsMiddleware>();
 
+            // 如果启用限流则添加限流中间件
             if (service.RateLimit is { Enable: true })
             {
                 builder.Services.AddMemoryCache();
@@ -534,7 +538,7 @@ public static class ApiServiceService
 
                         if (File.Exists(path))
                         {
-                            defaultContentTypeProvider.TryGetContentType(path, out var contentType);
+                            DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
                             context.Response.Headers.ContentType = contentType;
 
                             await context.Response.SendFileAsync(path);
@@ -555,7 +559,7 @@ public static class ApiServiceService
 
                             if (!File.Exists(tryPath)) continue;
 
-                            defaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
+                            DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
                             context.Response.Headers.ContentType = contentType;
 
                             await context.Response.SendFileAsync(tryPath);

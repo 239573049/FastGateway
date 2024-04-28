@@ -32,6 +32,11 @@ public sealed class StatisticRequestCount
     /// </summary>
     public byte Day { get; set; }
     
+    /// <summary>
+    /// 小时
+    /// </summary>
+    public byte Hour { get; set; }
+    
     [Navigate(nameof(ServiceId))]
     public Service Service { get; set; }
 }

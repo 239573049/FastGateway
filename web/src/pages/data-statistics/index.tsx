@@ -1,10 +1,13 @@
-import { Divider, Progress, Tag, Tooltip } from '@douyinfe/semi-ui'
+import { Divider, Switch, Tag } from '@douyinfe/semi-ui'
 import './index.css'
 import { useEffect, useState } from 'react';
 import * as echarts from 'echarts';
 import { getQpsChart } from '../../services/QpsService';
 import { DayRequestCount, GetDayStatisticLocationCount, GetLocation, TotalRequestCount } from '../../services/StatisticRequestService';
 import { bytesToSize } from '../../utils/data-util';
+import Map from './features/map';
+import MapList from './features/map-list';
+
 
 export default function DataStatistics() {
   const [qps, setQps] = useState(0)
@@ -24,7 +27,7 @@ export default function DataStatistics() {
     upload: 0,
     download: 0
   })
-
+  const [isGlobal, setIsGlobal] = useState(true)
   const [dayStatisticLocationCount, setDayStatisticLocationCount] = useState([] as any[]);
   const [qps_chartData] = useState({
     tooltip: {
@@ -79,6 +82,7 @@ export default function DataStatistics() {
 
   var qps_chart: any;
   useEffect(() => {
+
     qps_chart = echarts.init(document.getElementById('qps_chart'));
     // 将qps_chartData.series[0].data中的数据全部替换为0
     qps_chartData.series[0].data = qps_chartData.series[0].data.map(() => 0);
@@ -140,7 +144,7 @@ export default function DataStatistics() {
       .then((res) => {
         setDayStatisticLocationCount(res)
       }).catch((err) => {
-        console.log(err)
+
       })
   }
 
@@ -240,15 +244,30 @@ export default function DataStatistics() {
           </div>
         </div>
         <div className="stat-block large" style={{
-
+          gridColumn: 'span 3'
         }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
+            widows: '100%',
             lineHeight: '50px',
             overflow: 'hidden'
           }}>
-            请求来源
+            30天访问来源地区
+            <span style={{
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+                {isGlobal ? '世界' : '中国'}
+            </span>
+            <Switch 
+              style={{
+                marginRight: '10px'
+              }}
+              size='large'
+              defaultChecked={isGlobal} onChange={(v, e) => 
+              setIsGlobal(v)
+            } ></Switch>
           </div>
           <Divider />
           <div style={{
@@ -260,25 +279,14 @@ export default function DataStatistics() {
             userSelect: 'none',
             scrollbarWidth: 'thin',
             scrollbarColor: 'transparent transparent',
+            display: 'flex',
+
           }}>
-            <ul>
-              {
-                locationData.map((item, index) => {
-                  return <li style={{
-                    padding: '0 10px',
-                  }} key={index}>
-                    <Tooltip style={{
-                    }} content={"请求数量" + item.count}>
-                      <span>{item.location}</span>
-                    </Tooltip>
-                    <Progress showInfo={true} percent={item.ratio} stroke="var(--semi-color-warning)" aria-label="disk usage" />
-                  </li>
-                })
-              }
-            </ul>
+            <Map isGlobal={isGlobal} data={locationData} />
+            <MapList isGlobal={isGlobal} data={locationData} />
           </div>
         </div>
-        <div className="stat-block large" style={{}}>
+        <div className="stat-block " style={{}}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -299,40 +307,6 @@ export default function DataStatistics() {
             scrollbarColor: 'transparent transparent',
 
           }}>
-            <ul>
-              {
-                dayStatisticLocationCount.map(x => {
-                  console.log(x);
-                  return (<div style={{
-                    width: '100%',
-                    padding: '0 10px',
-                    // 好看的边框样式
-                    borderBottom: '1px solid var(--semi-color-border)',
-                  }}>
-
-                    <div style={{
-                      width: '90%',
-                      display: 'inline-block',
-                      textAlign: 'left'
-                    }}>
-                      <Tooltip content={x.location}>
-                        {x.ip}
-                      </Tooltip>
-                    </div>
-                    <span style={{
-                      top: '50%',
-                      right: '20px',
-                      borderRadius: '10px',
-                      padding: '0 8px',
-                      backgroundColor: 'var(--semi-color-bg-3)',
-                      color: 'var(--semi-color-success)',
-                    }}>
-                      {x.count}
-                    </span>
-                  </div>)
-                })
-              }
-            </ul>
           </div>
         </div>
       </div>

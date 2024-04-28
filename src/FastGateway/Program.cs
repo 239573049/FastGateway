@@ -1,3 +1,4 @@
+using FastGateway.Infrastructures;
 using FastGateway.TypeHelper;
 using FreeSql;
 using FreeSql.Internal;
@@ -120,22 +121,6 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.Use(async (context, next) =>
-{
-    // 如果是/则重定向到index.html
-    if (context.Request.Path == "/")
-    {
-        context.Request.Path = "/index.html";
-    }
-
-    await next(context);
-
-    if (context.Response.StatusCode == 404)
-    {
-        context.Request.Path = "/index.html";
-        await next(context);
-    }
-});
 
 #region Authorize
 
@@ -299,5 +284,7 @@ FastContext.SetQpsService(app.Services.GetRequiredService<IQpsService>(),
     app.Services.GetRequiredService<IMemoryCache>());
 
 app.UseStaticFiles();
+
+app.UseDefaultFiles("/index.html");
 
 await app.RunAsync();

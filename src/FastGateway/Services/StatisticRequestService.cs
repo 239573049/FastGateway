@@ -41,6 +41,12 @@ public static class StatisticRequestService
         });
     }
 
+    /// <summary>
+    /// 获取数据总数统计
+    /// </summary>
+    /// <param name="freeSql"></param>
+    /// <param name="serviceId"></param>
+    /// <returns></returns>
     public static async Task<ResultDto<StatisticRequestCountDto>> GetTotalStatisticAsync(
         IFreeSql freeSql,
         string? serviceId)
@@ -64,12 +70,29 @@ public static class StatisticRequestService
         });
     }
 
-    public static async Task<List<StatisticLocationDto>> GetStatisticLocationAsync(IFreeSql freeSql)
+    /// <summary>
+    /// 获取归属地统计
+    /// </summary>
+    /// <param name="freeSql"></param>
+    /// <param name="start"></param>
+    /// <param name="end"></param>
+    /// <returns></returns>
+    public static async Task<List<StatisticLocationDto>> GetStatisticLocationAsync(IFreeSql freeSql, DateTime? now)
     {
-        var result = await freeSql.Select<StatisticIp>()
+        var query = freeSql.Select<StatisticIp>();
+        
+        if(now != null)
+        {
+            var year = now.Value.Year;
+            var month = now.Value.Month;
+            var day = now.Value.Day;
+
+            query = query.Where(x => x.Year == year && x.Month == month && x.Day == day);
+        }
+
+        var result = await query
             .GroupBy(e => e.Location)
             .OrderByDescending(e => e.Sum(e.Value.Count))
-            .Take(10)
             .ToListAsync(e => new StatisticLocationDto
             {
                 Location = e.Key,
@@ -78,11 +101,31 @@ public static class StatisticRequestService
 
         // 计算比例
         var total = result.Sum(x => x.Count);
-        result.ForEach(x => x.Ratio = Math.Round((x.Count / total) * 100, 2));
+        result.ForEach(x =>
+        {
+            x.Ratio = Math.Round((x.Count / total) * 100, 2);
+
+            var locations = x.Location?.Split("|", StringSplitOptions.RemoveEmptyEntries);
+
+            if (locations == null || locations.Length == 0)
+                return;
+
+            x.Country = locations.FirstOrDefault();
+
+            if (locations.Length == 1)
+                return;
+
+            x.Province = locations[1];
+        });
 
         return result;
     }
 
+    /// <summary>
+    /// 获取七天的归属地统计
+    /// </summary>
+    /// <param name="freeSql"></param>
+    /// <returns></returns>
     public static async Task<List<DayStatisticLocationCountDto>> GetDayStatisticLocationCountAsync(IFreeSql freeSql)
     {
         var now = DateTime.Now.AddDays(-7);

@@ -4,14 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ServerGarbageCollection>true</ServerGarbageCollection>
     <InvariantGlobalization>true</InvariantGlobalization>
     <UserSecretsId>3e871fe1-899b-49f4-96c0-4799dd36c406</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    
-  <!--    尝试减少内存总量占用使用dynamic adaptive gc-->
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <GarbageCollectionAdapatationMode>1</GarbageCollectionAdapatationMode>
   </PropertyGroup>
@@ -28,7 +25,7 @@
     <PackageReference Include="FreeSql.Provider.SqliteCore" Version="3.2.821" />
     <PackageReference Include="IP2Region.Net" Version="2.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.3" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.0"  />
     <PackageReference Include="Yarp.ReverseProxy" Version="$(YarpVersion)" />
   </ItemGroup>
 
