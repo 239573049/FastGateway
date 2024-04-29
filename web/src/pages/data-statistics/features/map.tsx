@@ -41,8 +41,6 @@ export default function Map(
             }, []);
         }
 
-        debugger
-
         let option = {
             grid: {
                 width: "100%",

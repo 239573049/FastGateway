@@ -26,8 +26,22 @@ export default function MapList({
             
 
         }else{
-            // 只显示中国
-            value = data.filter((item) => item.country === '中国').slice(0, 10);
+
+            // 将数据合并
+
+            // 只要中国
+            data = data.filter((item) => item.country === '中国');
+
+            value = data.reduce((arr, cur) => {
+                let hasValue = arr.findIndex((a: { province: any; }) => a.province === cur.province);
+                hasValue === -1 && arr.push({ province: cur.province, count: cur.count, ratio: cur.ratio, country: cur.country });
+                hasValue !== -1 && (arr[hasValue].count = arr[hasValue].count + cur.count);
+                return arr;
+            }, []);
+
+            // 然后按照count排序
+            value = value.sort((a, b) => b.count - a.count)
+                .slice(0, 10);
         }
 
         let mapListOptions = {
