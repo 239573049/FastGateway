@@ -35,11 +35,13 @@ export default function Map(
         }else{
             list = data.filter((item) => item.country === '中国').reduce((arr, cur) => {
                 let hasValue = arr.findIndex((a: { name: any; }) => a.name === cur.country);
-                hasValue === -1 && arr.push({ name: cur.country, value: cur.count });
+                hasValue === -1 && arr.push({ name: cur.province, value: cur.count });
                 hasValue !== -1 && (arr[hasValue].value = arr[hasValue].value + cur.count);
                 return arr;
             }, []);
         }
+
+        debugger
 
         let option = {
             grid: {
@@ -64,7 +66,7 @@ export default function Map(
                 max: 10000000,
                 showLabel: true,
                 inRange: {
-                    color: ["#edfbfb", "#b7d6f3", "#40a9ed", "#c75c49", "#f14703"],
+                    color: ["#B6C7FE", "#68adee", "#1395ec", "#0099ff", "#00497a"],
                 },
                 splitNumber: 0,
             },
