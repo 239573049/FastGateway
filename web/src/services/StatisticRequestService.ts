@@ -22,8 +22,8 @@ export function GetLocation(){
 }
 
 /**
- * 获取今日ip统计
+ * 获取24小时数据统计
  */
-export function GetDayStatisticLocationCount(){
-    return get('/api/v1/Statistic/DayStatisticLocationCount');
+export function GetStatisticTimeCount(){
+    return get('/api/v1/Statistic/StatisticTimeCount');
 }

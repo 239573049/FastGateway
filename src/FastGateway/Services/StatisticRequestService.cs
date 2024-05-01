@@ -80,8 +80,8 @@ public static class StatisticRequestService
     public static async Task<List<StatisticLocationDto>> GetStatisticLocationAsync(IFreeSql freeSql, DateTime? now)
     {
         var query = freeSql.Select<StatisticIp>();
-        
-        if(now != null)
+
+        if (now != null)
         {
             var year = now.Value.Year;
             var month = now.Value.Month;
@@ -122,33 +122,51 @@ public static class StatisticRequestService
     }
 
     /// <summary>
-    /// 获取七天的归属地统计
+    /// 获取24小时的统计数据
     /// </summary>
     /// <param name="freeSql"></param>
     /// <returns></returns>
-    public static async Task<List<DayStatisticLocationCountDto>> GetDayStatisticLocationCountAsync(IFreeSql freeSql)
+    public static async Task<List<StatisticTimeCountDto>> StatisticTimeCountAsync(IFreeSql freeSql)
     {
-        var now = DateTime.Now.AddDays(-7);
-        var today = new DateTime(now.Year, now.Month, now.Day);
+        var now = DateTime.Now;
 
-        var year = today.Year;
-        var month = today.Month;
-        var day = today.Day;
+        now = now.AddDays(-1);
 
-        var result = await freeSql.Select<StatisticIp>()
-            .Where(x => x.Year == year &&
-                        x.Month == month &&
-                        x.Day >= day)
-            .GroupBy(e => e.Ip)
-            .OrderByDescending(e => e.Sum(e.Value.Count))
-            .Take(10)
-            .ToListAsync(e => new DayStatisticLocationCountDto
-            {
-                Ip = e.Key,
-                Count = e.Sum(e.Value.Count),
-                Location = e.Value.Location
-            });
+        var year = now.Year;
+        var month = now.Month;
+        var day = now.Day;
 
-        return result;
+        var query = freeSql.Select<StatisticRequestCount>()
+            .Where(x => x.Year == year && x.Month == month && x.Day >= day);
+
+        var result = await query
+            .ToListAsync();
+
+        // 提供个数组默认24小时前的数据
+        var data = new List<StatisticTimeCountDto>(24);
+
+        for (int i = 0; i < 24; i++)
+        {
+            data.Add(new StatisticTimeCountDto());
+        }
+
+        var hour = int.Parse(now.ToString("HH"));
+
+        foreach (var countDto in data)
+        {
+            var statistic = result.Where(x => x.Hour == hour)
+                .Sum(x => x.RequestCount + x.Error4xxCount + x.Error5xxCount);
+            countDto.Time = hour + ":00";
+            countDto.Count = statistic;
+
+            if(hour == 24)
+                hour = 1;
+            else
+                hour++;
+            
+            
+        }
+
+        return data;
     }
 }

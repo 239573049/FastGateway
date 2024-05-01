@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.NetworkInformation;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FastGateway.Services;
@@ -8,16 +9,19 @@ public sealed class QpsItem
 {
     private int _lastQps;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void IncrementRequests()
     {
         Interlocked.Increment(ref _lastQps);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void CalculateQps()
     {
         Interlocked.Exchange(ref _lastQps, 0);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int GetQps()
     {
         return _lastQps;
@@ -58,6 +62,7 @@ public sealed class QpsService : IQpsService, IDisposable
         return qps;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnableQps(bool enable)
     {
         _enable = enable;

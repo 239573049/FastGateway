@@ -3,7 +3,7 @@ import './index.css'
 import { useEffect, useState } from 'react';
 import * as echarts from 'echarts';
 import { getQpsChart } from '../../services/QpsService';
-import { DayRequestCount, GetDayStatisticLocationCount, GetLocation, TotalRequestCount } from '../../services/StatisticRequestService';
+import { DayRequestCount, GetStatisticTimeCount, GetLocation, TotalRequestCount } from '../../services/StatisticRequestService';
 import { bytesToSize } from '../../utils/data-util';
 import Map from './features/map';
 import MapList from './features/map-list';
@@ -28,7 +28,7 @@ export default function DataStatistics() {
     download: 0
   })
   const [isGlobal, setIsGlobal] = useState(true)
-  // const [dayStatisticLocationCount, setDayStatisticLocationCount] = useState([] as any[]);
+  const [timeCount, setTimeCount] = useState([] as any[])
   const [qps_chartData] = useState({
     tooltip: {
       trigger: 'axis',
@@ -132,6 +132,7 @@ export default function DataStatistics() {
 
     loadDayStatisticLocationCount()
 
+
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('resize', resizeHandler);
@@ -140,10 +141,82 @@ export default function DataStatistics() {
   }, []);
 
   function loadDayStatisticLocationCount() {
-    GetDayStatisticLocationCount()
-      .then(() => {
-        // setDayStatisticLocationCount(res)
-      }).catch(() => {
+    GetStatisticTimeCount()
+      .then((res) => {
+        setTimeCount(res)
+
+          let option = {
+            grid: {
+              top: '30%',
+              left: '3%',
+              right: '4%',
+              bottom: '3%',
+            },
+            tooltip: {
+              trigger: 'axis',
+            },
+            xAxis: [
+              {
+                type: 'category',
+                boundaryGap: false,
+                axisLabel: {
+            formatter: '{value}',
+            fontSize: 12,
+                },
+                axisTick: {
+            show: false,
+                },
+                data: res.map((item: { time: any; }) => item.time),
+                axisLine: {
+            show: false,
+                },
+              },
+            ],
+            yAxis: [
+              {
+                boundaryGap: false,
+                type: 'value',
+                axisLabel: {
+            textStyle: {
+              color: '#7ec7ff',
+            },
+                },
+                nameTextStyle: {
+            color: '#fff',
+            fontSize: 12,
+            lineHeight: 40,
+                },
+                axisLine: {
+            show: false,
+            lineStyle: {
+              color: '#283352',
+            },
+                },
+                axisTick: {
+            show: false,
+                },
+                splitLine: {
+            show: false,
+                },
+              },
+            ],
+            series: [
+              {
+                name: '访问数量',
+                type: 'line',
+                smooth: true,
+                showSymbol: false,
+                itemStyle: {
+            color: '#19a3df',
+            borderColor: '#a3c8d8',
+                },
+                data: res.map((item: { count: any; }) => item.count),
+              },
+            ],
+          };
+
+        let timeCount = echarts.init(document.getElementById('timeCount'));
+        timeCount.setOption(option);
 
       })
   }
@@ -258,16 +331,16 @@ export default function DataStatistics() {
               display: 'flex',
               alignItems: 'center'
             }}>
-                {isGlobal ? '世界' : '中国'}
+              {isGlobal ? '世界' : '中国'}
             </span>
-            <Switch 
+            <Switch
               style={{
                 marginRight: '10px'
               }}
               size='large'
-              defaultChecked={isGlobal} onChange={(v) => 
-              setIsGlobal(v)
-            } ></Switch>
+              defaultChecked={isGlobal} onChange={(v) =>
+                setIsGlobal(v)
+              } ></Switch>
           </div>
           <Divider />
           <div style={{
@@ -293,20 +366,13 @@ export default function DataStatistics() {
             lineHeight: '50px',
             overflow: 'hidden'
           }}>
-            七天内IP请求排名
+            访问情况
           </div>
-          <Divider />
-          <div style={{
-            justifyContent: 'space-between',
-            lineHeight: '50px',
-            maxHeight: 'calc(100% - 60px)',
-            overflowX: 'hidden',
-            overflowY: 'auto',
-            userSelect: 'none',
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'transparent transparent',
-
+          <div id='timeCount' style={{
+            width: '100%',
+            height: 'calc(100% - 50px)',
           }}>
+
           </div>
         </div>
       </div>
