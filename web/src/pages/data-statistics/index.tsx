@@ -28,7 +28,6 @@ export default function DataStatistics() {
     download: 0
   })
   const [isGlobal, setIsGlobal] = useState(true)
-  const [timeCount, setTimeCount] = useState([] as any[])
   const [qps_chartData] = useState({
     tooltip: {
       trigger: 'axis',
@@ -143,8 +142,6 @@ export default function DataStatistics() {
   function loadDayStatisticLocationCount() {
     GetStatisticTimeCount()
       .then((res) => {
-        setTimeCount(res)
-
           let option = {
             grid: {
               top: '30%',
