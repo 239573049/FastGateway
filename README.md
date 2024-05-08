@@ -3,7 +3,7 @@
 FastGateway provides basic management services, including simple login authorization and real-time configuration management, thereby enabling the management of dynamic routing.
 
 -----
-Document Language: [English](README.md) | [简体中文](README.zh-cn.md)
+Document Language: [English](README.md) | [简体中文](README-zh-cn.md)
 
 ## Supported Features
 
