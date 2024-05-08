@@ -151,14 +151,13 @@ export default function DataStatistics() {
     
     let option = {
       grid: {
-        top: '30%',
+        top: '0%',
         left: '0%',
-        right: '4%',
-        bottom: '3%',
+        right: '0%',
+        bottom: '0%',
       },
       tooltip: {
-        // trigger: 'tooltip',
-        // 柱状
+        trigger: 'axis',
         axisPointer: {
           type: 'shadow',
         },
