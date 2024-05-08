@@ -1,37 +1,63 @@
 .login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-  
-  .outer-border {
-    transition: all 0.5s;
-    border: 2px solid #007bff;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    width: 400px;
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: 'Roboto', sans-serif;
+}
 
-  .outer-border:hover {
-    transform: scale(1.05);
-    transition: all 0.5s;
-  }
-  
-  .inner-content {
-    text-align: center;
-  }
-  
-  .input-container {
-    margin-bottom: 20px;
-  }
-  
-  input {
-    padding: 10px;
-    width: calc(100% - 22px);
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    outline: none;
-  }
-  
+.outer-border {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 40px;
+  max-width: 400px;
+  width: 100%;
+  margin: 0 20px;
+}
+
+.inner-content {
+  text-align: center;
+}
+
+.inner-content h2 {
+  color: #333;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 32px;
+}
+
+.input-container {
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.input-container input {
+  width: 100%;
+  padding: 12px 0;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.input-container input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.login-button {
+  padding: 12px 20px;
+  font-size: 16px;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.login-button:hover {
+  background-color: #5a67d8;
+  transform: translateY(-2px);
+}
+
+.bubble {
+  display: none; /* Temporarily hide bubbles for a cleaner design */
+}

@@ -43,6 +43,11 @@ public class Service
     public bool EnableRequestSource { get; set; }
 
     /// <summary>
+    /// 重定向到HTTPS
+    /// </summary>
+    public bool RedirectHttps { get; set; }
+
+    /// <summary>
     /// 是否启动
     /// </summary>
     public bool Enable { get; set; }

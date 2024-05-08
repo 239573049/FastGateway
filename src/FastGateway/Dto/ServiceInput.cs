@@ -29,6 +29,11 @@ public class ServiceInput
     /// 启用白名单 （白名单优先级高，设置了白名单则忽略黑名单）
     /// </summary>
     public bool EnableWhitelist { get; set; }
+
+    /// <summary>
+    /// 重定向到HTTPS
+    /// </summary>
+    public bool RedirectHttps { get; set; }
     
     /// <summary>
     /// 是否启动

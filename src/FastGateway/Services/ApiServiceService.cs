@@ -5,6 +5,8 @@ using AspNetCoreRateLimit;
 using FastGateway.Infrastructures;
 using FastGateway.Middlewares;
 using FastGateway.TunnelServer;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
@@ -15,16 +17,21 @@ namespace FastGateway.Services;
 public static class ApiServiceService
 {
     private static readonly Dictionary<string, WebApplication> WebApplications = new();
-    
+
     /// <summary>
     /// 默认的内容类型提供程序
     /// </summary>
-    private static readonly DefaultContentTypeProvider DefaultContentTypeProvider = new ();
+    private static readonly DefaultContentTypeProvider DefaultContentTypeProvider = new();
 
     /// <summary>
     /// 客户端连接
     /// </summary>
     private static readonly ConcurrentDictionary<string, List<string>> ClientConnections = new();
+
+    /// <summary>
+    /// 是否存在80端口服务
+    /// </summary>
+    public static bool HasHttpService { get; private set; }
 
     public static async Task LoadServices(IFreeSql freeSql)
     {
@@ -73,6 +80,7 @@ public static class ApiServiceService
         {
             Id = serviceId,
             Enable = input.Enable,
+            RedirectHttps = input.RedirectHttps,
             EnableFlowMonitoring = input.EnableFlowMonitoring,
             EnableTunnel = input.EnableTunnel,
             EnableWhitelist = input.EnableWhitelist,
@@ -119,6 +127,7 @@ public static class ApiServiceService
             .Set(x => x.EnableWhitelist, input.EnableWhitelist)
             .Set(x => x.Enable, input.Enable)
             .Set(x => x.EnableTunnel, input.EnableTunnel)
+            .Set(x => x.RedirectHttps, input.RedirectHttps)
             .Set(x => x.RateLimitName, input.RateLimitName)
             .Set(x => x.EnableFlowMonitoring, input.EnableFlowMonitoring)
             .ExecuteAffrowsAsync();
@@ -338,13 +347,16 @@ public static class ApiServiceService
 
     private static async Task BuilderService(object state)
     {
+        var service = (Service)state;
         try
         {
-            var service = (Service)state;
-
             // 使用最小的配置
             var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
 
+            if (service.Listen == 80)
+            {
+                HasHttpService = true;
+            }
 
             builder.WebHost.UseKestrel(options =>
             {
@@ -367,6 +379,15 @@ public static class ApiServiceService
 
                     listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
                 });
+
+                options.Limits.MaxRequestBodySize = null;
+            });
+
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.ValueLengthLimit = int.MaxValue;
+                options.MultipartBodyLengthLimit = long.MaxValue;
+                options.MultipartHeadersLengthLimit = int.MaxValue;
             });
 
             var (routes, clusters) = BuilderGateway(service);
@@ -420,6 +441,13 @@ public static class ApiServiceService
                     var prefix = context.Route.Match.Path?
                         .Replace("/{**catch-all}", "")
                         .Replace("{**catch-all}", "");
+
+                    // 如果存在泛域名则需要保留原始Host
+                    if (context.Route.Match.Hosts?.Any(x => x.Contains('*')) == true)
+                    {
+                        context.AddOriginalHost(true);
+                    }
+
                     if (!string.IsNullOrEmpty(prefix))
                     {
                         context.AddPathRemovePrefix(prefix);
@@ -433,6 +461,12 @@ public static class ApiServiceService
 
             var app = builder.Build();
 
+
+            if (service is { RedirectHttps: true, IsHttps: false })
+            {
+                app.UseHttpsRedirection();
+            }
+
             if (service.RateLimit is { Enable: true })
             {
                 app.Use((async (context, next) =>
@@ -445,14 +479,34 @@ public static class ApiServiceService
                     {
                         ip = forwardedFor;
                     }
-
-                    // 设置到 X-Real-IP
-                    context.Request.Headers["X-Real-IP"] = ip;
+                    else
+                    {
+                        context.Request.Headers["X-Forwarded-For"] = ip;
+                    }
 
                     await next(context);
                 }));
 
                 app.UseIpRateLimiting();
+            }
+
+
+            if (service.RedirectHttps)
+            {
+                app.Use(async (context, next) =>
+                {
+                    if (context.Request.Scheme == "http")
+                    {
+                        var host = context.Request.Host;
+                        var path = context.Request.Path;
+                        var query = context.Request.QueryString;
+
+                        context.Response.Redirect($"https://{host}{path}{query}");
+                        return;
+                    }
+
+                    await next(context);
+                });
             }
 
             WebApplications.Add(service.Id, app);
@@ -463,7 +517,7 @@ public static class ApiServiceService
                 app.Use(async (context, next) =>
                 {
                     // 获取当前请求的IP
-                    var ip = context.Connection.RemoteIpAddress?.ToString();
+                    var ip = string.Empty;
                     if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
                     {
                         ip = forwardedFor;
@@ -483,7 +537,7 @@ public static class ApiServiceService
                 app.Use(async (context, next) =>
                 {
                     // 获取当前请求的IP
-                    var ip = context.Connection.RemoteIpAddress?.ToString();
+                    var ip = string.Empty;
                     if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
                     {
                         ip = forwardedFor;
@@ -577,6 +631,13 @@ public static class ApiServiceService
         catch (Exception e)
         {
             Console.WriteLine(e);
+        }
+        finally
+        {
+            if (service.Listen == 80)
+            {
+                HasHttpService = false;
+            }
         }
     }
 

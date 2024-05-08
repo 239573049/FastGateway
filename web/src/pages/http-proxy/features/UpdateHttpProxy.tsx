@@ -81,7 +81,7 @@ export default function UpdateHttpProxy({
                     ({ values, formApi }: IFormValues) => (
                         <>
                             <Row>
-                                <Col span={20}>
+                                <Col span={18}>
                                     <Input
                                         field="listen"
                                         label="端口"
@@ -112,12 +112,12 @@ export default function UpdateHttpProxy({
                                 <Col span={4}>
                                     <Checkbox
                                         field="isHttps"
+                                        initValue={values.isHttps}
                                         onChange={(v: any) => {
                                             values.isHttps = v;
                                             formApi.setValues(values);
-
                                         }}
-                                        label="SSL"
+                                        label="使用HTTPS"
                                         style={{
                                             marginTop: '10px',
                                             marginLeft: '10px',
@@ -129,9 +129,27 @@ export default function UpdateHttpProxy({
                                 <Col span={12}>
                                     <Checkbox
                                         field="enableFlowMonitoring"
+                                        initValue={values.enableFlowMonitoring}
                                         label="启用流量监控"
                                         onChange={(v: any) => {
                                             values.enableFlowMonitoring = v;
+                                            formApi.setValues(values);
+                                        }}
+                                        style={{
+                                            marginTop: '5px',
+                                            marginLeft: '10px',
+                                        }}
+                                    ></Checkbox>
+                                </Col>
+                            </Row>
+                            <Row>
+                                <Col span={12}>
+                                    <Checkbox
+                                        field="redirectHttps"
+                                        label="启用HTTPS重定向"
+                                        initValue={values.redirectHttps}
+                                        onChange={(v: any) => {
+                                            values.redirectHttps = v;
                                             formApi.setValues(values);
                                         }}
                                         style={{
@@ -160,6 +178,7 @@ export default function UpdateHttpProxy({
                                 <Col span={12}>
                                     <Checkbox
                                         field="enableWhitelist"
+                                        initValue={values.enableWhitelist}
                                         onChange={(v: any) => {
                                             values.enableWhitelist = v;
                                             formApi.setValues(values);
@@ -177,7 +196,7 @@ export default function UpdateHttpProxy({
                                     <Checkbox
                                         field="enableTunnel"
                                         label="启用隧道"
-                                        initValue={false}
+                                        initValue={values.enableTunnel}
                                         onChange={(v: any) => {
                                             values.enableTunnel = v;
                                             formApi.setValues(values);
@@ -191,7 +210,7 @@ export default function UpdateHttpProxy({
                                 <Col span={12}>
                                     <Checkbox
                                         field="enable"
-                                        initValue={true}
+                                        initValue={values.enable}
                                         onChange={(v: any) => {
                                             values.enable = v;
                                             formApi.setValues(values);

@@ -12,6 +12,7 @@ import MapList from './features/map-list';
 export default function DataStatistics() {
   const [qps, setQps] = useState(0)
   const [locationData, setLocationData] = useState([] as any[]);
+  const [requestCount, setRequestCount] = useState([] as any[])
   const [dayRequestCount, setDayRequestCount] = useState({
     requestCount: 0,
     error4xxCount: 0,
@@ -142,81 +143,98 @@ export default function DataStatistics() {
   function loadDayStatisticLocationCount() {
     GetStatisticTimeCount()
       .then((res) => {
-          let option = {
-            grid: {
-              top: '30%',
-              left: '3%',
-              right: '4%',
-              bottom: '3%',
-            },
-            tooltip: {
-              trigger: 'axis',
-            },
-            xAxis: [
-              {
-                type: 'category',
-                boundaryGap: false,
-                axisLabel: {
+        setRequestCount(res)
+      })
+  }
+
+  useEffect(() => {
+    
+    let option = {
+      grid: {
+        top: '30%',
+        left: '0%',
+        right: '4%',
+        bottom: '3%',
+      },
+      tooltip: {
+        // trigger: 'tooltip',
+        // 柱状
+        axisPointer: {
+          type: 'shadow',
+        },
+      },
+      xAxis: [
+        {
+          type: 'category',
+          boundaryGap: false,
+          axisLabel: {
             formatter: '{value}',
             fontSize: 12,
-                },
-                axisTick: {
+          },
+          axisTick: {
             show: false,
-                },
-                data: res.map((item: { time: any; }) => item.time),
-                axisLine: {
+          },
+          data: requestCount.map((item: { time: any; }) => item.time),
+          axisLine: {
             show: false,
-                },
-              },
-            ],
-            yAxis: [
-              {
-                boundaryGap: false,
-                type: 'value',
-                axisLabel: {
+          },
+        },
+      ],
+      yAxis: [
+        {
+          boundaryGap: false,
+          type: 'value',
+          axisLabel: {
             textStyle: {
               color: '#7ec7ff',
             },
-                },
-                nameTextStyle: {
+          },
+          nameTextStyle: {
             color: '#fff',
             fontSize: 12,
             lineHeight: 40,
-                },
-                axisLine: {
+          },
+          axisLine: {
             show: false,
             lineStyle: {
               color: '#283352',
             },
-                },
-                axisTick: {
+          },
+          axisTick: {
             show: false,
-                },
-                splitLine: {
+          },
+          splitLine: {
             show: false,
-                },
-              },
-            ],
-            series: [
-              {
-                name: '访问数量',
-                type: 'line',
-                smooth: true,
-                showSymbol: false,
-                itemStyle: {
+          },
+        },
+      ],
+      series: [
+        {
+          name: '访问数量',
+          type: 'line',
+          smooth: true,
+          showSymbol: false,
+          itemStyle: {
             color: '#19a3df',
             borderColor: '#a3c8d8',
-                },
-                data: res.map((item: { count: any; }) => item.count),
-              },
-            ],
-          };
+          },
+          data: requestCount.map((item: { count: any; }) => item.count),
+        },
+      ],
+    };
 
-        let timeCount = echarts.init(document.getElementById('timeCount'));
-        timeCount.setOption(option);
+    let timeCount = echarts.init(document.getElementById('timeCount'));
+    timeCount.setOption(option);
 
-      })
-  }
+    window.addEventListener('resize', () => {
+      timeCount.resize();
+    });
+
+    return () => {
+      timeCount.dispose();
+    };
+    
+  }, [requestCount])
 
   function loading() {
     GetLocation()

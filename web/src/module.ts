@@ -10,6 +10,7 @@ export interface ServiceInput {
     enableFlowMonitoring: boolean;
     enable: boolean;
     enableTunnel: boolean;
+    redirectHttps: boolean;
     enableBlacklist: boolean;
     enableWhitelist: boolean;
     rateLimitName: string | null;
@@ -87,6 +88,7 @@ export interface Service {
     isHttps: boolean;
     enableFlowMonitoring: boolean;
     enableRequestSource: boolean;
+    redirectHttps: boolean;
     enable: boolean;
     enableTunnel: boolean;
     locations: Location[];

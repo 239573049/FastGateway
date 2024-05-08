@@ -102,11 +102,19 @@ export default function CertPage() {
     async function applyCert(id: string) {
         try {
             setLoading(true)
-            await Apply(id);
-            loadData();
-            Notification.success({
-                title: '申请成功'
-            });
+            const result = await Apply(id);
+            if (result.success) {
+                loadData();
+                Notification.success({
+                    title: '申请成功'
+                });
+            } else {
+                Notification.error({
+                    title: result.message
+                });
+                setLoading(false);
+            }
+
         } catch (e) {
             Notification.error({
                 title: '申请失败'

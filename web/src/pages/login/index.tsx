@@ -33,23 +33,26 @@ const Login = () => {
 
     return (
         <div className="login-container">
-            <div className="bubble"></div>
-            <div className="bubble"></div>
-            <div className="bubble"></div>
             <div className="outer-border">
                 <div className="inner-content">
-                    <h2 style={{
-                        color: 'var(--semi-color-text-3)',
-                        fontSize: '24px',
-                        fontWeight: '600',
-                        marginBottom: '24px',
-                    }}>FastGateway管理系统</h2>
+                    <h2>FastGateway管理系统</h2>
                     <div className="input-container">
-                        <input value={password} onChange={(e)=>{
-                            setPassword(e.target.value);
-                        }} type="password" placeholder="请输入密码" />
+                        <input
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            type="password"
+                            placeholder="请输入密码"
+                        />
                     </div>
-                    <Button onClick={()=>handleLogin()} block type='secondary' theme='solid' className="login-button">登录</Button>
+                    <Button
+                        onClick={()=>handleLogin()}
+                        block
+                        type='secondary'
+                        theme='solid'
+                        className="login-button"
+                    >
+                        登录
+                    </Button>
                 </div>
             </div>
         </div>

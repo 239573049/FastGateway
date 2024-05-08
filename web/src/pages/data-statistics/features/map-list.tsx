@@ -47,7 +47,7 @@ export default function MapList({
         let mapListOptions = {
             grid: {
                 top: "10",
-                left: "10",
+                left: "20",
                 right: "10",
                 bottom: "10",
             },
