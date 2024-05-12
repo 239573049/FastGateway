@@ -108,7 +108,7 @@ Restart=always
 RestartSec=10
 KillSignal=SIGINT
 SyslogIdentifier=dotnet-fastgateway
-User=www-data
+User=root
 Environment=ASPNETCORE_ENVIRONMENT=Production
 
 [Install]
