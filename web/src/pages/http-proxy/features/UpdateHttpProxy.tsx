@@ -49,7 +49,7 @@ export default function UpdateHttpProxy({
     
     return (
         <Modal
-            title="新建HTTP代理"
+            title="修改HTTP代理"
             visible={visible}
             onCancel={onClose}
             fullScreen
@@ -109,7 +109,7 @@ export default function UpdateHttpProxy({
                                         }}
                                     ></Input>
                                 </Col>
-                                <Col span={4}>
+                                <Col span={2}>
                                     <Checkbox
                                         field="isHttps"
                                         initValue={values.isHttps}
@@ -117,7 +117,22 @@ export default function UpdateHttpProxy({
                                             values.isHttps = v;
                                             formApi.setValues(values);
                                         }}
-                                        label="使用HTTPS"
+                                        label="启用SSL"
+                                        style={{
+                                            marginTop: '10px',
+                                            marginLeft: '10px',
+                                        }}
+                                    ></Checkbox>
+                                </Col>
+                                <Col span={2}>
+                                    <Checkbox
+                                        field="redirectHttps"
+                                        label="强制跳转HTTPS"
+                                        initValue={values.redirectHttps}
+                                        onChange={(v: any) => {
+                                            values.redirectHttps = v;
+                                            formApi.setValues(values);
+                                        }}
                                         style={{
                                             marginTop: '10px',
                                             marginLeft: '10px',
@@ -133,23 +148,6 @@ export default function UpdateHttpProxy({
                                         label="启用流量监控"
                                         onChange={(v: any) => {
                                             values.enableFlowMonitoring = v;
-                                            formApi.setValues(values);
-                                        }}
-                                        style={{
-                                            marginTop: '5px',
-                                            marginLeft: '10px',
-                                        }}
-                                    ></Checkbox>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col span={12}>
-                                    <Checkbox
-                                        field="redirectHttps"
-                                        label="启用HTTPS重定向"
-                                        initValue={values.redirectHttps}
-                                        onChange={(v: any) => {
-                                            values.redirectHttps = v;
                                             formApi.setValues(values);
                                         }}
                                         style={{

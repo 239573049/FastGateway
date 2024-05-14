@@ -97,14 +97,29 @@ export default function CreateHttpProxy({
                                         }}
                                     ></Input>
                                 </Col>
-                                <Col span={4}>
+                                <Col span={2}>
                                     <Checkbox
                                         field="isHttps"
                                         onChange={(v: any) => {
                                             values.isHttps = v;
                                             formApi.setValues(values);
                                         }}
-                                        label="SSL"
+                                        label="启用SSL"
+                                        style={{
+                                            marginTop: '10px',
+                                            marginLeft: '10px',
+                                        }}
+                                    ></Checkbox>
+                                </Col>
+                                <Col span={2}>
+                                    <Checkbox
+                                        field="redirectHttps"
+                                        label="强制跳转HTTPS"
+                                        initValue={false}
+                                        onChange={(v: any) => {
+                                            values.redirectHttps = v;
+                                            formApi.setValues(values);
+                                        }}
                                         style={{
                                             marginTop: '10px',
                                             marginLeft: '10px',
@@ -153,23 +168,6 @@ export default function CreateHttpProxy({
                                             formApi.setValues(values);
                                         }}
                                         label={"服务状态：" + (values.enable ? '启用' : '停用')}
-                                        style={{
-                                            marginTop: '5px',
-                                            marginLeft: '10px',
-                                        }}
-                                    ></Checkbox>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col span={12}>
-                                    <Checkbox
-                                        field="redirectHttps"
-                                        label="启用HTTPS重定向"
-                                        initValue={false}
-                                        onChange={(v: any) => {
-                                            values.redirectHttps = v;
-                                            formApi.setValues(values);
-                                        }}
                                         style={{
                                             marginTop: '5px',
                                             marginLeft: '10px',
