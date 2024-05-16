@@ -1,13 +1,12 @@
-﻿using System.Collections.Concurrent;
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
-using AspNetCoreRateLimit;
+﻿using AspNetCoreRateLimit;
 using FastGateway.Infrastructures;
 using FastGateway.Middlewares;
 using FastGateway.TunnelServer;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using System.Collections.Concurrent;
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Directory = System.IO.Directory;
@@ -360,25 +359,23 @@ public static class ApiServiceService
 
             builder.WebHost.UseKestrel(options =>
             {
-                options.ConfigureHttpsDefaults(adapterOptions =>
+                options.Listen(IPAddress.Any, service.Listen);
+
+                if (HasHttpService && service.IsHttps)
                 {
-                    if (service.IsHttps)
+                    options.Listen(IPAddress.Any, 443, listenOptions =>
                     {
-                        adapterOptions.ServerCertificateSelector = (context, name) =>
-                            CertService.Certs.TryGetValue(name, out var cert)
-                                ? new X509Certificate2(cert.File, cert.Password)
-                                : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
-                    }
-                });
+                        listenOptions.UseHttps(adapterOptions =>
+                        {
+                            adapterOptions.ServerCertificateSelector = (context, name) =>
+                                CertService.Certs.TryGetValue(name, out var cert)
+                                    ? new X509Certificate2(cert.File, cert.Password)
+                                    : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
+                        });
 
-                options.Listen(IPAddress.Parse("0.0.0.0"), service.Listen, listenOptions =>
-                {
-                    if (!service.IsHttps) return;
-
-                    listenOptions.UseHttps();
-
-                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                });
+                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+                    });
+                }
 
                 options.Limits.MaxRequestBodySize = null;
             });
@@ -461,8 +458,7 @@ public static class ApiServiceService
 
             var app = builder.Build();
 
-
-            if (service is { RedirectHttps: true, IsHttps: false })
+            if (service.RedirectHttps)
             {
                 app.UseHttpsRedirection();
             }
@@ -488,25 +484,6 @@ public static class ApiServiceService
                 }));
 
                 app.UseIpRateLimiting();
-            }
-
-
-            if (service.RedirectHttps)
-            {
-                app.Use(async (context, next) =>
-                {
-                    if (context.Request.Scheme == "http")
-                    {
-                        var host = context.Request.Host;
-                        var path = context.Request.Path;
-                        var query = context.Request.QueryString;
-
-                        context.Response.Redirect($"https://{host}{path}{query}");
-                        return;
-                    }
-
-                    await next(context);
-                });
             }
 
             WebApplications.Add(service.Id, app);

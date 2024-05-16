@@ -3,7 +3,7 @@
 FastGateway提供了基本的管理服务，提供简单的登录授权，和实时配置管理，从而实现动态路由的管理。
 
 -----
-文档语言: [English](README.md) | [简体中文](README.zh-cn.md)
+文档语言: [English](README.md) | [简体中文](README-zh-cn.md)
 
 ## 支持功能
 
@@ -108,7 +108,7 @@ Restart=always
 RestartSec=10
 KillSignal=SIGINT
 SyslogIdentifier=dotnet-fastgateway
-User=www-data
+User=root
 Environment=ASPNETCORE_ENVIRONMENT=Production
 
 [Install]
