@@ -581,47 +581,75 @@ public static class ApiServiceService
             // 用于HTTPS证书签名校验
             app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
 
-            foreach (var location in service.Locations.SelectMany(x => x.LocationService)
-                         .Where(x => x.Type == ApiServiceType.StaticProxy))
+            foreach (var value in service.Locations.Select(x =>
+                             new
+                             {
+                                 x.LocationService,
+                                 x.ServiceNames,
+                             })
+                         .Where(x => x.LocationService.Any(a => a.Type == ApiServiceType.StaticProxy)))
             {
-                app.Map(location.Path.TrimEnd('/'), app =>
+                var (locations, serviceNames) = (value.LocationService, value.ServiceNames);
+                foreach (var location in locations)
                 {
-                    app.Run((async context =>
+                    app.Map(location.Path.TrimEnd('/'), app =>
                     {
-                        var path = Path.Combine(location.Root, context.Request.Path.Value[1..]);
-
-                        if (File.Exists(path))
+                        app.Use((async (context,next) =>
                         {
-                            DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
-                            context.Response.Headers.ContentType = contentType;
+                            // 域名解析是否符合，域名可能存在 *解析
+                            if (serviceNames.Any(x => x.Contains('*')))
+                            {
+                                if (!serviceNames.Any(x =>
+                                        x.Contains('*') && context.Request.Host.Host.EndsWith(x.Split('*')[1])))
+                                {
+                                    await next(context);
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                if (!serviceNames.Contains(context.Request.Host.Host))
+                                {
+                                    await next(context);
+                                    return;
+                                }
+                            }
 
-                            await context.Response.SendFileAsync(path);
+                            var path = Path.Combine(location.Root, context.Request.Path.Value[1..]);
 
-                            return;
-                        }
+                            if (File.Exists(path))
+                            {
+                                DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
+                                context.Response.Headers.ContentType = contentType;
 
-                        if (location.TryFiles == null || location.TryFiles.Length == 0)
-                        {
-                            context.Response.StatusCode = 404;
-                            return;
-                        }
+                                await context.Response.SendFileAsync(path);
 
-                        // 搜索 try_files
-                        foreach (var tryFile in location.TryFiles)
-                        {
-                            var tryPath = Path.Combine(location.Root, tryFile);
+                                return;
+                            }
 
-                            if (!File.Exists(tryPath)) continue;
+                            if (location.TryFiles == null || location.TryFiles.Length == 0)
+                            {
+                                context.Response.StatusCode = 404;
+                                return;
+                            }
 
-                            DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
-                            context.Response.Headers.ContentType = contentType;
+                            // 搜索 try_files
+                            foreach (var tryFile in location.TryFiles)
+                            {
+                                var tryPath = Path.Combine(location.Root, tryFile);
 
-                            await context.Response.SendFileAsync(tryPath);
+                                if (!File.Exists(tryPath)) continue;
 
-                            return;
-                        }
-                    }));
-                });
+                                DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
+                                context.Response.Headers.ContentType = contentType;
+
+                                await context.Response.SendFileAsync(tryPath);
+
+                                return;
+                            }
+                        }));
+                    });
+                }
             }
 
             app.MapReverseProxy();

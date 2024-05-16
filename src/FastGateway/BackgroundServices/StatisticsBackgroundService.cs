@@ -1,6 +1,6 @@
-﻿using System.Collections.Concurrent;
+﻿using IP2Region.Net.Abstractions;
+using System.Collections.Concurrent;
 using System.Threading.Channels;
-using IP2Region.Net.Abstractions;
 
 namespace FastGateway.BackgroundServices;
 
@@ -173,15 +173,15 @@ public sealed class StatisticsBackgroundService(IServiceProvider serviceProvider
         {
             // 直接添加
             await freeSql.Insert(new StatisticIp()
-                {
-                    ServiceId = requestCountDto.ServiceId,
-                    Count = requestCountDto.Count,
-                    Year = year,
-                    Month = month,
-                    Day = day,
-                    Ip = requestCountDto.Ip,
-                    Location = requestCountDto.Location,
-                })
+            {
+                ServiceId = requestCountDto.ServiceId,
+                Count = requestCountDto.Count,
+                Year = year,
+                Month = month,
+                Day = day,
+                Ip = requestCountDto.Ip,
+                Location = requestCountDto.Location,
+            })
                 .ExecuteAffrowsAsync();
         }
     }
