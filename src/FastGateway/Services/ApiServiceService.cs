@@ -359,23 +359,25 @@ public static class ApiServiceService
 
             builder.WebHost.UseKestrel(options =>
             {
-                options.Listen(IPAddress.Any, service.Listen);
-
-                if (HasHttpService && service.IsHttps)
+                options.ConfigureHttpsDefaults(adapterOptions =>
                 {
-                    options.Listen(IPAddress.Any, 443, listenOptions =>
+                    if (service.IsHttps)
                     {
-                        listenOptions.UseHttps(adapterOptions =>
-                        {
-                            adapterOptions.ServerCertificateSelector = (context, name) =>
-                                CertService.Certs.TryGetValue(name, out var cert)
-                                    ? new X509Certificate2(cert.File, cert.Password)
-                                    : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
-                        });
+                        adapterOptions.ServerCertificateSelector = (context, name) =>
+                            CertService.Certs.TryGetValue(name, out var cert)
+                                ? new X509Certificate2(cert.File, cert.Password)
+                                : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
+                    }
+                });
 
-                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                    });
-                }
+                options.Listen(IPAddress.Parse("0.0.0.0"), service.Listen, listenOptions =>
+                {
+                    if (!service.IsHttps) return;
+
+                    listenOptions.UseHttps();
+
+                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+                });
 
                 options.Limits.MaxRequestBodySize = null;
             });
