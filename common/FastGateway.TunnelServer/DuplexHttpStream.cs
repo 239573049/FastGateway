@@ -3,14 +3,30 @@ using Microsoft.AspNetCore.Http;
 
 namespace FastGateway.TunnelServer;
 
-
-internal class DuplexHttpStream(HttpContext context) : Stream, IValueTaskSource<object?>, ICloseable
+internal class DuplexHttpStream : Stream, IValueTaskSource<object?>, ICloseable
 {
+    private readonly HttpContext _context;
+
+    public DuplexHttpStream(HttpContext context)
+    {
+        _context = context;
+
+        _context.RequestAborted.Register(() =>
+        {
+            lock (_sync)
+            {
+                if (GetStatus(_tcs.Version) != ValueTaskSourceStatus.Pending) return;
+
+                _tcs.SetResult(null);
+            }
+        });
+    }
+
     private readonly object _sync = new();
     private ManualResetValueTaskSourceCore<object?> _tcs = new() { RunContinuationsAsynchronously = true };
 
-    private Stream RequestBody => context.Request.Body;
-    private Stream ResponseBody => context.Response.Body;
+    private Stream RequestBody => _context.Request.Body;
+    private Stream ResponseBody => _context.Response.Body;
 
     internal ValueTask<object?> StreamCompleteTask => new(this, _tcs.Version);
 
@@ -28,11 +44,11 @@ internal class DuplexHttpStream(HttpContext context) : Stream, IValueTaskSource<
         set => throw new NotSupportedException();
     }
 
-    public bool IsClosed => context.RequestAborted.IsCancellationRequested;
+    public bool IsClosed => _context.RequestAborted.IsCancellationRequested;
 
     public void Abort()
     {
-        context.Abort();
+        _context.Abort();
 
         lock (_sync)
         {

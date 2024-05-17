@@ -32,7 +32,7 @@ public class Location
 public sealed class LocationService
 {
     /// <summary>
-    /// 添加请求头参数
+    /// 添加响应参数
     /// </summary>
     [Column(MapType = typeof(string), StringLength = -1)]
     public Dictionary<string, string> AddHeader { get; set; } = new();

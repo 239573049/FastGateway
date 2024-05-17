@@ -359,25 +359,45 @@ public static class ApiServiceService
 
             builder.WebHost.UseKestrel(options =>
             {
-                options.ConfigureHttpsDefaults(adapterOptions =>
+                if (HasHttpService && service.IsHttps)
                 {
-                    if (service.IsHttps)
+                    options.Listen(IPAddress.Any, service.Listen);
+                    options.Listen(IPAddress.Any, 443, listenOptions =>
+                    {
+                        listenOptions.UseHttps(adapterOptions =>
+                        {
+                            adapterOptions.ServerCertificateSelector = (context, name) =>
+                                CertService.Certs.TryGetValue(name, out var cert)
+                                    ? new X509Certificate2(cert.File, cert.Password)
+                                    : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"),
+                                        "010426");
+                        });
+
+                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+                    });
+                }
+                else if (service.IsHttps)
+                {
+                    options.ConfigureHttpsDefaults(adapterOptions =>
                     {
                         adapterOptions.ServerCertificateSelector = (context, name) =>
                             CertService.Certs.TryGetValue(name, out var cert)
                                 ? new X509Certificate2(cert.File, cert.Password)
                                 : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
-                    }
-                });
+                    });
 
-                options.Listen(IPAddress.Parse("0.0.0.0"), service.Listen, listenOptions =>
+                    options.Listen(IPAddress.Any, service.Listen, listenOptions =>
+                    {
+                        listenOptions.UseHttps();
+
+                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
+                    });
+                }
+                else
                 {
-                    if (!service.IsHttps) return;
+                    options.Listen(IPAddress.Any, service.Listen);
+                }
 
-                    listenOptions.UseHttps();
-
-                    listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                });
 
                 options.Limits.MaxRequestBodySize = null;
             });
@@ -493,6 +513,29 @@ public static class ApiServiceService
                     }
 
                     #endregion
+
+                    #region 处理响应头
+
+                    if (context.Route.Metadata.TryGetValue(nameof(LocationService.AddHeader), out var addHeader))
+                    {
+                        var headers = JsonSerializer.Deserialize<Dictionary<string, string>>(addHeader);
+
+                        if (headers?.Count <= 0) return;
+                        
+                        context.AddResponseTransform(async transformContext =>
+                        {
+                            var response = transformContext.HttpContext.Response;
+
+                            foreach (var (key, value) in headers)
+                            {
+                                response.Headers.TryAdd(key, value);
+                            }
+
+                            await Task.CompletedTask.ConfigureAwait(false);
+                        });
+                    }
+
+                    #endregion
                 });
 
             if (service.EnableTunnel)
@@ -500,11 +543,21 @@ public static class ApiServiceService
                 builder.Services.AddTunnelServices();
             }
 
+            if (service.StaticCompress)
+            {
+                builder.Services.AddResponseCompression();
+            }
+
             var app = builder.Build();
 
             if (service.RedirectHttps)
             {
                 app.UseHttpsRedirection();
+            }
+
+            if (service.StaticCompress)
+            {
+                app.UseResponseCompression();
             }
 
             if (service.RateLimit is { Enable: true })
@@ -646,6 +699,12 @@ public static class ApiServiceService
                 else
                 {
                     routeMetadata = clusterMetadata = new Dictionary<string, string>(0);
+                }
+
+                if (locationService.AddHeader.Count > 0)
+                {
+                    routeMetadata.Add(nameof(locationService.AddHeader),
+                        JsonSerializer.Serialize(locationService.AddHeader));
                 }
 
                 #endregion

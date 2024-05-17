@@ -9,8 +9,7 @@ namespace FastGateway.Domain;
 [Table(Name = "service")]
 public class Service
 {
-    [Column(IsIdentity = true)]
-    public string Id { get; set; }
+    [Column(IsIdentity = true)] public string Id { get; set; }
 
     /// <summary>
     /// 服务端口
@@ -58,6 +57,11 @@ public class Service
     public bool EnableTunnel { get; set; }
 
     /// <summary>
+    /// 静态资源压缩
+    /// </summary>
+    public bool StaticCompress { get; set; } = true;
+
+    /// <summary>
     /// 服务配置
     /// </summary>
     [Navigate(nameof(Location.ServiceId))]
@@ -65,6 +69,5 @@ public class Service
 
     public string? RateLimitName { get; set; }
 
-    [Column(IsIgnore = true)]
-    public virtual RateLimit? RateLimit { get; set; }
+    [Column(IsIgnore = true)] public virtual RateLimit? RateLimit { get; set; }
 }

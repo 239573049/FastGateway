@@ -221,6 +221,24 @@ export default function UpdateHttpProxy({
                                     ></Checkbox>
                                 </Col>
                             </Row>
+                            <Row>
+                                <Col span={12}>
+                                    <Checkbox
+                                        field="staticCompress"
+                                        label={"静态文件压缩：" + (values.staticCompress ? '启用' : '停用')}
+                                        initValue={values.staticCompress}
+                                        defaultChecked={values.staticCompress}
+                                        onChange={(v: any) => {
+                                            values.staticCompress = v;
+                                            formApi.setValues(values);
+                                        }}
+                                        style={{
+                                            marginTop: '5px',
+                                            marginLeft: '10px',
+                                        }}
+                                    ></Checkbox>
+                                </Col>
+                            </Row>
                             <Select 
                                 field="rateLimitName"
                                 label="选择限流策略"
@@ -546,6 +564,54 @@ export default function UpdateHttpProxy({
                                                                 )
                                                             }
 
+<Button block onClick={() => {
+                                                                service.addHeader = service.addHeader || {};
+                                                                service.addHeader[''] = '';
+                                                                formApi.setValues(values);
+                                                            }}>
+                                                                添加响应头
+                                                            </Button>{
+                                                                Object.keys(service.addHeader).map((key) => {
+                                                                    return (
+                                                                        <>
+                                                                            <Row>
+                                                                                <Col span={12}>
+                                                                                    <Input
+                                                                                        label="响应头"
+                                                                                        field="key"
+                                                                                        initValue={key}
+                                                                                        onChange={(v: any) => {
+                                                                                            service.addHeader[v] = service.addHeader[key];
+                                                                                            delete service.addHeader[key];
+                                                                                            formApi.setValues(values);
+                                                                                        }}
+                                                                                    />
+                                                                                </Col>
+                                                                                <Col span={12}>
+                                                                                    <Input
+                                                                                        label="值"
+                                                                                        field="value"
+                                                                                        initValue={service.addHeader[key]}
+                                                                                        onChange={(v: any) => {
+                                                                                            service.addHeader[key] = v;
+                                                                                            formApi.setValues(values);
+                                                                                        }}
+                                                                                    />
+                                                                                </Col>
+                                                                            </Row>
+                                                                            <Button
+                                                                                onClick={() => {
+                                                                                    delete service.addHeader[key];
+                                                                                    formApi.setValues(values);
+                                                                                }}
+                                                                                type='danger'
+                                                                                style={{
+                                                                                    marginTop: '10px',
+                                                                                }}
+                                                                            >删除响应头</Button>
+                                                                        </>
+                                                                    )
+                                                                })}
                                                         </Collapse.Panel>)
                                                     })
                                                 }
