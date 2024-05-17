@@ -449,6 +449,48 @@ public static class ApiServiceService
                     {
                         context.AddPathRemovePrefix(prefix);
                     }
+
+                    #region 静态站点
+
+                    if (context.Route.Metadata!.TryGetValue(ROOT, out string root))
+                    {
+                        var tryFiles = context.Cluster!.Metadata!.Select(p => p.Key).ToArray();
+                        context.AddRequestTransform(async transformContext =>
+                        {
+                            var request = transformContext.HttpContext.Request;
+                            var response = transformContext.HttpContext.Response;
+                            var path = Path.Combine(root, request.Path.Value![1..]);
+
+                            if (File.Exists(path))
+                            {
+                                DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
+                                response.Headers.ContentType = contentType;
+
+                                await response.SendFileAsync(path);
+                                return;
+                            }
+
+                            // 搜索 try_files
+                            foreach (var tryFile in tryFiles)
+                            {
+                                var tryPath = Path.Combine(root, tryFile);
+
+                                if (!File.Exists(tryPath)) continue;
+
+                                DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
+                                response.Headers.ContentType = contentType;
+
+                                await response.SendFileAsync(tryPath);
+
+                                return;
+                            }
+
+                            response.StatusCode = 404;
+                            return;
+                        });
+                    }
+
+                    #endregion
                 });
 
             if (service.EnableTunnel)
@@ -558,77 +600,6 @@ public static class ApiServiceService
             // 用于HTTPS证书签名校验
             app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
 
-            foreach (var value in service.Locations.Select(x =>
-                             new
-                             {
-                                 x.LocationService,
-                                 x.ServiceNames,
-                             })
-                         .Where(x => x.LocationService.Any(a => a.Type == ApiServiceType.StaticProxy)))
-            {
-                var (locations, serviceNames) = (value.LocationService, value.ServiceNames);
-                foreach (var location in locations)
-                {
-                    app.Map(location.Path.TrimEnd('/'), app =>
-                    {
-                        app.Use((async (context,next) =>
-                        {
-                            // 域名解析是否符合，域名可能存在 *解析
-                            if (serviceNames.Any(x => x.Contains('*')))
-                            {
-                                if (!serviceNames.Any(x =>
-                                        x.Contains('*') && context.Request.Host.Host.EndsWith(x.Split('*')[1])))
-                                {
-                                    await next(context);
-                                    return;
-                                }
-                            }
-                            else
-                            {
-                                if (!serviceNames.Contains(context.Request.Host.Host))
-                                {
-                                    await next(context);
-                                    return;
-                                }
-                            }
-
-                            var path = Path.Combine(location.Root, context.Request.Path.Value[1..]);
-
-                            if (File.Exists(path))
-                            {
-                                DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
-                                context.Response.Headers.ContentType = contentType;
-
-                                await context.Response.SendFileAsync(path);
-
-                                return;
-                            }
-
-                            if (location.TryFiles == null || location.TryFiles.Length == 0)
-                            {
-                                context.Response.StatusCode = 404;
-                                return;
-                            }
-
-                            // 搜索 try_files
-                            foreach (var tryFile in location.TryFiles)
-                            {
-                                var tryPath = Path.Combine(location.Root, tryFile);
-
-                                if (!File.Exists(tryPath)) continue;
-
-                                DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
-                                context.Response.Headers.ContentType = contentType;
-
-                                await context.Response.SendFileAsync(tryPath);
-
-                                return;
-                            }
-                        }));
-                    });
-                }
-            }
-
             app.MapReverseProxy();
 
             await app.RunAsync();
@@ -653,29 +624,52 @@ public static class ApiServiceService
         // 绑定路由到service
         foreach (var location in service.Locations)
         {
-            var clusterId = location.Id;
-            var destinations = new Dictionary<string, DestinationConfig>();
+            for (int i = 0; i < location.LocationService.Count; i++)
+            {
+                var locationService = location.LocationService[i];
 
-            var cluster = new ClusterConfig()
-            {
-                Destinations = destinations,
-                ClusterId = clusterId,
-            };
-            clusters.Add(cluster);
-            foreach (var locationService in location.LocationService)
-            {
+                #region Metadata
+
+                Dictionary<string, string> routeMetadata, clusterMetadata;
+                if (locationService.Type == ApiServiceType.StaticProxy)
+                {
+                    routeMetadata = new Dictionary<string, string>(1) { { ROOT, locationService.Root! } };
+
+                    clusterMetadata = new Dictionary<string, string>(locationService.TryFiles!.Length);
+                    foreach (var item in locationService.TryFiles)
+                    {
+                        clusterMetadata.Add(item, string.Empty);
+                    }
+                }
+                else
+                {
+                    routeMetadata = clusterMetadata = new Dictionary<string, string>(0);
+                }
+
+                #endregion
+
+                string id = $"{location.Id}-{i}";
+                var destinations = new Dictionary<string, DestinationConfig>();
+                var cluster = new ClusterConfig()
+                {
+                    Destinations = destinations,
+                    ClusterId = id,
+                    Metadata = clusterMetadata
+                };
+                clusters.Add(cluster);
+
                 var route = new RouteConfig()
                 {
-                    RouteId = Guid.NewGuid().ToString("N"),
-                    ClusterId = clusterId,
+                    RouteId = id,
+                    ClusterId = id,
                     Match = new RouteMatch()
                     {
                         Path = locationService.Path.TrimEnd('/') + "/{**catch-all}",
                         Hosts = location.ServiceNames
-                    }
+                    },
+                    Metadata = routeMetadata
                 };
                 routes.Add(route);
-
 
                 if (locationService.Type == ApiServiceType.SingleService)
                 {
@@ -684,10 +678,8 @@ public static class ApiServiceService
                         Address = locationService.ProxyPass,
                         Host = new Uri(locationService.ProxyPass).Host,
                     });
-                    continue;
                 }
-
-                if (locationService.Type == ApiServiceType.LoadBalance)
+                else if (locationService.Type == ApiServiceType.LoadBalance)
                 {
                     foreach (var upStream in locationService.UpStreams.Where(x => !string.IsNullOrEmpty(x.Server)))
                     {
@@ -699,12 +691,14 @@ public static class ApiServiceService
                 }
                 else if (locationService.Type == ApiServiceType.StaticProxy)
                 {
-                    routes.Remove(route);
-                    clusters.Remove(cluster);
+                    destinations.Add(id, StaticProxyDestination);
                 }
             }
         }
 
         return (routes, clusters);
     }
+
+    const string ROOT = "Root";
+    static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
 }
