@@ -38,7 +38,7 @@ Document Language: [English](README.md) | [简体中文](README-zh-cn.md)
 ## Quick Start Gateway
 
 ```bash
-docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0
+docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ hejiale010426/gateway-api:v1.0.0
 ```
 
 ## Docker-Compose File
@@ -47,7 +47,7 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 
 services:
   gateway-api:
-    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0
+    image: hejiale010426/gateway-api:v1.0.0
     restart: always
     container_name: gateway-api
     environment:
@@ -71,7 +71,7 @@ Password: Aa123456
 
 services:
   gateway-api:
-    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0-h3
+    image: hejiale010426/gateway-api:v1.0.0-h3
     restart: always
     container_name: gateway-api
     environment:

@@ -38,7 +38,7 @@ FastGateway提供了基本的管理服务，提供简单的登录授权，和实
 ## 快速运行Gateway
 
 ```bash
-docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0
+docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ hejiale010426/gateway-api:v1.0.0
 ```
 
 ## Docker-Compose文件
@@ -47,7 +47,7 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 
 services:
   gateway-api:
-    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0
+    image: hejiale010426/gateway-api:v1.0.0
     restart: always
     container_name: gateway-api
     environment:
@@ -71,7 +71,7 @@ services:
 
 services:
   gateway-api:
-    image: registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0-h3
+    image: hejiale010426/gateway-api:v1.0.0-h3
     restart: always
     container_name: gateway-api
     environment:
@@ -153,9 +153,9 @@ systemctl restart fastgateway.service
 
 ## 镜像列表
 
-- 默认镜像：registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0
-- 提供HTTP3镜像：registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0-h3
-- ARM64镜像：registry.cn-shenzhen.aliyuncs.com/tokengo/gateway-api:v1.0.0-arm64
+- 默认镜像：hejiale010426/gateway-api:v1.0.0
+- 提供HTTP3镜像：hejiale010426/gateway-api:v1.0.0-h3
+- ARM64镜像：hejiale010426/gateway-api:v1.0.0-arm64
 
 ## 第三方下载
 
