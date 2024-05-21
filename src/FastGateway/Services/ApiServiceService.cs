@@ -521,7 +521,7 @@ public static class ApiServiceService
                         var headers = JsonSerializer.Deserialize<Dictionary<string, string>>(addHeader);
 
                         if (headers?.Count <= 0) return;
-                        
+
                         context.AddResponseTransform(async transformContext =>
                         {
                             var response = transformContext.HttpContext.Response;
@@ -545,7 +545,7 @@ public static class ApiServiceService
 
             if (service.StaticCompress)
             {
-                builder.Services.AddResponseCompression();
+                builder.Services.AddResponseCompression(options => { options.EnableForHttps = true; });
             }
 
             var app = builder.Build();
