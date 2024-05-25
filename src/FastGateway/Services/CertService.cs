@@ -151,6 +151,7 @@ public static class CertService
 
                 for (int i = 0; i < 50; i++)
                 {
+                    Console.WriteLine($"{challenge.Url} | loop count: {i} | Status: {challenge.Status}");
                     if (challenge.Status == ChallengeStatus.Valid)
                     {
                         break;
@@ -158,6 +159,10 @@ public static class CertService
 
                     if (challenge.Status == ChallengeStatus.Invalid)
                     {
+                        if (challenge.Error != null)
+                        {
+                            Console.WriteLine($"域名 {domain} 验证失败！报错详情：{challenge.Error.Detail}");
+                        }
                         throw new Exception("验证失败，请检查域名是否正确配置");
                     }
 

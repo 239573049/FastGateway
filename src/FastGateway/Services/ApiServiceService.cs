@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.RegularExpressions;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Directory = System.IO.Directory;
@@ -550,6 +551,21 @@ public static class ApiServiceService
 
             var app = builder.Build();
 
+            // 用于HTTPS证书签名校验
+            app.Use(async (context, next) =>
+            {
+                Match match = Regex.Match(context.Request.Path.Value!, @"/\.well-known/acme-challenge/(.+)");
+                if (match.Success)
+                {
+                    string token = match.Groups[1].Value;
+                    await AcmeChallenge.Challenge(context, token);
+                }
+                else
+                {
+                    await next.Invoke();
+                }
+            });
+
             if (service.RedirectHttps)
             {
                 app.UseHttpsRedirection();
@@ -651,9 +667,6 @@ public static class ApiServiceService
                     }
                 });
             }
-
-            // 用于HTTPS证书签名校验
-            app.MapGet("/.well-known/acme-challenge/{token}", AcmeChallenge.Challenge);
 
             app.MapReverseProxy();
 
