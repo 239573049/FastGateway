@@ -551,21 +551,24 @@ public static class ApiServiceService
 
             var app = builder.Build();
 
-            // 用于HTTPS证书签名校验
-            app.Use(async (context, next) =>
+            if (service.IsHttps == false)
             {
-                Match match = Regex.Match(context.Request.Path.Value!, @"/\.well-known/acme-challenge/(.+)");
-                if (match.Success)
+                // 用于HTTPS证书签名校验
+                app.Use(async (context, next) =>
                 {
-                    string token = match.Groups[1].Value;
-                    await AcmeChallenge.Challenge(context, token);
-                }
-                else
-                {
-                    await next.Invoke();
-                }
-            });
-
+                    if (context.Request.Path.StartsWithSegments("/.well-known/acme-challenge"))
+                    {
+                        // 获取路由最后一个节点
+                        var token = context.Request.Path.Value!.Split('/',StringSplitOptions.RemoveEmptyEntries).Last();
+                        await AcmeChallenge.Challenge(context, token);
+                    }
+                    else
+                    {
+                        await next.Invoke();
+                    }
+                });
+            }
+            
             if (service.RedirectHttps)
             {
                 app.UseHttpsRedirection();
