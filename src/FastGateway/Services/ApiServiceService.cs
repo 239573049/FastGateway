@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.RegularExpressions;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 using Directory = System.IO.Directory;
@@ -551,16 +550,14 @@ public static class ApiServiceService
 
             var app = builder.Build();
 
-            if (service.IsHttps == false)
+            if (HasHttpService)
             {
                 // 用于HTTPS证书签名校验
                 app.Use(async (context, next) =>
                 {
-                    if (context.Request.Path.StartsWithSegments("/.well-known/acme-challenge"))
+                    if (context.Request.Path.StartsWithSegments("/.well-known/acme-challenge", out var token))
                     {
-                        // 获取路由最后一个节点
-                        var token = context.Request.Path.Value!.Split('/',StringSplitOptions.RemoveEmptyEntries).Last();
-                        await AcmeChallenge.Challenge(context, token);
+                        await AcmeChallenge.Challenge(context, token.Value![1..]);
                     }
                     else
                     {
@@ -568,7 +565,7 @@ public static class ApiServiceService
                     }
                 });
             }
-            
+
             if (service.RedirectHttps)
             {
                 app.UseHttpsRedirection();
