@@ -4,6 +4,7 @@ using FastGateway.Middlewares;
 using FastGateway.TunnelServer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
@@ -30,7 +31,7 @@ public static class ApiServiceService
     /// <summary>
     /// 是否存在80端口服务
     /// </summary>
-    public static bool HasHttpService { get; private set; }
+    public static bool Has80Service { get; private set; }
 
     public static async Task LoadServices(IFreeSql freeSql)
     {
@@ -347,48 +348,45 @@ public static class ApiServiceService
     private static async Task BuilderService(object state)
     {
         var service = (Service)state;
+        bool is80 = service.Listen == 80;
+        if (is80)
+        {
+            Has80Service = true;
+        }
+
         try
         {
             // 使用最小的配置
             var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
 
-            if (service.Listen == 80)
-            {
-                HasHttpService = true;
-            }
-
             builder.WebHost.UseKestrel(options =>
             {
-                if (HasHttpService && service.IsHttps)
+                if (service.IsHttps)
                 {
-                    options.Listen(IPAddress.Any, service.Listen);
-                    options.Listen(IPAddress.Any, 443, listenOptions =>
+                    if (is80)
                     {
-                        listenOptions.UseHttps(adapterOptions =>
+                        options.Listen(IPAddress.Any, service.Listen);
+                    }
+
+                    options.Listen(IPAddress.Any, is80 ? 443 : service.Listen, listenOptions =>
+                    {
+                        Action<HttpsConnectionAdapterOptions> configure = adapterOptions =>
                         {
                             adapterOptions.ServerCertificateSelector = (context, name) =>
                                 CertService.Certs.TryGetValue(name, out var cert)
                                     ? new X509Certificate2(cert.File, cert.Password)
                                     : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"),
                                         "010426");
-                        });
+                        };
 
-                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
-                    });
-                }
-                else if (service.IsHttps)
-                {
-                    options.ConfigureHttpsDefaults(adapterOptions =>
-                    {
-                        adapterOptions.ServerCertificateSelector = (context, name) =>
-                            CertService.Certs.TryGetValue(name, out var cert)
-                                ? new X509Certificate2(cert.File, cert.Password)
-                                : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
-                    });
-
-                    options.Listen(IPAddress.Any, service.Listen, listenOptions =>
-                    {
-                        listenOptions.UseHttps();
+                        if (is80)
+                        {
+                            listenOptions.UseHttps(configure);
+                        }
+                        else
+                        {// http和https单端口双协议服务器
+                            listenOptions.UseTlsDetection(configure);
+                        }
 
                         listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
                     });
@@ -397,7 +395,6 @@ public static class ApiServiceService
                 {
                     options.Listen(IPAddress.Any, service.Listen);
                 }
-
 
                 options.Limits.MaxRequestBodySize = null;
             });
@@ -550,7 +547,7 @@ public static class ApiServiceService
 
             var app = builder.Build();
 
-            if (HasHttpService)
+            if (is80)
             {
                 // 用于HTTPS证书签名校验
                 app.Use(async (context, next) =>
@@ -675,12 +672,9 @@ public static class ApiServiceService
         catch (Exception e)
         {
             Console.WriteLine(e);
-        }
-        finally
-        {
-            if (service.Listen == 80)
+            if (is80)
             {
-                HasHttpService = false;
+                Has80Service = false;
             }
         }
     }

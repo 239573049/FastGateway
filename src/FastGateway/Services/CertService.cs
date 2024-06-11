@@ -104,7 +104,7 @@ public static class CertService
             return ResultDto.ErrorResult("证书不存在");
         }
 
-        if (!ApiServiceService.HasHttpService)
+        if (!ApiServiceService.Has80Service)
         {
             return ResultDto.ErrorResult("请先添加一个80端口的HTTP服务");
         }
