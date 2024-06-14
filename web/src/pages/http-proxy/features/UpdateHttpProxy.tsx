@@ -11,7 +11,7 @@ interface IUpdateHttpProxyProps {
     values?: Service;
 }
 
-const { Select, Input, Checkbox, AutoComplete} = Form;
+const { Select, Input, Checkbox, AutoComplete, TagInput } = Form;
 
 interface IFormValues {
     formState: any;
@@ -430,17 +430,15 @@ export default function UpdateHttpProxy({
                                                                                 marginLeft: '10px',
                                                                             }}>检查目录是否存在</Button>
                                                                         </InputGroup>
-                                                                        <Select
+                                                                        <TagInput
                                                                             label="try_files"
                                                                             field="tryFiles"
-                                                                            multiple={true}
-                                                                            initValue={['index.html', 'index.htm']}
-                                                                            allowCreate={true}
+                                                                            allowDuplicates={false}
+                                                                            initValue={service.tryFiles}
                                                                             onChange={(v: any) => {
                                                                                 service.tryFiles = v;
                                                                                 formApi.setValues(values);
                                                                             }}
-                                                                            filter={true}
                                                                             style={{
                                                                                 width: '100%',
                                                                                 borderRadius: '8px',
