@@ -11,7 +11,7 @@ interface ICreateHttpProxyProps {
     onOk: () => void;
 }
 
-const { Select, Input, Checkbox, } = Form;
+const { Select, Input, Checkbox, TagInput } = Form;
 
 interface IFormValues {
     formState: any;
@@ -416,17 +416,15 @@ export default function CreateHttpProxy({
                                                                                 marginLeft: '10px',
                                                                             }}>检查目录是否存在</Button>
                                                                         </InputGroup>
-                                                                        <Select
+                                                                        <TagInput
                                                                             label="try_files"
                                                                             field="tryFiles"
-                                                                            multiple={true}
-                                                                            initValue={['index.html', 'index.htm']}
-                                                                            allowCreate={true}
+                                                                            allowDuplicates={false}
+                                                                            initValue={()=>{const v=['index.html', 'index.htm'];service.tryFiles=v;return v;}}
                                                                             onChange={(v: any) => {
                                                                                 service.tryFiles = v;
                                                                                 formApi.setValues(values);
                                                                             }}
-                                                                            filter={true}
                                                                             style={{
                                                                                 width: '100%',
                                                                                 borderRadius: '8px',
