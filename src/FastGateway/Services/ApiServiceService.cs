@@ -476,9 +476,8 @@ public static class ApiServiceService
                         var tryFiles = context.Cluster!.Metadata!.Select(p => p.Key).ToArray();
                         context.AddRequestTransform(async transformContext =>
                         {
-                            var request = transformContext.HttpContext.Request;
                             var response = transformContext.HttpContext.Response;
-                            var path = Path.Combine(root, request.Path.Value![1..]);
+                            var path = Path.Combine(root, transformContext.Path.Value![1..]);
 
                             if (File.Exists(path))
                             {
