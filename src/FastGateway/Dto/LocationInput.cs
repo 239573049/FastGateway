@@ -3,7 +3,7 @@
 public class LocationInput
 {
     public string? Id { get; set; }
-    
+
     /// <summary>
     /// 绑定服务ID
     /// </summary>
@@ -23,7 +23,7 @@ public sealed class LocationServiceDto
     /// </summary>
     [Column(MapType = typeof(string), StringLength = -1)]
     public Dictionary<string, string> AddHeader { get; set; } = new();
-    
+
     /// <summary>
     /// 静态文件或目录
     /// </summary>
@@ -54,6 +54,15 @@ public sealed class LocationServiceDto
 
     [Column(MapType = typeof(string), StringLength = -1)]
     public List<UpStreamInput> UpStreams { get; set; } = new();
+
+    #region ApiServiceType.SingleService时使用
+
+    /// <summary>
+    /// Web代理服务（ApiServiceType.SingleService时使用）
+    /// </summary>
+    public string? WebProxy { get; set; }
+
+    #endregion
 }
 
 public class UpStreamInput
