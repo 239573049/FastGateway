@@ -33,6 +33,7 @@ export interface LocationServiceDto {
     type: ApiServiceType;
     loadType: LoadType;
     upStreams: UpStreamInput[];
+    webProxy: string | null;
 }
 
 export enum ApiServiceType {

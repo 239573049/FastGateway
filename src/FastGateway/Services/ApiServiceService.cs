@@ -106,7 +106,8 @@ public static class ApiServiceService
                     {
                         Server = x.Server,
                         Weight = x.Weight
-                    }).ToList()
+                    }).ToList(),
+                    WebProxy = x.WebProxy,
                 }).ToList()
             }).ToList()
         };
@@ -155,6 +156,7 @@ public static class ApiServiceService
                     Weight = x.Weight
                 }).ToList(),
                 LoadType = x.LoadType,
+                WebProxy = x.WebProxy,
             }).ToList()
         })).ExecuteAffrowsAsync();
     }
@@ -715,13 +717,29 @@ public static class ApiServiceService
 
                 #endregion
 
+                #region WebProxy
+
+                WebProxyConfig? webProxy = null;
+                if (locationService.Type == ApiServiceType.SingleService && !string.IsNullOrWhiteSpace(locationService.WebProxy))
+                {
+                    webProxy = new()
+                    {
+                        Address = new Uri(locationService.WebProxy),
+                        BypassOnLocal = true,
+                        UseDefaultCredentials = false
+                    };
+                }
+
+                #endregion
+
                 string id = $"{location.Id}-{i}";
                 var destinations = new Dictionary<string, DestinationConfig>();
                 var cluster = new ClusterConfig()
                 {
                     Destinations = destinations,
                     ClusterId = id,
-                    Metadata = clusterMetadata
+                    Metadata = clusterMetadata,
+                    HttpClient = new() { WebProxy = webProxy },
                 };
                 clusters.Add(cluster);
 

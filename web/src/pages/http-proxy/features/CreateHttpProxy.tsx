@@ -324,6 +324,7 @@ export default function CreateHttpProxy({
                                                     loadType: 1,
                                                     upStreams: [],
                                                     root: '',
+                                                    webProxy: '',
                                                 });
                                                 formApi.setValues(values);
                                             }}>
@@ -438,15 +439,26 @@ export default function CreateHttpProxy({
                                                             }
                                                             {
                                                                 service.type === 2 && (
-                                                                    <Input
-                                                                        label="代理地址"
-                                                                        initValue={service.proxyPass}
-                                                                        defaultValue={service.proxyPass}
-                                                                        onChange={(v: any) => {
-                                                                            service.proxyPass = v;
-                                                                            formApi.setValues(values);
-                                                                        }}
-                                                                        field="proxyPass" />
+                                                                    <>
+                                                                        <Input
+                                                                            label="代理地址"
+                                                                            initValue={service.proxyPass}
+                                                                            defaultValue={service.proxyPass}
+                                                                            onChange={(v: any) => {
+                                                                                service.proxyPass = v;
+                                                                                formApi.setValues(values);
+                                                                            }}
+                                                                            field="proxyPass" />
+                                                                        <Input
+                                                                            label="WebProxy"
+                                                                            initValue={service.webProxy}
+                                                                            defaultValue={service.webProxy}
+                                                                            onChange={(v: any) => {
+                                                                                service.webProxy = v;
+                                                                                formApi.setValues(values);
+                                                                            }}
+                                                                            field="webProxy" />
+                                                                    </>
                                                                 )
                                                             }
                                                             {

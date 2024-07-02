@@ -68,6 +68,15 @@ public sealed class LocationService
 
     [Column(MapType = typeof(string), StringLength = -1)]
     public List<UpStream> UpStreams { get; set; } = new();
+
+    #region ApiServiceType.SingleService时使用
+
+    /// <summary>
+    /// Web代理服务（ApiServiceType.SingleService时使用）
+    /// </summary>
+    public string? WebProxy { get; set; }
+
+    #endregion
 }
 
 public sealed class UpStream
