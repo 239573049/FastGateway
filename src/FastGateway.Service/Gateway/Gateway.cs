@@ -128,36 +128,17 @@ public static class Gateway
                 domainName.Path = $"/{domainName.Path}/{{**catch-all}}";
             }
 
-            RouteConfig route ;
+            RouteConfig route = new RouteConfig
+            {
+                RouteId = domainName.Id,
+                ClusterId = domainName.Id,
+                Match = new RouteMatch
+                {
+                    Hosts = domainName.Domains,
+                    Path = domainName.Path,
+                }
+            };
 
-            if (domainName.ServiceType == ServiceType.StaticFile)
-            {
-                route = new RouteConfig
-                {
-                    RouteId = domainName.Id,
-                    ClusterId = domainName.Id,
-                    Match = new RouteMatch
-                    {
-                        Hosts = domainName.Domains,
-                        Path = domainName.Path,
-                    },
-                    
-                };
-            }
-            else
-            {
-                route = new RouteConfig
-                {
-                    RouteId = domainName.Id,
-                    ClusterId = domainName.Id,
-                    Match = new RouteMatch
-                    {
-                        Hosts = domainName.Domains,
-                        Path = domainName.Path,
-                    }
-                };
-            }
-            
             if (domainName.ServiceType == ServiceType.Service)
             {
                 var cluster = new ClusterConfig
