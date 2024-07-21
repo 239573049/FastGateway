@@ -122,22 +122,42 @@ public static class Gateway
             else if (domainName.Path == "/")
             {
                 domainName.Path = $"/{{**catch-all}}";
-            }else
+            }
+            else
             {
                 domainName.Path = $"/{domainName.Path}/{{**catch-all}}";
             }
 
-            var route = new RouteConfig
-            {
-                RouteId = domainName.Id,
-                ClusterId = domainName.Id,
-                Match = new RouteMatch
-                {
-                    Hosts = domainName.Domains,
-                    Path = domainName.Path,
-                }
-            };
+            RouteConfig route ;
 
+            if (domainName.ServiceType == ServiceType.StaticFile)
+            {
+                route = new RouteConfig
+                {
+                    RouteId = domainName.Id,
+                    ClusterId = domainName.Id,
+                    Match = new RouteMatch
+                    {
+                        Hosts = domainName.Domains,
+                        Path = domainName.Path,
+                    },
+                    
+                };
+            }
+            else
+            {
+                route = new RouteConfig
+                {
+                    RouteId = domainName.Id,
+                    ClusterId = domainName.Id,
+                    Match = new RouteMatch
+                    {
+                        Hosts = domainName.Domains,
+                        Path = domainName.Path,
+                    }
+                };
+            }
+            
             if (domainName.ServiceType == ServiceType.Service)
             {
                 var cluster = new ClusterConfig
@@ -156,6 +176,38 @@ public static class Gateway
                 };
 
                 clusters.Add(cluster);
+            }
+
+            if (domainName.ServiceType == ServiceType.ServiceCluster)
+            {
+                if (string.IsNullOrWhiteSpace(domainName.Path))
+                {
+                    domainName.Path = "/{**catch-all}";
+                }
+                else if (domainName.Path == "/")
+                {
+                    domainName.Path = $"/{{**catch-all}}";
+                }
+                else
+                {
+                    domainName.Path = $"/{domainName.Path}/{{**catch-all}}";
+                }
+
+                if (domainName.ServiceType == ServiceType.Service)
+                {
+                    var destinations = domainName.UpStreams.Select(x => new DestinationConfig
+                    {
+                        Address = x.Service
+                    }).ToDictionary(x => Guid.NewGuid().ToString("N"));
+
+                    var cluster = new ClusterConfig
+                    {
+                        ClusterId = domainName.Id,
+                        Destinations = destinations
+                    };
+
+                    clusters.Add(cluster);
+                }
             }
 
             routes.Add(route);
