@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E6D6D101-A6DE-421E-AD34-131020A67A29}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway.Service", "src\FastGateway.Service\FastGateway.Service.csproj", "{E5E66176-C630-41D1-B9D2-BCFDF7CB594E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FastGateway.Entities", "src\FastGateway.Entities\FastGateway.Entities.csproj", "{FCAB92E4-1181-4A15-91E8-F43794CEE00F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E5E66176-C630-41D1-B9D2-BCFDF7CB594E} = {E6D6D101-A6DE-421E-AD34-131020A67A29}
+		{FCAB92E4-1181-4A15-91E8-F43794CEE00F} = {E6D6D101-A6DE-421E-AD34-131020A67A29}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E5E66176-C630-41D1-B9D2-BCFDF7CB594E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5E66176-C630-41D1-B9D2-BCFDF7CB594E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5E66176-C630-41D1-B9D2-BCFDF7CB594E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5E66176-C630-41D1-B9D2-BCFDF7CB594E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCAB92E4-1181-4A15-91E8-F43794CEE00F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCAB92E4-1181-4A15-91E8-F43794CEE00F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCAB92E4-1181-4A15-91E8-F43794CEE00F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCAB92E4-1181-4A15-91E8-F43794CEE00F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
