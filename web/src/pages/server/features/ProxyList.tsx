@@ -1,4 +1,4 @@
-import { deleteServer, enableServer, getServers } from "@/services/ServerService";
+import { deleteServer, enableServer, getServers, onlineServer } from "@/services/ServerService";
 import { Server } from "@/types";
 import { SpotlightCard, Tag } from "@lobehub/ui";
 import { memo, useEffect, } from "react";
@@ -27,7 +27,7 @@ const ProxyList = memo(() => {
         return (
             <Badge.Ribbon style={{
                 backgroundColor: item.onLine ? 'green' : 'red',
-            }} text={item.enable?('●'):('●')}>
+            }} text={item.enable ? ('●') : ('●')}>
                 <Flexbox
                     key={item.id}
                     style={{
@@ -71,6 +71,18 @@ const ProxyList = memo(() => {
                                             enableServer(item.id).then(() => {
                                                 loadServers();
                                             })
+                                        }
+                                    },
+                                    {
+                                        key: "server",
+                                        label: item.onLine ? '关闭服务' : '启动服务',
+                                        style: {
+                                            color: item.onLine ? 'red' : 'green'
+                                        },
+                                        onClick: () => {
+                                            onlineServer(item.id).then(() => {
+                                                loadServers();
+                                            });
                                         }
                                     }
                                 ]

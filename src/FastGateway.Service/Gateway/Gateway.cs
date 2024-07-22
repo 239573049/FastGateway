@@ -31,6 +31,22 @@ public static class Gateway
     public static bool Has80Service { get; private set; }
 
     /// <summary>
+    /// 关闭指定网关
+    /// </summary>
+    /// <param name="serverId"></param>
+    /// <returns></returns>
+    public static async Task<bool> CloseGateway(string serverId)
+    {
+        if (GatewayWebApplications.TryRemove(serverId, out var webApplication))
+        {
+            await webApplication.StopAsync();
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// 构建网关
     /// </summary>
     public static async Task BuilderGateway(Server server, List<DomainName> domainNames)
@@ -107,7 +123,7 @@ public static class Gateway
         }
     }
 
-    public static (IReadOnlyList<RouteConfig> routes,
+    private static (IReadOnlyList<RouteConfig> routes,
         IReadOnlyList<ClusterConfig> clusters) BuildConfig(List<DomainName> domainNames)
     {
         var routes = new List<RouteConfig>();

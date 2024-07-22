@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import './index.css'
 import Icon, { DashboardOutlined, MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
@@ -13,7 +13,7 @@ import {
     Settings,
     Info
 } from 'lucide-react'
-import { useNavigate } from "react-router-dom";
+import { useNavigate,useLocation } from "react-router-dom";
 const { Header, Content, Sider } = Layout;
 
 
@@ -21,6 +21,7 @@ const DestkopLayout = memo(() => {
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
+    const location = useLocation();
     const navigate = useNavigate();
 
     const [memuKey, setMemuKey] = useState('dashboard');
@@ -60,14 +61,14 @@ const DestkopLayout = memo(() => {
             </Icon>,
             children: [
                 {
-                    key: 'blacklist',
+                    key: 'protect-config/blacklist',
                     label: '全局黑名单',
                     icon: <Icon>
                         <ShieldPlus size={15} />
                     </Icon>,
                 },
                 {
-                    key: 'whitelist',
+                    key: 'protect-config/whitelist',
                     label: '全局白名单',
                     icon: <Icon>
                         <ShieldCheck size={15} />
@@ -75,7 +76,7 @@ const DestkopLayout = memo(() => {
                 },
                 // 限流
                 {
-                    key: 'rate-limit',
+                    key: 'protect-config/rate-limit',
                     label: '限流',
                     icon: <Icon>
                         <Activity size={15} />
@@ -112,6 +113,12 @@ const DestkopLayout = memo(() => {
         setMemuKey(key);
         navigate(key);
     }
+
+    useEffect(() => {
+        // 根据location.pathname更新memuKey
+        const key = location.pathname.replace('/', '');
+        setMemuKey(key);
+    }, [location]);
 
     return (
         <Layout className="desktop-layout">

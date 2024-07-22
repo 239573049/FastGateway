@@ -5,6 +5,9 @@ import MainLayout from './pages/layout'
 import NotFoundPage from './pages/not-page'
 import ServerPage from './pages/server/page'
 import ServerInfoPage from './pages/server/info/page'
+import BlackListPage from './pages/protect-config/blacklist'
+import WhiteListPage from './pages/protect-config/whitelist'
+import RateLimitPage from './pages/protect-config/rate-limit'
 
 const router = createBrowserRouter([
   {
@@ -24,9 +27,22 @@ const router = createBrowserRouter([
             element: <ServerInfoPage />
           },
           {
+            path: 'protect-config/blacklist',
+            element: <BlackListPage></BlackListPage>
+          },
+          {
+            path: 'protect-config/whitelist',
+            element: <WhiteListPage></WhiteListPage>
+          },
+          {
+            path: 'protect-config/rate-limit',
+            element: <RateLimitPage></RateLimitPage>
+          },
+          {
             path: '*',
             element: <NotFoundPage></NotFoundPage>
-          }
+          },
+          
         ]
       },
 

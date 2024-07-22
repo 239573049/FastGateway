@@ -21,3 +21,7 @@ export const getServers = async () => {
 export const enableServer = async (id:any) => {
   return put(`${baseUrl}/${id}/enable`);
 }
+
+export const onlineServer = async (id:any) => {
+  return put(`${baseUrl}/${id}/online`);
+}

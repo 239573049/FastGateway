@@ -80,6 +80,24 @@ public static class ServerService
                 .ExecuteUpdateAsync(i => i.SetProperty(a => a.Enable, a => !a.Enable));
         }).WithDescription("启用/禁用服务").WithDisplayName("启用/禁用服务").WithTags("服务");
 
+        // 启用服务
+        server.MapPut("{id}/online", async (MasterContext dbContext, string id) =>
+        {
+            if (!Gateway.Gateway.CheckServerOnline(id))
+            {
+                var server = await dbContext.Servers.FirstOrDefaultAsync(x => x.Id == id);
+                var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToListAsync();
+                await Task.Factory.StartNew(async () => await Gateway.Gateway.BuilderGateway(server, domainNames));
+                
+                await Task.Delay(1000);
+            }
+            else
+            {
+                await Gateway.Gateway.CloseGateway(id);
+            }
+            
+        }).WithDescription("启用服务").WithDisplayName("启用服务").WithTags("服务");
+
         return app;
     }
 }

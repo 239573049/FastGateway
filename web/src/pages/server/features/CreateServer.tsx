@@ -31,6 +31,7 @@ export default function CreateServer({
         redirectHttps: false,
         id: null,
         isHttps: false,
+        onLine: false,
     });
 
     const handleChange = (field: string) => (e: { target: any; }) => {
