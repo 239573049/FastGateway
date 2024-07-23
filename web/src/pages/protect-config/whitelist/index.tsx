@@ -1,7 +1,9 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import Header from "../features/Header";
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import TableList from "../features/Table";
+import CreateBlacklistAndWhitelist from "../features/CreateBlacklistAndWhitelist";
+import { DeleteBlacklist, GetBlacklist } from "@/services/BlacklistAndWhitelistService";
 
 const WhiteListPage = memo(() => {
     const [input, setInput] = useState({
@@ -9,10 +11,30 @@ const WhiteListPage = memo(() => {
         pageSize: 10,
         total: 0,
     });
+    const [createVisible, setCreateVisible] = useState(false);
+    const [data, setData] = useState([]);
+
+    function loadData() {
+        GetBlacklist(false, input.page, input.pageSize)
+            .then((res) => {
+                const result = res.data;
+                setData(result.itmes);
+                setInput({
+                    ...input,
+                    total: result.total
+                });
+            })
+    }
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+
     return (
         <>
             <Header
-                action={<Button>
+                action={<Button onClick={() => setCreateVisible(true)}>
                     新增白名单
                 </Button>}
                 title="白名单管理" />
@@ -49,17 +71,25 @@ const WhiteListPage = memo(() => {
                         title: '操作',
                         dataIndex: 'action',
                         key: 'action',
-                        render: () => {
+                        render: (_:any,itme:any) => {
                             return (
                                 <div>
-                                    <Button type="link">编辑</Button>
-                                    <Button type="link">删除</Button>
+                                    <Button style={{
+                                        marginRight: '10px',
+                                    }}>编辑</Button>
+                                    <Button danger onClick={() => {
+                                        DeleteBlacklist(itme.id)
+                                            .then(() => {
+                                                message.success('删除成功');
+                                                loadData();
+                                            })
+                                    }}>删除</Button>
                                 </div>
                             );
                         }
                     }
                 ]}
-                dataSources={[]}
+                dataSources={data}
                 total={input.total}
                 pageSize={input.pageSize}
                 current={input.page}
@@ -70,6 +100,15 @@ const WhiteListPage = memo(() => {
                         page,
                         pageSize
                     });
+                }}
+            />
+            <CreateBlacklistAndWhitelist
+                isBlacklist={false}
+                visible={createVisible}
+                onClose={() => setCreateVisible(false)}
+                onOk={() => {
+                    setCreateVisible(false);
+                    loadData();
                 }}
             />
         </>

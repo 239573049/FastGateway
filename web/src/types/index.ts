@@ -42,3 +42,13 @@ export interface HeadersView {
     key: string;
     value: string;
 }
+export interface RateLimit {
+    id: string | null;
+    name: string;
+    enable: boolean;
+    endpoint: string;
+    period: string;
+    limit: number;
+    endpointWhitelist: string[];
+    ipWhitelist: string[];
+}

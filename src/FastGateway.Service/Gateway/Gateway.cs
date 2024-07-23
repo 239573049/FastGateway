@@ -2,6 +2,8 @@
 using System.Net;
 using FastGateway.Entities;
 using FastGateway.Entities.Core;
+using FastGateway.Service.DataAccess;
+using FastGateway.Service.Services;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Yarp.ReverseProxy.Configuration;
@@ -49,7 +51,8 @@ public static class Gateway
     /// <summary>
     /// 构建网关
     /// </summary>
-    public static async Task BuilderGateway(Server server, List<DomainName> domainNames)
+    public static async Task BuilderGateway(Server server, List<DomainName> domainNames,
+        List<BlacklistAndWhitelist> blacklistAndWhitelists, List<RateLimit> rateLimits)
     {
         try
         {
@@ -104,10 +107,18 @@ public static class Gateway
 
             var (routes, clusters) = BuildConfig(domainNames);
 
+            builder.Services.AddRateLimitService(rateLimits);
+
             builder.Services.AddReverseProxy()
                 .LoadFromMemory(routes, clusters);
 
             var app = builder.Build();
+
+            app.UseInitGatewayMiddleware();
+
+            app.UseRateLimitMiddleware(rateLimits);
+
+            app.UseBlacklistMiddleware(blacklistAndWhitelists);
 
             GatewayWebApplications.TryAdd(server.Id, app);
 
@@ -121,6 +132,27 @@ public static class Gateway
         {
             GatewayWebApplications.Remove(server.Id, out _);
         }
+    }
+
+    private static WebApplication UseInitGatewayMiddleware(this WebApplication app)
+    {
+        app.Use(async (context, next) =>
+        {
+            // 设置ip
+            var ip = context.Connection.RemoteIpAddress;
+            if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            {
+                ip = IPAddress.Parse(forwardedFor);
+            }
+            else
+            {
+                context.Request.Headers["X-Forwarded-For"] = ip.ToString();
+            }
+
+            await next(context);
+        });
+
+        return app;
     }
 
     private static (IReadOnlyList<RouteConfig> routes,

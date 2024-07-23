@@ -87,15 +87,17 @@ public static class ServerService
             {
                 var server = await dbContext.Servers.FirstOrDefaultAsync(x => x.Id == id);
                 var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToListAsync();
-                await Task.Factory.StartNew(async () => await Gateway.Gateway.BuilderGateway(server, domainNames));
-                
+                var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
+                var rateLimits = await dbContext.RateLimits.ToListAsync();
+                await Task.Factory.StartNew(async () =>
+                    await Gateway.Gateway.BuilderGateway(server, domainNames, blacklistAndWhitelists, rateLimits));
+
                 await Task.Delay(1000);
             }
             else
             {
                 await Gateway.Gateway.CloseGateway(id);
             }
-            
         }).WithDescription("启用服务").WithDisplayName("启用服务").WithTags("服务");
 
         return app;

@@ -53,6 +53,7 @@ namespace FastGateway.Service.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
+                    Path = table.Column<string>(type: "TEXT", nullable: false),
                     ServerId = table.Column<string>(type: "TEXT", nullable: false),
                     Domains = table.Column<string>(type: "TEXT", nullable: false),
                     ServiceType = table.Column<int>(type: "INTEGER", nullable: false),
@@ -74,19 +75,11 @@ namespace FastGateway.Service.Migrations
                     Id = table.Column<string>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Enable = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
-                    GeneralRules = table.Column<string>(type: "TEXT", nullable: false),
+                    Endpoint = table.Column<string>(type: "TEXT", nullable: false),
+                    Period = table.Column<string>(type: "TEXT", nullable: false),
+                    Limit = table.Column<int>(type: "INTEGER", nullable: false),
                     EndpointWhitelist = table.Column<string>(type: "TEXT", nullable: false),
-                    ClientIdHeader = table.Column<string>(type: "TEXT", nullable: false),
-                    ClientWhitelist = table.Column<string>(type: "TEXT", nullable: false),
-                    RealIpHeader = table.Column<string>(type: "TEXT", nullable: false),
-                    IpWhitelist = table.Column<string>(type: "TEXT", nullable: false),
-                    HttpStatusCode = table.Column<int>(type: "INTEGER", nullable: false),
-                    QuotaExceededMessage = table.Column<string>(type: "TEXT", nullable: false),
-                    RateLimitContentType = table.Column<string>(type: "TEXT", nullable: false),
-                    RateLimitCounterPrefix = table.Column<string>(type: "TEXT", nullable: false),
-                    EnableEndpointRateLimiting = table.Column<bool>(type: "INTEGER", nullable: false),
-                    DisableRateLimitHeaders = table.Column<bool>(type: "INTEGER", nullable: false),
-                    EnableRegexRuleMatching = table.Column<bool>(type: "INTEGER", nullable: false)
+                    IpWhitelist = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {

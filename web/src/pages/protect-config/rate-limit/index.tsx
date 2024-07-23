@@ -1,7 +1,9 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import Header from "../features/Header";
 import { Button } from 'antd';
 import TableList from "../features/Table";
+import { GetRateLimit } from "@/services/RateLimitService";
+import CreateRateLimitPage from "./feautres/CreateRateLimit";
 
 const RateLimitPage = memo(() => {
     const [input, setInput] = useState({
@@ -9,11 +11,31 @@ const RateLimitPage = memo(() => {
         pageSize: 10,
         total: 0,
     });
+    const [data, setData] = useState([]);
+    const [createVisible, setCreateVisible] = useState(false);
+
+    function loadData() {
+        GetRateLimit(input.page, input.pageSize)
+            .then((res) => {
+                const result = res.data;
+                setData(result.itmes);
+                setInput({
+                    ...input,
+                    total: result.total
+                });
+            })
+    }
+
+    useEffect(() => {
+        loadData();
+    }, []);
 
     return (
         <>
             <Header
-                action={<Button>
+                action={<Button onClick={() => {
+                    setCreateVisible(true);
+                }}>
                     新增限流
                 </Button>}
                 title="限流管理" />
@@ -33,9 +55,19 @@ const RateLimitPage = memo(() => {
                         }
                     },
                     {
-                        title: '错误类型',
-                        dataIndex: 'rateLimitContentType',
-                        key: 'rateLimitContentType',
+                        title: '限流端点',
+                        dataIndex: 'endpoint',
+                        key: 'endpoint',
+                    },
+                    {
+                        title: '限流周期',
+                        dataIndex: 'period',
+                        key: 'period',
+                    },
+                    {
+                        title: '限流值',
+                        dataIndex: 'limit',
+                        key: 'limit',
                     },
                     {
                         title: '操作',
@@ -51,7 +83,7 @@ const RateLimitPage = memo(() => {
                         }
                     }
                 ]}
-                dataSources={[]}
+                dataSources={data}
                 total={input.total}
                 pageSize={input.pageSize}
                 current={input.page}
@@ -64,6 +96,10 @@ const RateLimitPage = memo(() => {
                     });
                 }}
             />
+            <CreateRateLimitPage visible={createVisible} onClose={() => setCreateVisible(false)} onOk={() => {
+                loadData();
+                setCreateVisible(false);
+            }} />
         </>
     );
 });

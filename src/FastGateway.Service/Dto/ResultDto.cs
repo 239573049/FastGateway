@@ -44,6 +44,7 @@ public sealed class ResultDto
     {
         return new ResultDto(false, message, null);
     }
+    
 }
 
 public sealed class ResultDto<T>(bool success, string message, T data)

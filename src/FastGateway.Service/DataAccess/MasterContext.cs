@@ -135,11 +135,6 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
 
             entity.HasIndex(e => e.Enable);
 
-            entity.Property(e => e.ClientWhitelist).HasConversion(
-                v => string.Join(',', v),
-                v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
-
-
             entity.Property(e => e.EndpointWhitelist).HasConversion(
                 v => string.Join(',', v),
                 v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
@@ -148,10 +143,6 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
                 v => string.Join(',', v),
                 v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
 
-
-            entity.Property(e => e.GeneralRules).HasConversion(
-                v => JsonSerializer.Serialize(v, JsonSerializerOptions),
-                v => JsonSerializer.Deserialize<List<GeneralRules>>(v, JsonSerializerOptions));
         });
     }
 }

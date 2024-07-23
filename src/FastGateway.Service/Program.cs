@@ -33,14 +33,19 @@ public static class Program
 
             var server = await dbContext.Servers.ToListAsync();
             var domainNames = await dbContext.DomainNames.ToListAsync();
-
+            var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
+            var rateLimits = await dbContext.RateLimits.ToListAsync();
             foreach (var item in server)
             {
-                await Task.Factory.StartNew(async () => await Gateway.Gateway.BuilderGateway(item, domainNames.Where(x=>x.ServerId == item.Id).ToList()));
+                await Task.Factory.StartNew(async () =>
+                    await Gateway.Gateway.BuilderGateway(item, domainNames.Where(x => x.ServerId == item.Id).ToList(),
+                        blacklistAndWhitelists, rateLimits));
             }
         }
 
         app.MapDomain()
+            .UseBlacklistAndWhitelist()
+            .MapRateLimit()
             .MapServer();
 
         await app.RunAsync();

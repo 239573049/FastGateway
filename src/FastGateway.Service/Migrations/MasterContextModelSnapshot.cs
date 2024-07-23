@@ -158,60 +158,31 @@ namespace FastGateway.Service.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ClientIdHeader")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ClientWhitelist")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("DisableRateLimitHeaders")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("Enable")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
-                    b.Property<bool>("EnableEndpointRateLimiting")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("EnableRegexRuleMatching")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("EndpointWhitelist")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("GeneralRules")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("HttpStatusCode")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("IpWhitelist")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Limit")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("QuotaExceededMessage")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RateLimitContentType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RateLimitCounterPrefix")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RealIpHeader")
+                    b.Property<string>("Period")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
