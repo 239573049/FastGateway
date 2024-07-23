@@ -1,4 +1,4 @@
-import { get, postJson, putJson } from "@/utils/fetch";
+import { get, post, postJson, putJson } from "@/utils/fetch";
 
 
 const baseUrl = "/api/v1/cert";
@@ -18,4 +18,8 @@ export const DeleteCert = (id: string) => {
 
 export const UpdateCert = (id: string, value: any) => {
     return putJson(`${baseUrl}/${id}`, value);
+}
+
+export const ApplyCert = (id: string) => {
+    return post(`${baseUrl}/${id}/apply`);
 }

@@ -31,6 +31,9 @@ public static class Program
             var dbContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
             await dbContext.Database.MigrateAsync();
 
+            var certs = await dbContext.Certs.Where(x => !string.IsNullOrWhiteSpace(x.Certs.File)).ToListAsync();
+            CertService.InitCert(certs);
+            
             var server = await dbContext.Servers.ToListAsync();
             var domainNames = await dbContext.DomainNames.ToListAsync();
             var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
@@ -41,10 +44,11 @@ public static class Program
                     await Gateway.Gateway.BuilderGateway(item, domainNames.Where(x => x.ServerId == item.Id).ToList(),
                         blacklistAndWhitelists, rateLimits));
             }
+
         }
 
         app.MapDomain()
-            .UseBlacklistAndWhitelist()
+            .MapBlacklistAndWhitelist()
             .MapCert()
             .MapRateLimit()
             .MapServer();

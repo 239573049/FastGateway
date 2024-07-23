@@ -62,7 +62,7 @@ public static class BlacklistAndWhitelistService
         return app;
     }
 
-    public static WebApplication UseBlacklistAndWhitelist(this WebApplication app)
+    public static WebApplication MapBlacklistAndWhitelist(this WebApplication app)
     {
         var domain = app.MapGroup("/api/v1/black-and-white")
             .WithTags("黑白名单")
