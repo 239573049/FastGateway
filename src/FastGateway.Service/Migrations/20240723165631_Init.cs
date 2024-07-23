@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FastGateway.Service.Migrations
 {
     /// <inheritdoc />
-    public partial class Initialize : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -33,7 +33,7 @@ namespace FastGateway.Service.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Domains = table.Column<string>(type: "TEXT", nullable: false),
+                    Domain = table.Column<string>(type: "TEXT", nullable: false),
                     Expired = table.Column<bool>(type: "INTEGER", nullable: false),
                     AutoRenew = table.Column<bool>(type: "INTEGER", nullable: false),
                     Issuer = table.Column<string>(type: "TEXT", nullable: false),
@@ -41,7 +41,8 @@ namespace FastGateway.Service.Migrations
                     RenewTime = table.Column<DateTime>(type: "TEXT", nullable: true),
                     RenewStats = table.Column<byte>(type: "INTEGER", nullable: false),
                     NotAfter = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    Certs = table.Column<string>(type: "TEXT", nullable: false)
+                    Certs = table.Column<string>(type: "TEXT", nullable: false),
+                    CreateTime = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {

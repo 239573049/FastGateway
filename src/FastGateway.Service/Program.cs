@@ -45,6 +45,7 @@ public static class Program
 
         app.MapDomain()
             .UseBlacklistAndWhitelist()
+            .MapCert()
             .MapRateLimit()
             .MapServer();
 

@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FastGateway.Service.Migrations
 {
     [DbContext(typeof(MasterContext))]
-    [Migration("20240723163734_Initialize")]
-    partial class Initialize
+    [Migration("20240723165631_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -73,7 +73,10 @@ namespace FastGateway.Service.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Domains")
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Domain")
                         .IsRequired()
                         .HasColumnType("TEXT");
 

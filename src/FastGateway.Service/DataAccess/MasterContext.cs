@@ -86,7 +86,7 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
             entity.HasIndex(e => e.ServerId);
 
             entity.HasIndex(e => e.ServiceType);
-            
+
             entity.Property(x => x.UpStreams).HasConversion(
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions),
                 v => JsonSerializer.Deserialize<List<UpStream>>(v, JsonSerializerOptions));
@@ -114,13 +114,9 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
 
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
 
-            entity.Property(e => e.Domains).HasConversion(
-                v => string.Join(',', v),
-                v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
-
             entity.Property(x => x.Certs).HasConversion(
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions),
-                v => JsonSerializer.Deserialize<List<CertData>>(v, JsonSerializerOptions));
+                v => JsonSerializer.Deserialize<CertData>(v, JsonSerializerOptions));
         });
 
         builder.Entity<RateLimit>(entity =>
@@ -142,7 +138,6 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
             entity.Property(e => e.IpWhitelist).HasConversion(
                 v => string.Join(',', v),
                 v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
-
         });
     }
 }

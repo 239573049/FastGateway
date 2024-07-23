@@ -6,7 +6,7 @@ public sealed class Cert
 {
     public string Id { get; set; }
 
-    public string[] Domains { get; set; }
+    public string Domain { get; set; }
 
     /// <summary>
     /// 是否过期
@@ -43,27 +43,9 @@ public sealed class Cert
     /// </summary>
     public DateTime? NotAfter { get; set; }
 
-    public List<CertData> Certs { get; set; } = new();
+    public CertData Certs { get; set; } = new();
 
-    public void AddCert(CertData certData)
-    {
-        Certs.Add(certData);
-    }
-
-    public CertData GetCert(string domain)
-    {
-        return Certs.FirstOrDefault(x => x.Domain == domain);
-    }
-
-    public void RemoveCert(string domain)
-    {
-        Certs.RemoveAll(x => x.Domain == domain);
-    }
-
-    public void ClearCerts()
-    {
-        Certs.Clear();
-    }
+    public DateTime CreateTime { get; set; }
 }
 
 

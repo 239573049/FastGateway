@@ -70,7 +70,10 @@ namespace FastGateway.Service.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Domains")
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Domain")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
