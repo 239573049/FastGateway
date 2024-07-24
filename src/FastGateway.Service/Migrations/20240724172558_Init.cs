@@ -36,7 +36,7 @@ namespace FastGateway.Service.Migrations
                     Domain = table.Column<string>(type: "TEXT", nullable: false),
                     Expired = table.Column<bool>(type: "INTEGER", nullable: false),
                     AutoRenew = table.Column<bool>(type: "INTEGER", nullable: false),
-                    Issuer = table.Column<string>(type: "TEXT", nullable: false),
+                    Issuer = table.Column<string>(type: "TEXT", nullable: true),
                     Email = table.Column<string>(type: "TEXT", nullable: false),
                     RenewTime = table.Column<DateTime>(type: "TEXT", nullable: true),
                     RenewStats = table.Column<byte>(type: "INTEGER", nullable: false),

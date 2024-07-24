@@ -99,7 +99,7 @@ const DestkopLayout = memo(() => {
             </Icon>,
         },
         {
-            key: 'info',
+            key: 'about',
             label: '关于',
             icon: <Icon>
                 <Info size={15} />

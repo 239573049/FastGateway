@@ -21,7 +21,7 @@ public sealed class Cert
     /// <summary>
     /// 颁发机构
     /// </summary>
-    public string Issuer { get; set; }
+    public string? Issuer { get; set; }
 
     /// <summary>
     /// 邮箱

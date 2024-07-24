@@ -8,6 +8,8 @@ import ServerInfoPage from './pages/server/info/page'
 import BlackListPage from './pages/protect-config/blacklist'
 import WhiteListPage from './pages/protect-config/whitelist'
 import RateLimitPage from './pages/protect-config/rate-limit'
+import CertPage from './pages/cert/page'
+import AboutPage from './pages/about/page'
 
 const router = createBrowserRouter([
   {
@@ -39,10 +41,18 @@ const router = createBrowserRouter([
             element: <RateLimitPage></RateLimitPage>
           },
           {
+            path: 'cert',
+            element: <CertPage />
+          },
+          {
+            path: 'about',
+            element: <AboutPage />
+          },
+          {
             path: '*',
             element: <NotFoundPage></NotFoundPage>
           },
-          
+
         ]
       },
 

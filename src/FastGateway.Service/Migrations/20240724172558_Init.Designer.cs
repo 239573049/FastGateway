@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FastGateway.Service.Migrations
 {
     [DbContext(typeof(MasterContext))]
-    [Migration("20240723165631_Init")]
+    [Migration("20240724172558_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -88,7 +88,6 @@ namespace FastGateway.Service.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Issuer")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("NotAfter")

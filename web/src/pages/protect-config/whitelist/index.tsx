@@ -18,7 +18,7 @@ const WhiteListPage = memo(() => {
         GetBlacklist(false, input.page, input.pageSize)
             .then((res) => {
                 const result = res.data;
-                setData(result.itmes);
+                setData(result.items);
                 setInput({
                     ...input,
                     total: result.total

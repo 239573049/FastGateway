@@ -21,7 +21,7 @@ export default function CreateServer({
 }: CreateServerProps) {
     const [value, setValue] = useState<Server>({
         name: '',
-        listen: 8080,
+        listen: 80,
         description: '',
         enable: true,
         staticCompress: false,

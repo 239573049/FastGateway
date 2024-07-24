@@ -85,7 +85,6 @@ namespace FastGateway.Service.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Issuer")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("NotAfter")

@@ -1,3 +1,4 @@
+using FastGateway.Entities.Core;
 using FastGateway.Service.DataAccess;
 using FastGateway.Service.Services;
 using Microsoft.EntityFrameworkCore;
@@ -31,9 +32,10 @@ public static class Program
             var dbContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
             await dbContext.Database.MigrateAsync();
 
-            var certs = await dbContext.Certs.Where(x => !string.IsNullOrWhiteSpace(x.Certs.File)).ToListAsync();
+            var certs = await dbContext.Certs.Where(x => x.RenewStats == RenewStats.Success && x.Expired).ToListAsync();
+
             CertService.InitCert(certs);
-            
+
             var server = await dbContext.Servers.ToListAsync();
             var domainNames = await dbContext.DomainNames.ToListAsync();
             var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
@@ -44,7 +46,6 @@ public static class Program
                     await Gateway.Gateway.BuilderGateway(item, domainNames.Where(x => x.ServerId == item.Id).ToList(),
                         blacklistAndWhitelists, rateLimits));
             }
-
         }
 
         app.MapDomain()
