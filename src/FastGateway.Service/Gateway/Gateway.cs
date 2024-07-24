@@ -3,6 +3,7 @@ using System.Net;
 using FastGateway.Entities;
 using FastGateway.Entities.Core;
 using FastGateway.Service.DataAccess;
+using FastGateway.Service.Infrastructure;
 using FastGateway.Service.Services;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -22,6 +23,11 @@ public static class Gateway
     private const string Root = "Root";
 
     static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
+    
+    /// <summary>
+    /// 默认的内容类型提供程序
+    /// </summary>
+    private static readonly DefaultContentTypeProvider DefaultContentTypeProvider = new();
 
     /// <summary>
     /// 检查Server是否在线
@@ -155,6 +161,60 @@ public static class Gateway
     {
         builder.AddTransforms(context =>
         {
+            var prefix = context.Route.Match.Path?
+                .Replace("/{**catch-all}", "")
+                .Replace("{**catch-all}", "");
+
+            // 如果存在泛域名则需要保留原始Host
+            if (context.Route.Match.Hosts?.Any(x => x.Contains('*')) == true)
+            {
+                context.AddOriginalHost(true);
+            }
+
+            if (!string.IsNullOrEmpty(prefix))
+            {
+                context.AddPathRemovePrefix(prefix);
+            }
+            
+            #region 静态站点
+
+            if (context.Route.Metadata!.TryGetValue(Root, out var root))
+            {
+                var tryFiles = context.Cluster!.Metadata!.Select(p => p.Key).ToArray();
+                context.AddRequestTransform(async transformContext =>
+                {
+                    var response = transformContext.HttpContext.Response;
+                    var path = Path.Combine(root, transformContext.Path.Value![1..]);
+
+                    if (File.Exists(path))
+                    {
+                        DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
+                        response.Headers.ContentType = contentType;
+
+                        await response.SendFileAsync(path);
+                        return;
+                    }
+
+                    // 搜索 try_files
+                    foreach (var tryFile in tryFiles)
+                    {
+                        var tryPath = Path.Combine(root, tryFile);
+
+                        if (!File.Exists(tryPath)) continue;
+
+                        DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
+                        response.Headers.ContentType = contentType;
+
+                        await response.SendFileAsync(tryPath);
+
+                        return;
+                    }
+
+                    response.StatusCode = 404;
+                });
+            }
+
+            #endregion
             context.AddRequestTransform(async transformContext =>
             {
                 // 获取请求的host
