@@ -56,4 +56,9 @@ public sealed class DomainName
     /// 静态文件或目录
     /// </summary>
     public string? Root { get; set; }
+    
+    /// <summary>
+    /// TryFiles
+    /// </summary>
+    public string[] TryFiles { get; set; } = [];
 }

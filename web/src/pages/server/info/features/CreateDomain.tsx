@@ -34,7 +34,8 @@ export default function CreateDomain({
         service: '',
         upStreams: [],
         root: '',
-        path: ''
+        path: '',
+        tryFiles: []
     });
 
     const {
@@ -68,7 +69,7 @@ export default function CreateDomain({
             justify='column'>
                 <div style={{
                     display: 'flex',
-                    
+
                 }}>
                     <div style={{
                         fontSize: '14px',
@@ -150,21 +151,51 @@ export default function CreateDomain({
                 }
                 {
                     value.serviceType === ServiceType.StaticFile && (
-                        <FInput
-                            suffix={
-                                <Button type='text' children='检测文件或目录是否存在' onClick={() => {
-                                    check({
-                                        path: value.root
-                                    }).then((res) => {
-                                        if (res.data) {
-                                            message.success('文件或目录存在');
-                                        } else {
-                                            message.error('文件或目录不存在');
-                                        }
-                                    });
-                                }} />
-                            }
-                            value={value.root ?? ""} onChange={(e) => setValue({ ...value, root: e.target.value })} label='根目录:' placeholder='请输入根目录' />
+                        <>
+
+                            <FInput
+                                suffix={
+                                    <Button type='text' children='检测文件或目录是否存在' onClick={() => {
+                                        check({
+                                            path: value.root
+                                        }).then((res) => {
+                                            if (res.data) {
+                                                message.success('文件或目录存在');
+                                            } else {
+                                                message.error('文件或目录不存在');
+                                            }
+                                        });
+                                    }} />
+                                }
+                                value={value.root ?? ""} onChange={(e) => setValue({ ...value, root: e.target.value })} label='根目录:' placeholder='请输入根目录' />
+                            <div style={{
+                                display: 'flex',
+                                marginTop: '10px',
+                                marginBottom: '10px'
+                            }}>
+                                <div style={{
+                                    fontSize: '14px',
+                                    fontWeight: 'bold',
+                                    marginTop: '8px',
+                                    marginRight: '10px'
+                                }}>
+                                    TryFile：
+                                </div>
+                                <Select
+                                    value={value.tryFiles}
+                                    onChange={(e) => setValue({ ...value, tryFiles: e })}
+                                    placeholder='请输入异常时的文件列表'
+                                    style={{
+                                        width: '100%',
+                                        flex: 1,
+                                        marginBottom: '10px'
+                                    }}
+                                    options={[
+                                    ]}
+                                >
+                                </Select>
+                            </div>
+                        </>
                     )
                 }
                 {

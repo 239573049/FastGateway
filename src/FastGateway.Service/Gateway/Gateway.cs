@@ -4,9 +4,11 @@ using FastGateway.Entities;
 using FastGateway.Entities.Core;
 using FastGateway.Service.DataAccess;
 using FastGateway.Service.Services;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Transforms;
 
 namespace FastGateway.Service.Gateway;
 
@@ -16,6 +18,10 @@ namespace FastGateway.Service.Gateway;
 public static class Gateway
 {
     private static readonly ConcurrentDictionary<string, WebApplication> GatewayWebApplications = new();
+
+    private const string Root = "Root";
+
+    static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
 
     /// <summary>
     /// 检查Server是否在线
@@ -105,12 +111,20 @@ public static class Gateway
                 options.Limits.MaxRequestBodySize = null;
             });
 
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.ValueLengthLimit = int.MaxValue;
+                options.MultipartBodyLengthLimit = long.MaxValue;
+                options.MultipartHeadersLengthLimit = int.MaxValue;
+            });
+
             var (routes, clusters) = BuildConfig(domainNames);
 
             builder.Services.AddRateLimitService(rateLimits);
 
             builder.Services.AddReverseProxy()
-                .LoadFromMemory(routes, clusters);
+                .LoadFromMemory(routes, clusters)
+                .AddGateway(server);
 
             var app = builder.Build();
 
@@ -118,7 +132,10 @@ public static class Gateway
 
             app.UseRateLimitMiddleware(rateLimits);
 
-            app.UseBlacklistMiddleware(blacklistAndWhitelists);
+            if (server.EnableBlacklist || server.EnableWhitelist)
+            {
+                app.UseBlacklistMiddleware(blacklistAndWhitelists);
+            }
 
             GatewayWebApplications.TryAdd(server.Id, app);
 
@@ -132,6 +149,25 @@ public static class Gateway
         {
             GatewayWebApplications.Remove(server.Id, out _);
         }
+    }
+
+    public static IReverseProxyBuilder AddGateway(this IReverseProxyBuilder builder, Server server)
+    {
+        builder.AddTransforms(context =>
+        {
+            context.AddRequestTransform(async transformContext =>
+            {
+                // 获取请求的host
+                var host = transformContext.HttpContext.Request.Host.Host;
+
+                // 设置到请求头
+                transformContext.ProxyRequest.Headers.Host = host;
+
+                await Task.CompletedTask.ConfigureAwait(false);
+            });
+        });
+
+        return builder;
     }
 
     private static WebApplication UseInitGatewayMiddleware(this WebApplication app)
@@ -161,6 +197,7 @@ public static class Gateway
         var routes = new List<RouteConfig>();
         var clusters = new List<ClusterConfig>();
 
+
         foreach (var domainName in domainNames)
         {
             if (string.IsNullOrWhiteSpace(domainName.Path))
@@ -176,6 +213,24 @@ public static class Gateway
                 domainName.Path = $"/{domainName.Path}/{{**catch-all}}";
             }
 
+
+            Dictionary<string, string> routeMetadata, clusterMetadata;
+
+            if (domainName.ServiceType == ServiceType.StaticFile)
+            {
+                routeMetadata = new Dictionary<string, string>(1) { { Root, domainName.Root! } };
+
+                clusterMetadata = new Dictionary<string, string>(domainName.TryFiles!.Length);
+                foreach (var item in domainName.TryFiles)
+                {
+                    clusterMetadata.Add(item, string.Empty);
+                }
+            }
+            else
+            {
+                routeMetadata = clusterMetadata = new Dictionary<string, string>(0);
+            }
+
             RouteConfig route = new RouteConfig
             {
                 RouteId = domainName.Id,
@@ -184,7 +239,8 @@ public static class Gateway
                 {
                     Hosts = domainName.Domains,
                     Path = domainName.Path,
-                }
+                },
+                Metadata = routeMetadata
             };
 
             if (domainName.ServiceType == ServiceType.Service)
@@ -237,6 +293,24 @@ public static class Gateway
 
                     clusters.Add(cluster);
                 }
+            }
+
+            if (domainName.ServiceType == ServiceType.StaticFile)
+            {
+                var cluster = new ClusterConfig
+                {
+                    ClusterId = domainName.Id,
+                    Destinations = new Dictionary<string, DestinationConfig>()
+                    {
+                        {
+                            Guid.NewGuid().ToString("N"),
+                            StaticProxyDestination
+                        }
+                    },
+                    Metadata = clusterMetadata
+                };
+
+                clusters.Add(cluster);
             }
 
             routes.Add(route);

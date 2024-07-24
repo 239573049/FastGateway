@@ -21,6 +21,7 @@ export interface DomainName {
     domains: string[];
     serviceType: ServiceType;
     headers: HeadersView[];
+    tryFiles: string[];
     enable: boolean;
     service: string | null;
     upStreams: UpStream[];
