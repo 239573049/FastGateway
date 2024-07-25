@@ -1,5 +1,6 @@
 using FastGateway.Entities.Core;
 using FastGateway.Service.DataAccess;
+using FastGateway.Service.Infrastructure;
 using FastGateway.Service.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -24,6 +25,7 @@ public static class Program
             optionsBuilder.UseSqlite("Data Source=gateway.db")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
+        builder.Services.AddSingleton<SettingProvide>();
 
         var app = builder.Build();
 
@@ -51,6 +53,7 @@ public static class Program
         app.MapDomain()
             .MapBlacklistAndWhitelist()
             .MapCert()
+            .MapSetting()
             .MapRateLimit()
             .MapServer();
 

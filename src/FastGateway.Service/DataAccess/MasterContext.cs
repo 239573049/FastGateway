@@ -23,6 +23,8 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
 
     public DbSet<RateLimit> RateLimits { get; set; }
 
+    public DbSet<Setting> Settings { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -138,6 +140,25 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
             entity.Property(e => e.IpWhitelist).HasConversion(
                 v => string.Join(',', v),
                 v => v.Split(',', StringSplitOptions.RemoveEmptyEntries));
+        });
+
+        builder.Entity<Setting>(options =>
+        {
+            options.ToTable("setting");
+
+            options.HasKey(e => e.Key);
+
+            options.Property(e => e.Key).HasMaxLength(50);
+
+            options.Property(e => e.Value).HasMaxLength(200);
+
+            options.Property(e => e.Description).HasMaxLength(200);
+
+            options.Property(e => e.Group).HasMaxLength(50);
+
+            options.HasIndex(e => e.IsPublic);
+
+            options.HasIndex(e => e.IsSystem);
         });
     }
 }
