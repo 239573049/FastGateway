@@ -108,9 +108,13 @@ export default function CertPage() {
                                 <div>
                                     <Button onClick={() => {
                                         ApplyCert(item.id)
-                                            .then(() => {
-                                                message.success('申请成功');
-                                                loadData();
+                                            .then((res) => {
+                                                if (res.success) {
+                                                    message.success('申请成功');
+                                                    loadData();
+                                                } else {
+                                                    message.error(res.message);
+                                                }
                                             });
                                     }} type="text">申请证书</Button>
                                     <Button onClick={() => {

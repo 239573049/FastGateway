@@ -20,12 +20,12 @@ public static class Program
 
         builder.Host.UseSerilog(logger);
         builder.Services.AddHttpClient();
+        builder.Services.AddScoped<SettingProvide>();
         builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
         {
             optionsBuilder.UseSqlite("Data Source=gateway.db")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
-        builder.Services.AddSingleton<SettingProvide>();
 
         var app = builder.Build();
 
@@ -54,6 +54,7 @@ public static class Program
             .MapBlacklistAndWhitelist()
             .MapCert()
             .MapSetting()
+            .MapFileStorage()
             .MapRateLimit()
             .MapServer();
 

@@ -1,0 +1,15 @@
+.ant-tree-treenode-selected::before {
+    background: #0066CC !important;
+    border-radius: 8px;
+}
+
+.ant-tree-treenode-selected:hover {
+    border-radius: 8px;
+}   
+
+.ant-tree-node-content-wrapper{
+    /* 超出部分隐藏， */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

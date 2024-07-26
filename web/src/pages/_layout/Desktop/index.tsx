@@ -10,7 +10,7 @@ import {
     ScrollText,
     Activity,
     Forward,
-    Settings,
+    LucideFiles,
     Info
 } from 'lucide-react'
 import { useNavigate,useLocation } from "react-router-dom";
@@ -92,10 +92,10 @@ const DestkopLayout = memo(() => {
             </Icon>,
         },
         {
-            key: 'setting',
-            label: '系统设置',
+            key: 'filestorage',
+            label: '文件管理',
             icon: <Icon>
-                <Settings size={15} />
+                <LucideFiles size={15} />
             </Icon>,
         },
         {

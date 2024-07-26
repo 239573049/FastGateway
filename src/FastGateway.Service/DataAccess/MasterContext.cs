@@ -92,6 +92,11 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
             entity.Property(x => x.UpStreams).HasConversion(
                 v => JsonSerializer.Serialize(v, JsonSerializerOptions),
                 v => JsonSerializer.Deserialize<List<UpStream>>(v, JsonSerializerOptions));
+
+
+            entity.Property(x => x.TryFiles).HasConversion(
+                v => JsonSerializer.Serialize(v, JsonSerializerOptions),
+                v => JsonSerializer.Deserialize<string[]>(v, JsonSerializerOptions));
         });
 
         builder.Entity<Server>(entity =>
