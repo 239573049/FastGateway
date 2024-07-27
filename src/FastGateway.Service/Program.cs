@@ -1,7 +1,10 @@
 using FastGateway.Entities.Core;
+using FastGateway.Service.BackgroundTask;
 using FastGateway.Service.DataAccess;
 using FastGateway.Service.Infrastructure;
 using FastGateway.Service.Services;
+using IP2Region.Net.Abstractions;
+using IP2Region.Net.XDB;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Core;
@@ -20,6 +23,8 @@ public static class Program
 
         builder.Host.UseSerilog(logger);
         builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<ISearcher>(new Searcher(CachePolicy.File, "ip2region.xdb"));
+        builder.Services.AddHostedService<LoggerBackgroundTask>();
         builder.Services.AddScoped<SettingProvide>();
         builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
         {
@@ -56,6 +61,7 @@ public static class Program
             .MapSetting()
             .MapFileStorage()
             .MapRateLimit()
+            .MapApplicationLogger()
             .MapServer();
 
         await app.RunAsync();

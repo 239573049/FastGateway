@@ -1,10 +1,14 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using FastGateway.Entities;
 using FastGateway.Entities.Core;
+using FastGateway.Service.BackgroundTask;
 using FastGateway.Service.DataAccess;
 using FastGateway.Service.Infrastructure;
 using FastGateway.Service.Services;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
@@ -23,7 +27,7 @@ public static class Gateway
     private const string Root = "Root";
 
     static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
-    
+
     /// <summary>
     /// 默认的内容类型提供程序
     /// </summary>
@@ -61,6 +65,30 @@ public static class Gateway
     }
 
     /// <summary>
+    /// 找到证书
+    /// </summary>
+    /// <param name="context"></param>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    private static X509Certificate2 ServerCertificateSelector(ConnectionContext? context, string name)
+    {
+        try
+        {
+            var cert = CertService.GetCert(name);
+            if (cert != null)
+            {
+                return new X509Certificate2(cert.Certs.File, cert.Certs.Password);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+
+        return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
+    }
+
+    /// <summary>
     /// 构建网关
     /// </summary>
     public static async Task BuilderGateway(Server server, List<DomainName> domainNames,
@@ -94,11 +122,7 @@ public static class Gateway
                     {
                         Action<HttpsConnectionAdapterOptions> configure = adapterOptions =>
                         {
-                            // adapterOptions.ServerCertificateSelector = (context, name) =>
-                            //     CertService.Certs.TryGetValue(name, out var cert)
-                            //         ? new X509Certificate2(cert.File, cert.Password)
-                            //         : new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"),
-                            //             "010426");
+                            adapterOptions.ServerCertificateSelector = ServerCertificateSelector;
                         };
 
                         if (is80)
@@ -128,13 +152,81 @@ public static class Gateway
 
             builder.Services.AddRateLimitService(rateLimits);
 
-            builder.Services.AddReverseProxy()
+            builder.Services
+                .AddReverseProxy()
                 .LoadFromMemory(routes, clusters)
-                .AddGateway(server);
+                .AddGateway(server)
+                .ConfigureHttpClient(((context, handler) =>
+                {
+                    handler.SslOptions.RemoteCertificateValidationCallback =
+                        (sender, certificate, chain, errors) => true;
+                }));
 
             var app = builder.Build();
 
             app.UseInitGatewayMiddleware();
+
+            app.Use((async (context, next) =>
+            {
+                // TODO: 暂时不记录GET请求|WebSocket请求
+                if (context.Request.Method == "GET" || context.WebSockets.IsWebSocketRequest)
+                {
+                    await next(context);
+                    return;
+                }
+                else
+                {
+                    var logger = context.RequestServices.GetRequiredService<ILogger<ApplicationLogger>>();
+                    var sw = Stopwatch.StartNew();
+                    var ip = context.Request.Headers["X-Forwarded-For"];
+                    var applicationLogger = new ApplicationLogger()
+                    {
+                        Ip = ip,
+                        Method = context.Request.Method,
+                        Path = context.Request.Path,
+                        Domain = context.Request.Host.Host,
+                        UserAgent = context.Request.Headers.UserAgent.ToString(),
+                        RequestTime = DateTime.Now,
+                    };
+                    string platform = "Unknown";
+                    var userAgent = context.Request.Headers.UserAgent.ToString();
+                    if (userAgent.Contains("Windows"))
+                    {
+                        platform = "Windows";
+                    }
+                    else if (userAgent.Contains("Linux"))
+                    {
+                        platform = "Linux";
+                    }
+                    else if (userAgent.Contains("Android") || userAgent.Contains("iPhone") ||
+                             userAgent.Contains("iPad"))
+                    {
+                        platform = "Mobile";
+                    }
+
+                    try
+                    {
+                        await next(context);
+                    }
+                    catch (Exception e)
+                    {
+                        applicationLogger.Success = false;
+                        applicationLogger.StatusCode = 500;
+                        applicationLogger.Platform = platform;
+                        applicationLogger.Elapsed = sw.ElapsedMilliseconds;
+                        logger.LogError(e, "网关请求异常");
+                        LoggerBackgroundTask.AddLogger(applicationLogger);
+                        return;
+                    }
+
+                    sw.Stop();
+                    applicationLogger.Platform = platform;
+                    applicationLogger.Elapsed = sw.ElapsedMilliseconds;
+                    applicationLogger.Success = context.Response.StatusCode == 200;
+                    applicationLogger.StatusCode = context.Response.StatusCode;
+                    LoggerBackgroundTask.AddLogger(applicationLogger);
+                }
+            }));
 
             app.UseRateLimitMiddleware(rateLimits);
 
@@ -157,7 +249,7 @@ public static class Gateway
         }
     }
 
-    public static IReverseProxyBuilder AddGateway(this IReverseProxyBuilder builder, Server server)
+    private static IReverseProxyBuilder AddGateway(this IReverseProxyBuilder builder, Server server)
     {
         builder.AddTransforms(context =>
         {
@@ -175,7 +267,7 @@ public static class Gateway
             {
                 context.AddPathRemovePrefix(prefix);
             }
-            
+
             #region 静态站点
 
             if (context.Route.Metadata!.TryGetValue(Root, out var root))
@@ -215,16 +307,20 @@ public static class Gateway
             }
 
             #endregion
-            context.AddRequestTransform(async transformContext =>
+
+            if (server.CopyRequestHost)
             {
-                // 获取请求的host
-                var host = transformContext.HttpContext.Request.Host.Host;
+                context.AddRequestTransform(async transformContext =>
+                {
+                    // 获取请求的host
+                    var host = transformContext.HttpContext.Request.Host.Host;
 
-                // 设置到请求头
-                transformContext.ProxyRequest.Headers.Host = host;
+                    // 设置到请求头
+                    transformContext.ProxyRequest.Headers.Host = host;
 
-                await Task.CompletedTask.ConfigureAwait(false);
-            });
+                    await Task.CompletedTask.ConfigureAwait(false);
+                });
+            }
         });
 
         return builder;

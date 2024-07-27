@@ -10,6 +10,7 @@
     <ItemGroup>
       <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
       <PackageReference Include="Certes" Version="3.0.4" />
+      <PackageReference Include="IP2Region.Net" Version="2.0.2" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0-preview.6.24327.4" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0-preview.6.24327.4">
         <PrivateAssets>all</PrivateAssets>
@@ -28,6 +29,15 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FastGateway.Entities\FastGateway.Entities.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="gateway.pfx">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="ip2region.xdb">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { Tree, message, Table, Dropdown, Button, Space } from "antd";
+import React, { useEffect, useState } from "react";
+import { Tree, message, Table, Dropdown, Button, Upload } from "antd";
 import {
     getDrives,
     getDirectory,
@@ -12,40 +12,23 @@ import {
     DraggablePanelContainer,
     DraggablePanelFooter,
     DraggablePanelHeader,
+    MaterialFileTypeIcon,
+    Modal,
     Tooltip,
 } from "@lobehub/ui";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { theme } from "antd";
-
-import type {
-    DragEndEvent,
-    DragOverEvent,
-    UniqueIdentifier,
-} from "@dnd-kit/core";
-import {
-    closestCenter,
-    DndContext,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from "@dnd-kit/core";
-import {
-    arrayMove,
-    horizontalListSortingStrategy,
-    SortableContext,
-    useSortable,
-} from "@dnd-kit/sortable";
 import { Flexbox } from "react-layout-kit";
 import "./index.css";
 import { bytesToSize } from "@/utils/byte";
-import { FolderTwoTone, DownOutlined } from "@ant-design/icons";
-import { FileIcon, MarkdownIcon, PngIcon } from "./icon";
+import { DownOutlined, InboxOutlined } from "@ant-design/icons";
 import { Menu, Item, Separator, useContextMenu } from "react-contexify";
 import "react-contexify/ReactContexify.css";
+import Rename from "./features/Rename";
+import CreateDirectory from "./features/CreateDirectory";
 
 const DirectoryMenuID = "directory-menu";
 const FileMenuID = "file-menu";
 
+const { Dragger } = Upload;
 const { DirectoryTree } = Tree;
 
 interface TreeNode {
@@ -54,74 +37,6 @@ interface TreeNode {
     isLeaf?: boolean;
     children?: TreeNode[];
 }
-interface HeaderCellProps extends React.HTMLAttributes<HTMLTableCellElement> {
-    id: string;
-}
-
-interface BodyCellProps extends React.HTMLAttributes<HTMLTableCellElement> {
-    id: string;
-}
-
-interface DragIndexState {
-    active: UniqueIdentifier;
-    over: UniqueIdentifier | undefined;
-    direction?: "left" | "right";
-}
-
-const DragIndexContext = createContext<DragIndexState>({
-    active: -1,
-    over: -1,
-});
-
-const dragActiveStyle = (dragState: DragIndexState, id: string) => {
-    const { active, over, direction } = dragState;
-    // drag active style
-    let style: React.CSSProperties = {};
-    if (active && active === id) {
-        style = { backgroundColor: "gray", opacity: 0.5 };
-    }
-    // dragover dashed style
-    else if (over && id === over && active !== over) {
-        style =
-            direction === "right"
-                ? { borderRight: "1px dashed gray" }
-                : { borderLeft: "1px dashed gray" };
-    }
-    return style;
-};
-
-const TableBodyCell: React.FC<BodyCellProps> = (props) => {
-    const dragState = useContext<DragIndexState>(DragIndexContext);
-    return (
-        <td
-            {...props}
-            style={{ ...props.style, ...dragActiveStyle(dragState, props.id) }}
-        />
-    );
-};
-const TableHeaderCell: React.FC<HeaderCellProps> = (props) => {
-    const dragState = useContext(DragIndexContext);
-    const { attributes, listeners, setNodeRef, isDragging } = useSortable({
-        id: props.id,
-    });
-    const style: React.CSSProperties = {
-        ...props.style,
-        cursor: "move",
-        ...(isDragging
-            ? { position: "relative", zIndex: 9999, userSelect: "none" }
-            : {}),
-        ...dragActiveStyle(dragState, props.id),
-    };
-    return (
-        <th
-            {...props}
-            ref={setNodeRef}
-            style={style}
-            {...attributes}
-            {...listeners}
-        />
-    );
-};
 
 const FileStoragePage: React.FC = () => {
     const { show: directoryMenuShow } = useContextMenu({
@@ -136,13 +51,19 @@ const FileStoragePage: React.FC = () => {
     const [currentData, setCurrentData] = useState<any[]>([]);
     const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
     const [selectedNode, setSelectedNode] = useState<any | null>(null);
+    const [uploadVisible, setUploadVisible] = useState(false);
+    const [uploadFileList, setUploadFileList] = useState<File[]>([]);
+    const [createDirectoryVisible, setCreateDirectoryVisible] = useState(false);
+    const [renameInput, setRenameInput] = useState({
+        visible: false,
+        id: "",
+        value: "",
+        isFile: false,
+        drive: "",
+        path: "",
+    });
 
     const [loadingKeys, setLoadingKeys] = useState<any[]>([]);
-
-    const [dragIndex, setDragIndex] = useState<DragIndexState>({
-        active: -1,
-        over: -1,
-    });
 
     const baseColumns = [
         {
@@ -151,49 +72,12 @@ const FileStoragePage: React.FC = () => {
             key: "title",
             render: (text: string, record: any) => {
                 if (record.isLeaf) {
-                    if (
-                        record.extension === ".png" ||
-                        record.extension === ".jpg" ||
-                        record.extension === ".jpeg" ||
-                        record.extension === ".gif"
-                    ) {
-                        return (
-                            <>
-                                <PngIcon
-                                    width={"1em"}
-                                    height={"1em"}
-                                    style={{
-                                        marginRight: 5,
-                                    }}
-                                />
-                                {text}
-                            </>
-                        );
-                    }
-
-                    if (record.extension === ".md") {
-                        return (
-                            <>
-                                <MarkdownIcon
-                                    width={"1em"}
-                                    height={"1em"}
-                                    style={{
-                                        marginRight: 5,
-                                    }}
-                                />
-                                {text}
-                            </>
-                        );
-                    }
-
                     return (
                         <>
-                            <FileIcon
-                                width={"1em"}
-                                height={"1em"}
-                                style={{
-                                    marginRight: 5,
-                                }}
+                            <MaterialFileTypeIcon
+                                filename={text}
+                                type="file"
+                                variant="file"
                             />
                             {text}
                         </>
@@ -201,7 +85,7 @@ const FileStoragePage: React.FC = () => {
                 } else {
                     return (
                         <>
-                            <FolderTwoTone style={{ marginRight: 5 }} />
+                            <MaterialFileTypeIcon filename={text} type="folder" />
                             {text}
                         </>
                     );
@@ -260,7 +144,9 @@ const FileStoragePage: React.FC = () => {
                                                 .then((result: any) => {
                                                     if (result.success) {
                                                         message.success("删除成功");
-                                                        setSelectedNode(null);
+                                                        setSelectedNode(selectedNode);
+                                                        setSelectedKeys([...selectedKeys]);
+                                                        init();
                                                     } else {
                                                         message.error(`删除失败: ${result.message}`);
                                                     }
@@ -273,26 +159,16 @@ const FileStoragePage: React.FC = () => {
                                     {
                                         key: "3",
                                         label: "重命名",
-                                    },
-                                    {
-                                        key: "4",
-                                        label: "复制",
-                                    },
-                                    {
-                                        key: "5",
-                                        label: "剪切",
-                                    },
-                                    {
-                                        key: "6",
-                                        label: "粘贴",
-                                    },
-                                    {
-                                        key: "9",
-                                        label: "上传",
-                                    },
-                                    {
-                                        key: "10",
-                                        label: "属性",
+                                        onClick: () => {
+                                            setRenameInput({
+                                                visible: true,
+                                                id: item.key,
+                                                drive: item.drive,
+                                                path: item.fullName,
+                                                value: item.title,
+                                                isFile: true,
+                                            });
+                                        },
                                     },
                                 ],
                             }}
@@ -330,18 +206,16 @@ const FileStoragePage: React.FC = () => {
                                     {
                                         key: "3",
                                         label: "重命名",
-                                    },
-                                    {
-                                        key: "4",
-                                        label: "复制",
-                                    },
-                                    {
-                                        key: "5",
-                                        label: "剪切",
-                                    },
-                                    {
-                                        key: "6",
-                                        label: "粘贴",
+                                        onClick: () => {
+                                            setRenameInput({
+                                                visible: true,
+                                                id: item.key,
+                                                value: item.title,
+                                                isFile: false,
+                                                path: item.fullName,
+                                                drive: item.drive,
+                                            });
+                                        },
                                     },
                                     {
                                         key: "7",
@@ -354,6 +228,9 @@ const FileStoragePage: React.FC = () => {
                                     {
                                         key: "9",
                                         label: "上传",
+                                        onClick: () => {
+                                            handlerUploadFile(item);
+                                        },
                                     },
                                     {
                                         key: "10",
@@ -371,15 +248,6 @@ const FileStoragePage: React.FC = () => {
             },
         },
     ];
-
-    const [columns, setColumns] = useState(() =>
-        baseColumns.map((column, i) => ({
-            ...column,
-            key: `${i}`,
-            onHeaderCell: () => ({ id: `${i}` }),
-            onCell: () => ({ id: `${i}` }),
-        }))
-    );
 
     useEffect(() => {
         init();
@@ -427,6 +295,7 @@ const FileStoragePage: React.FC = () => {
                                 isHidden: dir.isHidden,
                                 creationTime: dir.creationTime,
                                 isSystem: dir.isSystem,
+                                fullName: dir.fullName,
                                 extension: dir.extension,
                             });
                         });
@@ -440,6 +309,7 @@ const FileStoragePage: React.FC = () => {
                                 isHidden: file.isHidden,
                                 creationTime: file.creationTime,
                                 isSystem: file.isSystem,
+                                fullName: file.fullName,
                                 extension: file.extension,
                             });
                         });
@@ -450,7 +320,7 @@ const FileStoragePage: React.FC = () => {
         } else {
             setCurrentData([...[]]);
         }
-    }, [selectedNode,selectedKeys]);
+    }, [selectedNode, selectedKeys]);
 
     function handleContextMenu(event: any, value: any) {
         if (value.isLeaf) {
@@ -465,6 +335,45 @@ const FileStoragePage: React.FC = () => {
             });
         }
     }
+
+    function handlerUploadFile(node?: any) {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "*/*";
+        // 支持多文件上传
+        input.multiple = true;
+        input.onchange = (e: any) => {
+            console.log(e.target.files);
+            for (let i = 0; i < e.target.files.length; i++) {
+                const file = e.target.files[i];
+                // 如果文件小于30MB
+                if (file.size > 30 * 1024 * 1024) {
+                    continue;
+                }
+                uploadFile(
+                    file,
+                    node?.key ?? selectedNode.key,
+                    node?.drive ?? selectedNode.drive
+                )
+                    .then((result: any) => {
+                        if (result.success) {
+                            message.success("上传成功");
+                            setSelectedNode(selectedNode);
+                            setSelectedKeys([...selectedKeys]);
+                            init();
+                        } else {
+                            message.error(`上传失败: ${result.message}`);
+                        }
+                    })
+                    .catch((error: any) => {
+                        message.error(`上传失败: ${error.message}`);
+                    });
+            }
+            document.body.removeChild(input);
+        };
+        input.click();
+    }
+
     const directorieHandleItemClick = ({ id, event, props }: any) => {
         switch (id) {
             case "refresh":
@@ -491,48 +400,10 @@ const FileStoragePage: React.FC = () => {
                     });
                 break;
             case "upload":
-                // 打开上传文件选择框，上传文件，上传成功后刷新当前目录
-                const input = document.createElement("input");
-                input.type = "file";
-                input.accept = "*/*";
-                // 支持多文件上传
-                input.multiple = true;
-                input.onchange = (e: any) => {
-                    console.log(e.target.files);
-                    for (let i = 0; i < e.target.files.length; i++) {
-                        const file = e.target.files[i];
-                        // 如果文件小于30MB
-                        if (file.size > 30 * 1024 * 1024) {
-                            
-                            
-                            continue;
-                        }
-                        uploadFile(file, selectedNode.key, selectedNode.drive)
-                            .then((result: any) => {
-                                if (result.success) {
-                                    message.success("上传成功");
-                                    setSelectedNode(selectedNode);
-                                    setSelectedKeys([...selectedKeys]);
-                                    init();
-                                } else {
-                                    message.error(`上传失败: ${result.message}`);
-                                }
-                            })
-                            .catch((error: any) => {
-                                message.error(`上传失败: ${error.message}`);
-                            });
-                    }
-                    // 删除input
-                    document.body.removeChild(input);
-
-                };
-                input.click();
-
-
-                break
+                handlerUploadFile();
+                break;
         }
     };
-
 
     const fileHandleItemClick = ({ id, event, props }: any) => {
         switch (id) {
@@ -551,7 +422,6 @@ const FileStoragePage: React.FC = () => {
                             );
 
                             init();
-
                         } else {
                             message.error(`删除失败: ${result.message}`);
                         }
@@ -563,8 +433,7 @@ const FileStoragePage: React.FC = () => {
         }
     };
 
-    const onLoadData = ({ key, children, drive }: any) => {
-
+    const onLoadData = ({ key, drive }: any) => {
         return getDirectory(key, drive) // 假设盘符是单个字符
             .then((result: any) => {
                 if (!result.success) {
@@ -581,6 +450,7 @@ const FileStoragePage: React.FC = () => {
                         title: <Tooltip title={dir.name}>{dir.name}</Tooltip>,
                         key: `${dir.fullName}`,
                         isLeaf: false,
+                        fullName: dir.fullName,
                         drive: dir.drive,
                     });
                 });
@@ -589,6 +459,7 @@ const FileStoragePage: React.FC = () => {
                     data.push({
                         title: <Tooltip title={file.name}>{file.name}</Tooltip>,
                         key: `${file.fullName}`,
+                        fullName: file.fullName,
                         isLeaf: true,
                         drive: file.drive,
                     });
@@ -598,36 +469,6 @@ const FileStoragePage: React.FC = () => {
             .catch((error: any) => {
                 message.error(`加载目录失败: ${error.message}`);
             });
-    };
-
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                // https://docs.dndkit.com/api-documentation/sensors/pointer#activation-constraints
-                distance: 1,
-            },
-        })
-    );
-
-    const onDragEnd = ({ active, over }: DragEndEvent) => {
-        if (active.id !== over?.id) {
-            setColumns((prevState) => {
-                const activeIndex = prevState.findIndex((i) => i.key === active?.id);
-                const overIndex = prevState.findIndex((i) => i.key === over?.id);
-                return arrayMove(prevState, activeIndex, overIndex);
-            });
-        }
-        setDragIndex({ active: -1, over: -1 });
-    };
-
-    const onDragOver = ({ active, over }: DragOverEvent) => {
-        const activeIndex = columns.findIndex((i) => i.key === active.id);
-        const overIndex = columns.findIndex((i) => i.key === over?.id);
-        setDragIndex({
-            active: active.id,
-            over: over?.id,
-            direction: overIndex > activeIndex ? "right" : "left",
-        });
     };
 
     const updateTreeData = (
@@ -703,31 +544,55 @@ const FileStoragePage: React.FC = () => {
                     </DraggablePanelContainer>
                 </DraggablePanel>
                 <div style={{ flex: 1, padding: 24 }}>
-                    <DndContext
-                        sensors={sensors}
-                        modifiers={[restrictToHorizontalAxis]}
-                        onDragEnd={onDragEnd}
-                        onDragOver={onDragOver}
-                        collisionDetection={closestCenter}
+                    <div
+                        style={{
+                            display: "flex",
+                            marginBottom: 16,
+                        }}
                     >
-                        <SortableContext
-                            items={columns.map((i) => i.key)}
-                            strategy={horizontalListSortingStrategy}
+                        <div
+                            style={{
+                                flex: 1,
+                            }}
                         >
-                            <DragIndexContext.Provider value={dragIndex}>
-                                <Table
-                                    size="small"
-                                    rowKey="key"
-                                    dataSource={currentData}
-                                    components={{
-                                        header: { cell: TableHeaderCell },
-                                        body: { cell: TableBodyCell },
-                                    }}
-                                    columns={baseColumns}
-                                />
-                            </DragIndexContext.Provider>
-                        </SortableContext>
-                    </DndContext>
+                            文件列表
+                        </div>
+                        <Button
+                            onClick={() => {
+                                setUploadVisible(true);
+                            }}
+                            style={{
+                                width: 100,
+                            }}
+                        >
+                            上传文件
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setCreateDirectoryVisible(true);
+                            }}
+                            style={{
+                                width: 100,
+                                marginLeft: 16,
+                            }}
+                        >
+                            新建目录
+                        </Button>
+                    </div>
+                    <Table
+                        size="small"
+                        rowKey="key"
+                        style={{
+                            width: "100%",
+                            overflow: "auto",
+                        }}
+                        scroll={{ y: "calc(100vh - 320px)" }}
+                        pagination={{
+                            pageSize: currentData.length,
+                        }}
+                        dataSource={currentData}
+                        columns={baseColumns}
+                    />
                 </div>
             </Flexbox>
             <Menu id={DirectoryMenuID} theme={"dark"}>
@@ -764,6 +629,105 @@ const FileStoragePage: React.FC = () => {
                 </Item>
                 <Separator />
             </Menu>
+            <Rename
+                onClose={() => {
+                    setRenameInput({
+                        visible: false,
+                        id: "",
+                        value: "",
+                        isFile: false,
+                        path: "",
+                        drive: "",
+                    });
+                }}
+                onOk={() => {
+                    setRenameInput({
+                        visible: false,
+                        id: "",
+                        value: "",
+                        isFile: false,
+                        path: "",
+                        drive: "",
+                    });
+
+                    setSelectedNode(selectedNode);
+                    setSelectedKeys([...selectedKeys]);
+                    init();
+                }}
+                path={renameInput.path}
+                drives={renameInput.drive}
+                visible={renameInput.visible}
+                id={renameInput.id}
+                name={renameInput.value}
+                isFile={renameInput.isFile}
+            />
+            <Modal
+                footer={[]}
+                onCancel={() => {
+                    setUploadVisible(false);
+                }}
+                open={uploadVisible}
+                title="上传文件"
+            >
+                <Dragger
+                    multiple
+                    maxCount={100}
+                    name="file"
+                    beforeUpload={(_, files) => {
+                        setUploadFileList(files);
+                        return false;
+                    }}
+                >
+                    <p className="ant-upload-drag-icon">
+                        <InboxOutlined />
+                    </p>
+                    <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+                    <p className="ant-upload-hint">支持单个或批量上传。</p>
+                </Dragger>
+                <Button
+                    block
+                    onClick={() => {
+                        if (uploadFileList.length === 0) {
+                            message.error("请选择文件");
+                            return;
+                        }
+                        uploadFileList.forEach(async (file) => {
+                            const result = await uploadFile(
+                                file,
+                                selectedNode.key,
+                                selectedNode.drive
+                            );
+                            if (result.success) {
+                                message.success(file.name + "上传成功");
+                            } else {
+                                message.error(`上传失败: ${result.message}`);
+                            }
+                        });
+
+                        init();
+                        setUploadVisible(false);
+                    }}
+                    style={{
+                        marginTop: 20,
+                    }}
+                >
+                    上传
+                </Button>
+            </Modal>
+            <CreateDirectory
+                drives={selectedNode?.drive}
+                path={selectedNode?.fullName}
+                visible={createDirectoryVisible}
+                onClose={() => {
+                    setCreateDirectoryVisible(false);
+                }}
+                onOk={() => {
+                    setCreateDirectoryVisible(false);
+                    setSelectedNode(selectedNode);
+                    setSelectedKeys([...selectedKeys]);
+                    init();
+                }}
+            />
         </>
     );
 };

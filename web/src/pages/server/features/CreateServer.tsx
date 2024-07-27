@@ -32,6 +32,7 @@ export default function CreateServer({
         id: null,
         isHttps: false,
         onLine: false,
+        copyRequestHost: true
     });
 
     const handleChange = (field: string) => (e: { target: any; }) => {
@@ -78,31 +79,34 @@ export default function CreateServer({
                 <FCheckbox tooltip="是否立即启动当前创建的服务，或跟随网关启动"  style={{
                     marginTop: '10px',
                     marginBottom: '10px'
-                }} label='启动服务' value={value.enable} onChange={handleChange('enable')} />
+                }} label='启动服务' checked={value.enable} onChange={handleChange('enable')} />
                 <FCheckbox tooltip="对于静态代理的内容压缩" style={{
                     marginTop: '10px',
                     marginBottom: '10px'
-                }} value={value.staticCompress} onChange={handleChange('staticCompress')} label='启用静态压缩' />
+                }} checked={value.staticCompress} onChange={handleChange('staticCompress')} label='启用静态压缩' />
                 <FCheckbox tooltip="使用全局黑名单进行拦截" style={{
                     marginTop: '10px',
                     marginBottom: '10px'
-                }} value={value.enableBlacklist} onChange={handleChange('enableBlacklist')} label='启用黑名单' />
+                }} checked={value.enableBlacklist} onChange={handleChange('enableBlacklist')} label='启用黑名单' />
                 <FCheckbox tooltip="使用全局白名单进行过滤"  style={{
                     marginTop: '10px',
                     marginBottom: '10px'
-                }} value={value.enableWhitelist} onChange={handleChange('enableWhitelist')} label='启用白名单' />
+                }} checked={value.enableWhitelist} onChange={handleChange('enableWhitelist')} label='启用白名单' />
                 <FCheckbox tooltip="启用内网穿透隧道" style={{
                     marginTop: '10px',
                     marginBottom: '10px'
-                }} value={value.enableTunnel} onChange={handleChange('enableTunnel')} label='启用隧道' />
+                }} checked={value.enableTunnel} onChange={handleChange('enableTunnel')} label='启用隧道' />
                 <FCheckbox tooltip="如果当前服务是HTTP,使用重定向，那么默认在启动HTTPS服务监听443端口，然后将请求转发到443端口中" style={{
                     marginTop: '10px',
                     marginBottom: '10px'
-                }} value={value.redirectHttps} onChange={handleChange('redirectHttps')} label='重定向到HTTPS' />
+                }} checked={value.redirectHttps} onChange={handleChange('redirectHttps')} label='重定向到HTTPS' />
                 <FCheckbox tooltip="是否使用HTTPS，如果使用了重定向HTTPS那么是必须的" style={{
                     marginTop: '10px',
                     marginBottom: '10px'
-                }} value={value.isHttps} onChange={handleChange('isHttps')} label='是否启用HTTPS' />
+                }} checked={value.isHttps} onChange={handleChange('isHttps')} label='是否启用HTTPS' /><FCheckbox tooltip="如果使用了复制响应域名，那么你在使用域请求代理服务的时候网关也会吧域名复制请求到服务去" style={{
+                    marginTop: '10px',
+                    marginBottom: '10px'
+                }} checked={value.copyRequestHost} onChange={handleChange('copyRequestHost')} label='是否复制响应域名' />
                 <Button onClick={()=>save()}>
                     保存
                 </Button>

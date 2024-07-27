@@ -12,6 +12,7 @@ import CertPage from './pages/cert/page'
 import AboutPage from './pages/about/page'
 import FileStoragePage from './pages/filestorage/page'
 import DashboardPage from './pages/dashboard/page'
+import ApplicationLoggerPage from './pages/application-logger/page'
 
 const router = createBrowserRouter([
   {
@@ -49,6 +50,10 @@ const router = createBrowserRouter([
           {
             path: 'cert',
             element: <CertPage />
+          },
+          {
+            path: 'log',
+            element: <ApplicationLoggerPage />
           },
           {
             path: 'about',

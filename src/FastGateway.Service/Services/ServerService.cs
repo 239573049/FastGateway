@@ -37,6 +37,7 @@ public static class ServerService
                 {
                     Id = x.Id,
                     Name = x.Name,
+                    CopyRequestHost = x.CopyRequestHost,
                     Enable = x.Enable,
                     IsHttps = x.IsHttps,
                     Listen = x.Listen,
@@ -57,6 +58,8 @@ public static class ServerService
             async (MasterContext dbContext, string id) =>
             {
                 await dbContext.Servers.Where(x => x.Id == id).ExecuteDeleteAsync();
+                
+                await Gateway.Gateway.CloseGateway(id);
             }).WithDescription("删除服务").WithDisplayName("删除服务").WithTags("服务");
 
         server.MapPut("{id}", async (MasterContext dbContext, string id, Server server) =>

@@ -11,6 +11,7 @@ export interface Server {
     enableBlacklist: boolean;
     enableWhitelist: boolean;
     onLine: boolean;
+    copyRequestHost: boolean;
 }
 
 

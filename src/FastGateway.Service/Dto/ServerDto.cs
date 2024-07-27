@@ -55,4 +55,9 @@ public class ServerDto
     public bool EnableWhitelist { get; set; }
 
     public bool OnLine { get; set; }
+    
+    /// <summary>
+    /// 是否复制请求域名
+    /// </summary>
+    public bool CopyRequestHost { get; set; }
 }

@@ -1,4 +1,4 @@
-import { del, get, post, postJson } from '@/utils/fetch';
+import { del, get, post, postJson, put } from '@/utils/fetch';
 
 // 获取系统盘符
 export const getDrives = () => {
@@ -105,4 +105,21 @@ export const deleteFile = (path: string, drives: string) => {
         throw new Error('盘符不能为空');
     }
     return del('/api/v1/filestorage/delete?path=' + path + '&drives=' + drives);
+}
+
+export const renameFile = (path: string, drives: string, name: string) => {
+    if (!path) {
+        throw new Error('路径不能为空');
+    }
+    if (!drives) {
+        throw new Error('盘符不能为空');
+    }
+    if (!name) {
+        throw new Error('新名称不能为空');
+    }
+    return put('/api/v1/filestorage/rename?path=' + path + '&drives=' + drives + '&name=' + name);
+}
+
+export const createDirectory = (path: string, drives: string, name: string) => {
+    return put('/api/v1/filestorage/create-directory?path=' + path + '&drives=' + drives + '&name=' + name);
 }

@@ -1,17 +1,20 @@
 import { deleteServer, enableServer, getServers, onlineServer } from "@/services/ServerService";
 import { Server } from "@/types";
 import { SpotlightCard, Tag } from "@lobehub/ui";
-import { memo, useEffect, } from "react";
+import { memo, useEffect, useState, } from "react";
 import { Button, Badge, Dropdown, Empty } from 'antd';
 import { Flexbox } from 'react-layout-kit';
 import { useServerStore } from "@/store/server";
 import { AlignJustify } from 'lucide-react'
 import { useNavigate } from "react-router-dom";
 import Divider from "@lobehub/ui/es/Form/components/FormDivider";
+import UpdateServer from "./UpdateServer";
 
 const ProxyList = memo(() => {
     const { servers, setServers, loadingServers } = useServerStore();
     const navigate = useNavigate();
+    const [updateVisible, setUpdateVisible] = useState(false);
+    const [updateServer, setUpdateServer] = useState<Server | null>(null);
 
     useEffect(() => {
         loadServers();
@@ -49,7 +52,8 @@ const ProxyList = memo(() => {
                                         key: 'edit',
                                         label: '编辑',
                                         onClick: () => {
-                                            console.log('编辑');
+                                            setUpdateServer(item);
+                                            setUpdateVisible(true);
                                         }
                                     },
                                     {
@@ -160,6 +164,12 @@ const ProxyList = memo(() => {
             {
                 servers.length === 0 && <Empty />
             }
+            <UpdateServer visible={updateVisible} server={updateServer} onClose={() => {
+                setUpdateVisible(false);
+            }} onOk={() => {
+                setUpdateVisible(false);
+                loadServers();
+            }} />
         </>
     );
 });

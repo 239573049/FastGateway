@@ -17,10 +17,9 @@ export const deleteDomain = async (id: string) => {
     return del(url);
 };
 
-export const updateDomain = async (id: string, domainName: string) => {
+export const updateDomain = async (id: string, domainName: any) => {
     const url = `${baseUrl}/${id}`;
-    const data = { domains: [domainName] };
-    return putJson(url, data);
+    return putJson(url, domainName);
 };
 
 export const check = async (value: any) => {

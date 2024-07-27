@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using FastGateway.Service.Dto;
 using FastGateway.Service.Infrastructure;
 
@@ -29,7 +30,21 @@ public static class FileStorageService
         // 获取系统盘符
         fileStorage.MapGet("drives", () =>
             {
-                return DriveInfo.GetDrives().Select(x => new DriveInfoDto()
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return DriveInfo.GetDrives().Select(x => new DriveInfoDto()
+                    {
+                        Name = x.Name,
+                        DriveType = x.DriveType.ToString(),
+                        AvailableFreeSpace = x.AvailableFreeSpace,
+                        TotalSize = x.TotalSize,
+                        VolumeLabel = x.VolumeLabel,
+                        DriveFormat = x.DriveFormat,
+                        IsReady = x.IsReady
+                    });
+                }
+
+                return DriveInfo.GetDrives().Where(x => x.Name == "/").Select(x => new DriveInfoDto()
                 {
                     Name = x.Name,
                     DriveType = x.DriveType.ToString(),
@@ -101,7 +116,7 @@ public static class FileStorageService
         fileStorage.MapPost("upload", async (string path, string drives, HttpContext context) =>
         {
             var file = context.Request.Form.Files.FirstOrDefault();
-            
+
             if (file == null)
             {
                 throw new ValidationException("文件不能为空");
@@ -261,7 +276,7 @@ public static class FileStorageService
         }).WithDescription("解压文件").WithDisplayName("解压文件").WithTags("文件存储");
 
         // 删除文件/文件夹
-        
+
         fileStorage.MapDelete("delete", (string path, string drives) =>
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -285,7 +300,69 @@ public static class FileStorageService
                 Directory.Delete(path, true);
             }
         }).WithDescription("删除文件/文件夹").WithDisplayName("删除文件/文件夹").WithTags("文件存储");
-        
+
+
+        // 重命名
+        fileStorage.MapPut("rename", (string path, string drives, string name) =>
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ValidationException("路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ValidationException("名称不能为空");
+            }
+
+            path = Path.Combine(drives, path.TrimStart('/'));
+
+            if (File.Exists(path))
+            {
+                var directory = Path.GetDirectoryName(path);
+                var newPath = Path.Combine(directory, name);
+                File.Move(path, newPath);
+            }
+            else if (Directory.Exists(path))
+            {
+                var directory = Path.GetDirectoryName(path);
+                var newPath = Path.Combine(directory, name);
+                Directory.Move(path, newPath);
+            }
+        }).WithDescription("重命名").WithDisplayName("重命名").WithTags("文件存储");
+
+        fileStorage.MapPut("create-directory", (string path, string drives, string name) =>
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ValidationException("路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            path = Path.Combine(drives, path.TrimStart('/'), name);
+
+            if (File.Exists(path))
+            {
+                throw new ValidationException("文件已存在");
+            }
+
+            if (Directory.Exists(path))
+            {
+                throw new ValidationException("文件夹已存在");
+            }
+
+            Directory.CreateDirectory(path);
+        }).WithDescription("创建文件/文件夹").WithDisplayName("创建文件/文件夹").WithTags("文件存储");
+
         return app;
     }
 }

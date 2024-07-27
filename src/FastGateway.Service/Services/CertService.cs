@@ -23,6 +23,11 @@ public static class CertService
         ExpirationScanFrequency = TimeSpan.FromMinutes(1),
         SizeLimit = 1000
     });
+    
+    public static Cert? GetCert(string domain)
+    {
+        return CertWebApplications.TryGetValue(domain, out var cert) ? cert : null;
+    }
 
     public static void InitCert(List<Cert> certs)
     {

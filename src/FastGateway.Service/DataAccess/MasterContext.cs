@@ -25,6 +25,8 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
 
     public DbSet<Setting> Settings { get; set; }
 
+    public DbSet<ApplicationLogger> ApplicationLoggers { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -164,6 +166,20 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
             options.HasIndex(e => e.IsPublic);
 
             options.HasIndex(e => e.IsSystem);
+        });
+
+        builder.Entity<ApplicationLogger>(entity =>
+        {
+            entity.ToTable("application_logger");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+
+            entity.Property(x => x.Extend).HasConversion(
+                v => JsonSerializer.Serialize(v, JsonSerializerOptions),
+                v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, JsonSerializerOptions));
+            
         });
     }
 }

@@ -17,6 +17,58 @@ namespace FastGateway.Service.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0-preview.6.24327.4");
 
+            modelBuilder.Entity("FastGateway.Entities.ApplicationLogger", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Country")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Domain")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Elapsed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Extend")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Ip")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Method")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Path")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Platform")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Region")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RequestTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserAgent")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("application_logger", (string)null);
+                });
+
             modelBuilder.Entity("FastGateway.Entities.BlacklistAndWhitelist", b =>
                 {
                     b.Property<long>("Id")
@@ -204,6 +256,9 @@ namespace FastGateway.Service.Migrations
                     b.Property<string>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("CopyRequestHost")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
