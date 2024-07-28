@@ -45,7 +45,7 @@ public static class Program
             var dbContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
             await dbContext.Database.MigrateAsync();
 
-            var certs = await dbContext.Certs.Where(x => x.RenewStats == RenewStats.Success && x.Expired).ToListAsync();
+            var certs = await dbContext.Certs.Where(x => x.Expired == false).ToListAsync();
 
             CertService.InitCert(certs);
 
@@ -76,7 +76,7 @@ public static class Program
                 await next();
             }
         }));
-        
+
         app.UseStaticFiles();
 
         app.MapDomain()

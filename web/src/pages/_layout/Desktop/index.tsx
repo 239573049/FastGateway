@@ -14,6 +14,8 @@ import {
     Info
 } from 'lucide-react'
 import { useNavigate,useLocation } from "react-router-dom";
+import { ThemeSwitch } from "@lobehub/ui";
+import { useUserStore } from "@/store/user";
 const { Header, Content, Sider } = Layout;
 
 
@@ -21,6 +23,7 @@ const DestkopLayout = memo(() => {
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
+
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -120,6 +123,7 @@ const DestkopLayout = memo(() => {
         setMemuKey(key);
     }, [location]);
 
+    const userStore = useUserStore();
     return (
         <Layout className="desktop-layout">
             <Layout>
@@ -159,6 +163,13 @@ const DestkopLayout = memo(() => {
                                 height: 64,
                             }}
                         />
+                        <ThemeSwitch style={{
+                            float: 'right',
+                            marginRight: '16px',
+                            marginTop: '16px',
+                        }} onThemeSwitch={(v)=>{
+                            userStore.setTheme(v)
+                        }} themeMode={userStore.theme} />
                     </Header>
                     <Content
                         style={{

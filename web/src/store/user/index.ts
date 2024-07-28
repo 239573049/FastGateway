@@ -11,7 +11,7 @@ interface UserStore {
 }
 
 export const useUserStore = create<UserStore>((set) => ({
-    theme: localStorage.getItem('theme') as Theme || 'light',
+    theme: localStorage.getItem('theme') as Theme || 'auto',
     setTheme: (theme) => set({ theme }),
     hideSettingsMoveGuide: false,
     setHideSettingsMoveGuide: (hideSettingsMoveGuide) => set({ hideSettingsMoveGuide })

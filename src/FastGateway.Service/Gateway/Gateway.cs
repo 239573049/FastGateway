@@ -382,7 +382,7 @@ public static class Gateway
             }
             else
             {
-                domainName.Path = $"/{domainName.Path}/{{**catch-all}}";
+                domainName.Path = $"/{domainName.Path.TrimStart('/')}/{{**catch-all}}";
             }
 
 
