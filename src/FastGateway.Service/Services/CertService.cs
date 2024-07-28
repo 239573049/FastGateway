@@ -20,10 +20,24 @@ public static class CertService
 
     private static readonly IMemoryCache MemoryCache = new MemoryCache(new MemoryCacheOptions()
     {
-        ExpirationScanFrequency = TimeSpan.FromMinutes(1),
-        SizeLimit = 1000
+        ExpirationScanFrequency = TimeSpan.FromMinutes(1)
     });
-    
+
+
+    public static async Task Challenge(HttpContext context, string token)
+    {
+        if (MemoryCache.TryGetValue(token, out var value))
+        {
+            context.Response.ContentType = "text/plain";
+
+            await context.Response.WriteAsync(value.ToString());
+
+            return;
+        }
+
+        context.Response.StatusCode = 404;
+    }
+
     public static Cert? GetCert(string domain)
     {
         return CertWebApplications.TryGetValue(domain, out var cert) ? cert : null;
@@ -89,11 +103,15 @@ public static class CertService
 
         if (await ApplyForCert(context, cert))
         {
-            masterContext.Certs.Update(cert);
+            await masterContext.Certs.Where(x => x.Id == id)
+                .ExecuteUpdateAsync(i => i.SetProperty(x => x.Certs, x => cert.Certs)
+                    .SetProperty(x => x.Expired, x => false)
+                    .SetProperty(x => x.RenewStats, x => RenewStats.Success)
+                    .SetProperty(x => x.NotAfter, x => cert.NotAfter)
+                    .SetProperty(x => x.RenewTime, x => cert.RenewTime)
+                );
 
-            await masterContext.SaveChangesAsync();
-
-            InitCert(await masterContext.Certs.Where(x => !string.IsNullOrWhiteSpace(x.Certs.File)).ToListAsync());
+            InitCert(await masterContext.Certs.Where(x => !x.Expired).ToListAsync());
         }
 
         return ResultDto.CreateSuccess();

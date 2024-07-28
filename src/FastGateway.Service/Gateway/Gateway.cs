@@ -164,6 +164,22 @@ public static class Gateway
 
             var app = builder.Build();
 
+            if (is80)
+            {
+                // 用于HTTPS证书签名校验
+                app.Use(async (context, next) =>
+                {
+                    if (context.Request.Path.StartsWithSegments("/.well-known/acme-challenge", out var token))
+                    {
+                        await CertService.Challenge(context, token.Value![1..]);
+                    }
+                    else
+                    {
+                        await next.Invoke();
+                    }
+                });
+            }
+
             app.UseInitGatewayMiddleware();
 
             app.Use((async (context, next) =>

@@ -61,6 +61,24 @@ public static class Program
             }
         }
 
+        app.Use((async (context, next) =>
+        {
+            if (context.Request.Path == "/")
+            {
+                context.Request.Path = "/index.html";
+            }
+
+            await next();
+
+            if (context.Response.StatusCode == 404)
+            {
+                context.Request.Path = "/index.html";
+                await next();
+            }
+        }));
+        
+        app.UseStaticFiles();
+
         app.MapDomain()
             .MapBlacklistAndWhitelist()
             .MapCert()

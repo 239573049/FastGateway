@@ -1,11 +1,17 @@
 ﻿services:
   fast-gateway.service:
     image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
+    container_name: fast-gateway.service
+    restart: always
     build:
       context: .
       dockerfile: src/FastGateway.Service/Dockerfile
+    volumes:
+      - ./data:/app/data
+      - ./certs:/app/certs
     ports:
         - "8000:8080"
         - "80:80"
         - "443:443/udp"
         - "443:443/tcp"
+        

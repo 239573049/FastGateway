@@ -133,8 +133,6 @@ const DestkopLayout = memo(() => {
                             height: '64px',
                             background: colorBgContainer,
                             fontSize: '24px',
-                            color: 'white',
-                            // 好看的样式，需要会动字体
                             fontFamily: 'cursive',
                         }}>
                             FastGateway
