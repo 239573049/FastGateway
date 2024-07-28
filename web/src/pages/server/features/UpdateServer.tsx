@@ -1,6 +1,6 @@
 import FCheckbox from "@/components/FCheckbox";
 import FInput from "@/components/FInput";
-import { createServer, updateServer } from "@/services/ServerService";
+import { updateServer } from "@/services/ServerService";
 import { Server } from "@/types";
 import { Button, Modal, message } from "antd";
 import { useEffect, useState } from "react";

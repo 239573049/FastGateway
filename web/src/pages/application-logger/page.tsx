@@ -113,7 +113,7 @@ export default function ApplicationLoggerPage() {
                     onShowSizeChange: (current, pageSize) => {
                         setInput({
                             ...input,
-                            page: 1,
+                            page: current,
                             pageSize,
                         });
                     },

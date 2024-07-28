@@ -28,7 +28,13 @@ public static class Program
         builder.Services.AddScoped<SettingProvide>();
         builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
         {
-            optionsBuilder.UseSqlite("Data Source=gateway.db")
+            // 判断当前目录是否存在data文件夹
+            if (!Directory.Exists("./data"))
+            {
+                Directory.CreateDirectory("./data");
+            }
+
+            optionsBuilder.UseSqlite("Data Source=./data/gateway.db")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
 

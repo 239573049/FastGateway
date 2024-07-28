@@ -1,4 +1,3 @@
-import { deleteServer, enableServer } from "@/services/ServerService";
 import { DomainName, ServiceType } from "@/types";
 import { SpotlightCard, Tag } from "@lobehub/ui";
 import { memo, useEffect, useState, } from "react";
@@ -6,13 +5,12 @@ import { Button, Dropdown, Empty } from 'antd';
 import { Flexbox } from 'react-layout-kit';
 import { useDomainStore } from "@/store/server";
 import { AlignJustify } from 'lucide-react'
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Divider from "@lobehub/ui/es/Form/components/FormDivider";
 import { deleteDomain, enableService, getDomains } from "@/services/DomainNameService";
 import UpdateDomain from "./UpdateDomain";
 
 const DomainNamesList = memo(() => {
-    const navigate = useNavigate();
     const [updateVisible, setUpdateVisible] = useState(false);
     const [updateDomain, setUpdateDomain] = useState<DomainName | null>(null);
 

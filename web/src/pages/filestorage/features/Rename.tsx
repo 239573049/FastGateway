@@ -16,7 +16,7 @@ interface RenameProps {
 
 
 export default function Rename(props: RenameProps) {
-    const { visible, id, name, isFile, onClose, onOk, path, drives } = props;
+    const { visible,  name, isFile, onClose, onOk, path, drives } = props;
     const [inputValue, setInputValue] = useState(name);
     const [loading, setLoading] = useState(false);
 

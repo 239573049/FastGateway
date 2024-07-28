@@ -374,7 +374,7 @@ const FileStoragePage: React.FC = () => {
         input.click();
     }
 
-    const directorieHandleItemClick = ({ id, event, props }: any) => {
+    const directorieHandleItemClick = ({ id,  }: any) => {
         switch (id) {
             case "refresh":
                 init();
