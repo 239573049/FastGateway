@@ -25,3 +25,7 @@ export const enableServer = async (id:any) => {
 export const onlineServer = async (id:any) => {
   return put(`${baseUrl}/${id}/online`);
 }
+
+export const reloadServer = async (id:any) => {
+  return put(`${baseUrl}/${id}/reload`);
+}

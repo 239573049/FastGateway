@@ -25,6 +25,7 @@ public static class Program
         builder.Services.AddHttpClient();
         builder.Services.AddSingleton<ISearcher>(new Searcher(CachePolicy.File, "ip2region.xdb"));
         builder.Services.AddHostedService<LoggerBackgroundTask>();
+        builder.Services.AddHostedService<ClientRequestBackgroundTask>();
         builder.Services.AddScoped<SettingProvide>();
         builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
         {
@@ -83,8 +84,10 @@ public static class Program
             .MapBlacklistAndWhitelist()
             .MapCert()
             .MapSetting()
+            .UseApiQpsService()
             .MapFileStorage()
             .MapRateLimit()
+            .MapDashboard()
             .MapApplicationLogger()
             .MapServer();
 

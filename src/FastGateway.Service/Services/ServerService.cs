@@ -58,7 +58,7 @@ public static class ServerService
             async (MasterContext dbContext, string id) =>
             {
                 await dbContext.Servers.Where(x => x.Id == id).ExecuteDeleteAsync();
-                
+
                 await Gateway.Gateway.CloseGateway(id);
             }).WithDescription("删除服务").WithDisplayName("删除服务").WithTags("服务");
 
@@ -102,6 +102,22 @@ public static class ServerService
                 await Gateway.Gateway.CloseGateway(id);
             }
         }).WithDescription("启用服务").WithDisplayName("启用服务").WithTags("服务");
+
+        // 重载路由
+        server.MapPut("{id}/reload", async (MasterContext dbContext, string id) =>
+        {
+            var server = await dbContext.Servers.FirstOrDefaultAsync(x => x.Id == id);
+            if (server == null)
+            {
+                throw new ValidationException("服务不存在");
+            }
+
+            var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToListAsync();
+
+            Gateway.Gateway.ReloadGateway(server, domainNames);
+
+            await Task.Delay(1000);
+        }).WithDescription("重载服务").WithDisplayName("重载服务").WithTags("服务");
 
         return app;
     }

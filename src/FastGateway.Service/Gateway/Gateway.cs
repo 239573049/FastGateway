@@ -5,7 +5,6 @@ using System.Security.Cryptography.X509Certificates;
 using FastGateway.Entities;
 using FastGateway.Entities.Core;
 using FastGateway.Service.BackgroundTask;
-using FastGateway.Service.DataAccess;
 using FastGateway.Service.Infrastructure;
 using FastGateway.Service.Services;
 using Microsoft.AspNetCore.Connections;
@@ -41,6 +40,23 @@ public static class Gateway
     public static bool CheckServerOnline(string serverId)
     {
         return GatewayWebApplications.ContainsKey(serverId);
+    }
+
+    /// <summary>
+    /// 重载路由
+    /// </summary>
+    /// <param name="server"></param>
+    /// <param name="domainNames"></param>
+    public static void ReloadGateway(Server server, List<DomainName> domainNames)
+    {
+        if (GatewayWebApplications.TryGetValue(server.Id, out var webApplication))
+        {
+            var inMemoryConfigProvider = webApplication.Services.GetRequiredService<InMemoryConfigProvider>();
+
+            var (routes, clusters) = BuildConfig(domainNames);
+
+            inMemoryConfigProvider.Update(routes, clusters);
+        }
     }
 
     /// <summary>
@@ -108,6 +124,9 @@ public static class Gateway
             }
 
             var builder = WebApplication.CreateBuilder();
+
+            builder.Services.AddSingleton<ApplicationLoggerMiddleware>();
+            builder.Services.AddSingleton<ClientRequestLoggerMiddleware>();
 
             builder.WebHost.UseKestrel(options =>
             {
@@ -182,67 +201,8 @@ public static class Gateway
 
             app.UseInitGatewayMiddleware();
 
-            app.Use((async (context, next) =>
-            {
-                // TODO: 暂时不记录GET请求|WebSocket请求
-                if (context.Request.Method == "GET" || context.WebSockets.IsWebSocketRequest)
-                {
-                    await next(context);
-                    return;
-                }
-                else
-                {
-                    var logger = context.RequestServices.GetRequiredService<ILogger<ApplicationLogger>>();
-                    var sw = Stopwatch.StartNew();
-                    var ip = context.Request.Headers["X-Forwarded-For"];
-                    var applicationLogger = new ApplicationLogger()
-                    {
-                        Ip = ip,
-                        Method = context.Request.Method,
-                        Path = context.Request.Path,
-                        Domain = context.Request.Host.Host,
-                        UserAgent = context.Request.Headers.UserAgent.ToString(),
-                        RequestTime = DateTime.Now,
-                    };
-                    string platform = "Unknown";
-                    var userAgent = context.Request.Headers.UserAgent.ToString();
-                    if (userAgent.Contains("Windows"))
-                    {
-                        platform = "Windows";
-                    }
-                    else if (userAgent.Contains("Linux"))
-                    {
-                        platform = "Linux";
-                    }
-                    else if (userAgent.Contains("Android") || userAgent.Contains("iPhone") ||
-                             userAgent.Contains("iPad"))
-                    {
-                        platform = "Mobile";
-                    }
-
-                    try
-                    {
-                        await next(context);
-                    }
-                    catch (Exception e)
-                    {
-                        applicationLogger.Success = false;
-                        applicationLogger.StatusCode = 500;
-                        applicationLogger.Platform = platform;
-                        applicationLogger.Elapsed = sw.ElapsedMilliseconds;
-                        logger.LogError(e, "网关请求异常");
-                        LoggerBackgroundTask.AddLogger(applicationLogger);
-                        return;
-                    }
-
-                    sw.Stop();
-                    applicationLogger.Platform = platform;
-                    applicationLogger.Elapsed = sw.ElapsedMilliseconds;
-                    applicationLogger.Success = context.Response.StatusCode == 200;
-                    applicationLogger.StatusCode = context.Response.StatusCode;
-                    LoggerBackgroundTask.AddLogger(applicationLogger);
-                }
-            }));
+            app.UseMiddleware<ApplicationLoggerMiddleware>();
+            app.UseMiddleware<ClientRequestLoggerMiddleware>();
 
             app.UseRateLimitMiddleware(rateLimits);
 
@@ -348,16 +308,14 @@ public static class Gateway
         {
             // 设置ip
             var ip = context.Connection.RemoteIpAddress;
-            if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            if (!context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
             {
-                ip = IPAddress.Parse(forwardedFor);
-            }
-            else
-            {
-                context.Request.Headers["X-Forwarded-For"] = ip.ToString();
+                context.Request.Headers["X-Forwarded-For"] = ip?.ToString();
             }
 
             await next(context);
+            
+            QpsService.IncrementServiceRequests();
         });
 
         return app;

@@ -40,9 +40,9 @@ const DomainNamesList = memo(() => {
             <Flexbox
                 key={item.id}
                 style={{
-                    padding: '10px',
+                    padding: '8px',
                     borderRadius: '5px',
-                    height: '100px',
+                    height: '180px',
                     marginBottom: '10px',
                     cursor: 'pointer',
                 }}
@@ -109,6 +109,7 @@ const DomainNamesList = memo(() => {
                         padding: '10px',
                         flex: 1,
                         userSelect: 'none',
+                        overflow: 'auto',
                     }}>
                     {
                         item.serviceType === ServiceType.Service && ('代理服务: ' + item.service)
@@ -122,6 +123,14 @@ const DomainNamesList = memo(() => {
                     {
                         item.serviceType === ServiceType.ServiceCluster && item.upStreams.map((x, i) => {
                             return (<Tag key={i}>{x.service}</Tag>)
+                        })
+                    }
+                    <Divider>
+                        域名
+                    </Divider>
+                    {
+                        item.domains.map((x, i) => {
+                            return (<Tag key={i}>{x}</Tag>)
                         })
                     }
                 </div>

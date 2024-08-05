@@ -1,8 +1,8 @@
-import { deleteServer, enableServer, getServers, onlineServer } from "@/services/ServerService";
+import { deleteServer, enableServer, getServers, onlineServer, reloadServer } from "@/services/ServerService";
 import { Server } from "@/types";
 import { SpotlightCard, Tag } from "@lobehub/ui";
 import { memo, useEffect, useState, } from "react";
-import { Button, Badge, Dropdown, Empty } from 'antd';
+import { Button, Badge, message, Dropdown, Empty } from 'antd';
 import { Flexbox } from 'react-layout-kit';
 import { useServerStore } from "@/store/server";
 import { AlignJustify } from 'lucide-react'
@@ -87,6 +87,16 @@ const ProxyList = memo(() => {
                                             onlineServer(item.id).then(() => {
                                                 loadServers();
                                             });
+                                        }
+                                    },
+                                    {
+                                        key: 'reload',
+                                        label: '刷新路由',
+                                        onClick: () => {
+                                            reloadServer(item.id)
+                                                .then(() => {
+                                                    message.success('刷新成功');
+                                                });
                                         }
                                     }
                                 ]
