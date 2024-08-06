@@ -45,20 +45,19 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 
 ```yml
 
-services:
-  gateway-api:
-    image: hejiale010426/gateway-api:v1.0.0
+
+﻿services:
+  fast-gateway.service:
+    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
+    container_name: fast-gateway.service
     restart: always
-    container_name: gateway-api
-    environment:
-      PASSWORD: Aa123456
-    ports:
-      - 8080:8080 # 提供给web端调用的管理接口
-      - 80:80 # Http代理端口
-      - 443:443 # Https代理端口
     volumes:
-      - ./data:/data/
-      - ./certs:/app/certs/
+      - ./data:/app/data
+      - ./certs:/app/certs
+    ports:
+        - "8000:8080"
+        - "80:80"
+        - "443:443"
 ```
 
 如果并没有提供密码则默认
@@ -69,21 +68,19 @@ services:
 
 ```yml
 
-services:
-  gateway-api:
-    image: hejiale010426/gateway-api:v1.0.0-h3
+﻿services:
+  fast-gateway.service:
+    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
+    container_name: fast-gateway.service
     restart: always
-    container_name: gateway-api
-    environment:
-      PASSWORD: Aa123456
-    ports:
-      - 8080:8080 # web管理端
-      - 80:80 # Http代理端口
-      - 443:443/udp # Https代理端口
-      - 443:443/tcp # Https代理端口 Http3需要开启UDP和TCP，请注意防火墙设置是否允许
     volumes:
-      - ./data:/data/
-      - ./certs:/app/certs/
+      - ./data:/app/data
+      - ./certs:/app/certs
+    ports:
+        - "8000:8080"
+        - "80:80"
+        - "443:443/udp"
+        - "443:443/tcp"
 ```
 
 ## Linux使用`systemd`启动服务
