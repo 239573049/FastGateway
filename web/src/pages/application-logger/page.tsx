@@ -56,6 +56,9 @@ export default function ApplicationLoggerPage() {
                         title: '请求耗时',
                         dataIndex: 'elapsed',
                         key: 'elapsed',
+                        render: (text) => {
+                            return text + 'ms';
+                        }
                     },
                     {
                         title: '请求域名',

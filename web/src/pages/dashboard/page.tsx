@@ -83,7 +83,7 @@ const Dashboard = () => {
 
     let qps_chart: echarts.ECharts | null = null;
     useEffect(() => {
-
+        setLocationData([])
         qps_chart = echarts.init(document.getElementById('qps_chart'));
         // 将qps_chartData.series[0].data中的数据全部替换为0
         qps_chartData.series[0].data = qps_chartData.series[0].data.map(() => 0);
@@ -102,7 +102,7 @@ const Dashboard = () => {
         window.addEventListener('resize', resizeHandler);
 
         async function stream() {
-            const response = await getQpsChart();
+            const response = await getQpsChart() as any;
             for await (const data of response) {
 
                 qps_chartData.xAxis.data.shift();

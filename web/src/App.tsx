@@ -1,18 +1,20 @@
 import './App.css'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Layout from './layout'
-import MainLayout from './pages/layout'
-import NotFoundPage from './pages/not-page'
-import ServerPage from './pages/server/page'
-import ServerInfoPage from './pages/server/info/page'
-import BlackListPage from './pages/protect-config/blacklist'
-import WhiteListPage from './pages/protect-config/whitelist'
-import RateLimitPage from './pages/protect-config/rate-limit'
-import CertPage from './pages/cert/page'
-import AboutPage from './pages/about/page'
-import FileStoragePage from './pages/filestorage/page'
-import DashboardPage from './pages/dashboard/page'
-import ApplicationLoggerPage from './pages/application-logger/page'
+import Loading from './components/Loading'
+import { lazy, Suspense } from 'react'
+const MainLayout = lazy(() => import('./pages/layout'))
+const NotFoundPage = lazy(() => import('./pages/not-page'))
+const ServerPage = lazy(() => import('./pages/server/page'))
+const ServerInfoPage = lazy(() => import('./pages/server/info/page'))
+const BlackListPage = lazy(() => import('./pages/protect-config/blacklist'))
+const WhiteListPage = lazy(() => import('./pages/protect-config/whitelist'))
+const RateLimitPage = lazy(() => import('./pages/protect-config/rate-limit'))
+const CertPage = lazy(() => import('./pages/cert/page'))
+const AboutPage = lazy(() => import('./pages/about/page'))
+const FileStoragePage = lazy(() => import('./pages/filestorage/page'))
+const DashboardPage = lazy(() => import('./pages/dashboard/page'))
+const ApplicationLoggerPage = lazy(() => import('./pages/application-logger/page'))
 
 const router = createBrowserRouter([
   {
@@ -21,47 +23,74 @@ const router = createBrowserRouter([
     children: [
       {
         path: '',
-        element: <MainLayout></MainLayout>,
+        element:
+          <Suspense fallback={<Loading></Loading>}>
+            <MainLayout></MainLayout>
+          </Suspense>,
         children: [
           {
             path: 'server',
-            element: <ServerPage />
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <ServerPage />
+              </Suspense>
           },
           {
             path: 'server/:id',
-            element: <ServerInfoPage />
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <ServerInfoPage />
+              </Suspense>
           },
           {
             path: 'protect-config/blacklist',
-            element: <BlackListPage></BlackListPage>
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <BlackListPage />
+              </Suspense>
           },
           {
             path: 'dashboard',
-            element: <DashboardPage></DashboardPage>
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <DashboardPage />
+              </Suspense>
           },
           {
             path: 'protect-config/whitelist',
-            element: <WhiteListPage></WhiteListPage>
+            element: <Suspense fallback={<Loading></Loading>}>
+              <WhiteListPage />
+            </Suspense>
           },
           {
             path: 'protect-config/rate-limit',
-            element: <RateLimitPage></RateLimitPage>
+            element: <Suspense fallback={<Loading></Loading>}>
+              <RateLimitPage />
+            </Suspense>
           },
           {
             path: 'cert',
-            element: <CertPage />
+            element: <Suspense fallback={<Loading></Loading>}>
+              <CertPage />
+            </Suspense>
           },
           {
             path: 'log',
-            element: <ApplicationLoggerPage />
+            element: <Suspense fallback={<Loading></Loading>}>
+              <ApplicationLoggerPage />
+            </Suspense>
           },
           {
             path: 'about',
-            element: <AboutPage />
+            element: <Suspense fallback={<Loading></Loading>}>
+              <AboutPage />
+            </Suspense>
           },
           {
             path: 'filestorage',
-            element: <FileStoragePage />
+            element: <Suspense fallback={<Loading></Loading>}>
+              <FileStoragePage />
+            </Suspense>
           },
           {
             path: '*',

@@ -1,4 +1,3 @@
-using FastGateway.Entities.Core;
 using FastGateway.Service.BackgroundTask;
 using FastGateway.Service.DataAccess;
 using FastGateway.Service.Infrastructure;
@@ -7,7 +6,7 @@ using IP2Region.Net.Abstractions;
 using IP2Region.Net.XDB;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Serilog.Core;
+using Watermelon.Service.Infrastructure;
 
 namespace FastGateway.Service;
 
@@ -23,6 +22,11 @@ public static class Program
 
         builder.Host.UseSerilog(logger);
         builder.Services.AddHttpClient();
+        builder.Services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.Converters.Add(new DateTimeJsonConverter());
+        });
+        builder.Services.AddResponseCompression();
         builder.Services.AddSingleton<ISearcher>(new Searcher(CachePolicy.File, "ip2region.xdb"));
         builder.Services.AddHostedService<LoggerBackgroundTask>();
         builder.Services.AddHostedService<ClientRequestBackgroundTask>();
@@ -78,8 +82,11 @@ public static class Program
             }
         }));
 
+        app.UseResponseCompression();
+        
         app.UseStaticFiles();
 
+        
         app.MapDomain()
             .MapBlacklistAndWhitelist()
             .MapCert()

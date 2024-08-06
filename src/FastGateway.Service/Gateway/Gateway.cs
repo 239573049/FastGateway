@@ -167,6 +167,18 @@ public static class Gateway
                 options.MultipartHeadersLengthLimit = int.MaxValue;
             });
 
+            
+            builder.Services
+                .AddCors(options =>
+                {
+                    options.AddPolicy("AllowAll",
+                        builder => builder
+                            .SetIsOriginAllowed(_ => true)
+                            .AllowAnyMethod()
+                            .AllowAnyHeader()
+                            .AllowCredentials());
+                });
+            
             var (routes, clusters) = BuildConfig(domainNames);
 
             builder.Services.AddRateLimitService(rateLimits);
@@ -183,6 +195,8 @@ public static class Gateway
 
             var app = builder.Build();
 
+            app.UseCors("AllowAll");
+            
             if (is80)
             {
                 // 用于HTTPS证书签名校验
@@ -215,7 +229,10 @@ public static class Gateway
 
             app.MapReverseProxy();
 
-            app.Lifetime.ApplicationStopping.Register(() => { GatewayWebApplications.Remove(server.Id, out _); });
+            app.Lifetime.ApplicationStopping.Register(() =>
+            {
+                GatewayWebApplications.Remove(server.Id, out _);
+            });
 
             await app.RunAsync();
         }

@@ -16,10 +16,8 @@ EXPOSE 8080
 FROM node as builder
 WORKDIR /src
 COPY web .
-RUN yarn config set registry https://registry.npm.taobao.org
-RUN npm install -g bun 
-RUN bun i 
-RUN bun run build
+RUN npm i
+RUN npm run build
 
 
 FROM registry.token-ai.cn/dotnet/sdk:9.0-preview AS build
