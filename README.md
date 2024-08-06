@@ -45,20 +45,19 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 
 ```yml
 
-services:
-  gateway-api:
-    image: hejiale010426/gateway-api:v1.0.0
+﻿services:
+  fast-gateway.service:
+    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
+    container_name: fast-gateway.service
     restart: always
-    container_name: gateway-api
-    environment:
-      PASSWORD: Aa123456
-    ports:
-      - 8080:8080 # Management interface for web client
-      - 80:80 # HTTP proxy port
-      - 443:443 # HTTPS proxy port
     volumes:
-      - ./data:/data/
-      - ./certs:/app/certs/
+      - ./data:/app/data
+      - ./certs:/app/certs
+    ports:
+        - "8000:8080"
+        - "80:80"
+        - "443:443"
+        
 ```
 
 If no password is provided, the default is:
@@ -69,21 +68,19 @@ Password: Aa123456
 
 ```yml
 
-services:
-  gateway-api:
-    image: hejiale010426/gateway-api:v1.0.0-h3
+﻿services:
+  fast-gateway.service:
+    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
+    container_name: fast-gateway.service
     restart: always
-    container_name: gateway-api
-    environment:
-      PASSWORD: Aa123456
-    ports:
-      - 8080:8080 # Web management end
-      - 80:80 # HTTP proxy port
-      - 443:443/udp # HTTPS proxy port
-      - 443:443/tcp # HTTPS proxy port HTTP3 requires both UDP and TCP to be enabled, please check if the firewall settings allow this
     volumes:
-      - ./data:/data/
-      - ./certs:/app/certs/
+      - ./data:/app/data
+      - ./certs:/app/certs
+    ports:
+        - "8000:8080"
+        - "80:80"
+        - "443:443/udp"
+        - "443:443/tcp"
 ```
 
 ## Using `systemd` to Start Services on Linux
