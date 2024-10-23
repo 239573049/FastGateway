@@ -9,11 +9,12 @@ namespace FastGateway.Service.Services;
 
 public static class DomainNameService
 {
-    public static WebApplication MapDomain(this WebApplication app)
+    public static IEndpointRouteBuilder MapDomain(this IEndpointRouteBuilder app)
     {
         var domain = app.MapGroup("/api/v1/domain")
             .WithTags("域名")
             .WithDescription("域名管理")
+            .RequireAuthorization()
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("域名");
 
@@ -107,7 +108,8 @@ public static class DomainNameService
                 .Where(x => x.Id == id)
                 .ExecuteUpdateAsync(i => i.SetProperty(a => a.Enable, a => !a.Enable));
         }).WithDescription("启用/禁用域名").WithDisplayName("启用/禁用域名").WithTags("域名");
-        
+
+
         return app;
     }
     

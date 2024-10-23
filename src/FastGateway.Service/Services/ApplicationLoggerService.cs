@@ -10,12 +10,13 @@ namespace FastGateway.Service.Services;
 
 public static class ApplicationLoggerService
 {
-    public static WebApplication MapApplicationLogger(this WebApplication app)
+    public static IEndpointRouteBuilder MapApplicationLogger(this IEndpointRouteBuilder app)
     {
         var applicationLogger = app.MapGroup("/api/v1/applicationLogger")
             .WithTags("应用日志")
             .WithDescription("应用日志管理")
             .AddEndpointFilter<ResultFilter>()
+            .RequireAuthorization()
             .WithDisplayName("应用日志");
 
         applicationLogger.MapGet(string.Empty, async (MasterContext dbContext, int page, int pageSize) =>
@@ -23,6 +24,7 @@ public static class ApplicationLoggerService
             var result = await dbContext.ApplicationLoggers
                 .OrderByDescending(x => x.RequestTime)
                 .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             var total = await dbContext.ApplicationLoggers.CountAsync();

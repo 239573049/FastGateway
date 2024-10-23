@@ -11,7 +11,10 @@
     <ItemGroup>
       <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
       <PackageReference Include="Certes" Version="3.0.4" />
+      <PackageReference Include="Gnarly" Version="1.0.5" />
+      <PackageReference Include="Gnarly.Data" Version="1.0.5" />
       <PackageReference Include="IP2Region.Net" Version="2.0.2" />
+      <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0-rc.2.24474.3" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0-preview.6.24327.4" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0-preview.6.24327.4">
         <PrivateAssets>all</PrivateAssets>

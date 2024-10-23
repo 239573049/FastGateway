@@ -5,10 +5,11 @@ namespace FastGateway.Service.Services;
 
 public static class SettingService
 {
-    public static WebApplication MapSetting(this WebApplication app)
+    public static IEndpointRouteBuilder MapSetting(this IEndpointRouteBuilder app)
     {
         var setting = app.MapGroup("/api/v1/setting")
             .WithTags("设置")
+            .RequireAuthorization()
             .WithDescription("设置管理")
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("设置");

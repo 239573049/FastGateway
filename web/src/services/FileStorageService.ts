@@ -123,3 +123,7 @@ export const renameFile = (path: string, drives: string, name: string) => {
 export const createDirectory = (path: string, drives: string, name: string) => {
     return put('/api/v1/filestorage/create-directory?path=' + path + '&drives=' + drives + '&name=' + name);
 }
+
+export const property = (path:string) => {
+    return get('/api/v1/filestorage/property?path=' + path);
+}

@@ -9,12 +9,13 @@ namespace FastGateway.Service.Services;
 
 public static class ServerService
 {
-    public static WebApplication MapServer(this WebApplication app)
+    public static IEndpointRouteBuilder MapServer(this IEndpointRouteBuilder app)
     {
         var server = app.MapGroup("/api/v1/server")
             .WithTags("服务")
             .WithDescription("服务管理")
             .AddEndpointFilter<ResultFilter>()
+            .RequireAuthorization()
             .WithDisplayName("服务");
 
         server.MapPost(string.Empty, async (MasterContext dbContext, Server server) =>

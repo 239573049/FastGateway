@@ -11,7 +11,7 @@ public class DashboardDto
     /// <summary>
     /// 今天总数
     /// </summary>
-    public long TodayTotal { get; set; }
+    public long TodayTotal => TodaySuccess + TodayFail;
 
     /// <summary>
     /// 今天成功数

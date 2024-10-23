@@ -73,11 +73,12 @@ public static class QpsService
 
 public static class ApiQpsService
 {
-    public static WebApplication UseApiQpsService(this WebApplication app)
+    public static IEndpointRouteBuilder MapApiQpsService(this IEndpointRouteBuilder app)
     {
         var qpsService = app.MapGroup("/api/v1/qps")
             .WithTags("QPS")
             .WithDescription("QPS管理")
+            .RequireAuthorization()
             .WithDisplayName("QPS");
 
         qpsService.MapGet(string.Empty, GetAsync)

@@ -20,8 +20,8 @@ export const useServerStore = create<ServerStore>((set) => ({
 interface DomainStore {
     loadingDomains: boolean;
     setLoadingDomains: (loading: boolean) => void;
-    domains: string[];
-    setDomains: (domains: string[]) => void;
+    domains: any[];
+    setDomains: (domains: any[]) => void;
 }
 
 export const useDomainStore = create<DomainStore>((set) => ({
@@ -29,4 +29,14 @@ export const useDomainStore = create<DomainStore>((set) => ({
     setDomains: (domains) => set({ domains }),
     setLoadingDomains: (loadingDomains) => set({ loadingDomains }),
     loadingDomains: false,
+}));
+
+interface RouteStore {
+    loading: boolean;
+    setLoading: (loading: boolean) => void;
+}
+
+export const useRouteStore = create<RouteStore>((set) => ({
+    setLoading: (loading) => set({ loading }),
+    loading: false,
 }));

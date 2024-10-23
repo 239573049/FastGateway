@@ -48,7 +48,7 @@ public static class RateLimitService
         return services;
     }
 
-    public static WebApplication UseRateLimitMiddleware(this WebApplication app, List<RateLimit> rateLimits)
+    public static IEndpointRouteBuilder UseRateLimitMiddleware(this WebApplication app, List<RateLimit> rateLimits)
     {
         if (rateLimits.Count == 0)
         {
@@ -60,11 +60,12 @@ public static class RateLimitService
         return app;
     }
 
-    public static WebApplication MapRateLimit(this WebApplication app)
+    public static IEndpointRouteBuilder MapRateLimit(this IEndpointRouteBuilder app)
     {
         var rateLimit = app.MapGroup("/api/v1/rate-limit")
             .WithTags("限流")
             .WithDescription("限流管理")
+            .RequireAuthorization()
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("限流");
 

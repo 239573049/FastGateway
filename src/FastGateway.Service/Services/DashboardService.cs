@@ -7,10 +7,11 @@ namespace FastGateway.Service.Services;
 
 public static class DashboardService
 {
-    public static WebApplication MapDashboard(this WebApplication app)
+    public static IEndpointRouteBuilder MapDashboard(this IEndpointRouteBuilder app)
     {
         var dashboard = app.MapGroup("/api/v1/dashboard")
             .WithTags("仪表盘")
+            .RequireAuthorization()
             .WithDescription("仪表盘")
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("仪表盘");
@@ -24,7 +25,6 @@ public static class DashboardService
             dashboardDto.Success = await dbContext.ClientRequestLoggers.SumAsync(x => x.Success);
             dashboardDto.Fail = await dbContext.ClientRequestLoggers.SumAsync(x => x.Fail);
             dashboardDto.Total = dashboardDto.Success + dashboardDto.Fail;
-            dashboardDto.TodayTotal = await dbContext.ClientRequestLoggers.CountAsync(x => x.RequestTime == now);
             dashboardDto.TodaySuccess = await dbContext.ClientRequestLoggers.Where(x => x.RequestTime == now)
                 .SumAsync(x => x.Success);
             dashboardDto.TodayFail =

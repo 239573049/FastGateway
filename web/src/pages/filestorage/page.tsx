@@ -24,6 +24,7 @@ import { Menu, Item, Separator, useContextMenu } from "react-contexify";
 import "react-contexify/ReactContexify.css";
 import Rename from "./features/Rename";
 import CreateDirectory from "./features/CreateDirectory";
+import Property from "./features/Property";
 
 const DirectoryMenuID = "directory-menu";
 const FileMenuID = "file-menu";
@@ -45,8 +46,9 @@ const FileStoragePage: React.FC = () => {
     const { show: fileMenuShow } = useContextMenu({
         id: FileMenuID,
     });
+
+    const [property, setProperty] = useState<any>()
     const [expand, setExpand] = useState(true);
-    const [pin, setPin] = useState(true);
     const [treeData, setTreeData] = useState<TreeNode[]>([]);
     const [currentData, setCurrentData] = useState<any[]>([]);
     const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
@@ -93,6 +95,7 @@ const FileStoragePage: React.FC = () => {
             },
         },
         {
+            width: 100,
             title: "大小",
             dataIndex: "length",
             key: "length",
@@ -102,6 +105,7 @@ const FileStoragePage: React.FC = () => {
         },
         {
             title: "隐藏文件/目录",
+            width: 100,
             dataIndex: "isHidden",
             key: "isHidden",
             render: (text: boolean) => {
@@ -111,11 +115,13 @@ const FileStoragePage: React.FC = () => {
         {
             title: "创建时间",
             dataIndex: "creationTime",
+            width: 200,
             key: "creationTime",
         },
         {
             title: "系统文件/目录",
             dataIndex: "isSystem",
+            width: 120,
             key: "isSystem",
             render: (text: boolean) => {
                 return text ? "是" : "否";
@@ -123,6 +129,7 @@ const FileStoragePage: React.FC = () => {
         },
         {
             title: "操作",
+            width: 50,
             dataIndex: "operation",
             key: "operation",
             render: (_: any, item: any) => {
@@ -169,6 +176,13 @@ const FileStoragePage: React.FC = () => {
                                                 isFile: true,
                                             });
                                         },
+                                    },
+                                    {
+                                        key: "4",
+                                        label: "属性",
+                                        onClick: () => {
+                                            setProperty(item.fullName)
+                                        }
                                     },
                                 ],
                             }}
@@ -235,6 +249,9 @@ const FileStoragePage: React.FC = () => {
                                     {
                                         key: "10",
                                         label: "属性",
+                                        onClick: () => {
+                                            setProperty(item.fullName)
+                                        }
                                     },
                                 ],
                             }}
@@ -336,6 +353,10 @@ const FileStoragePage: React.FC = () => {
         }
     }
 
+    /**
+     * 上传文件
+     * @param node 
+     */
     function handlerUploadFile(node?: any) {
         const input = document.createElement("input");
         input.type = "file";
@@ -374,7 +395,10 @@ const FileStoragePage: React.FC = () => {
         input.click();
     }
 
-    const directorieHandleItemClick = ({ id,  }: any) => {
+    /**
+     * 目录操作
+     */
+    const directorieHandleItemClick = ({ id, }: any) => {
         switch (id) {
             case "refresh":
                 init();
@@ -499,9 +523,9 @@ const FileStoragePage: React.FC = () => {
             >
                 <DraggablePanel
                     expand={expand}
-                    mode={pin ? "fixed" : "float"}
+                    mode={"fixed"}
                     onExpandChange={setExpand}
-                    pin={pin}
+                    pin={true}
                     placement="left"
                     style={{
                         display: "flex",
@@ -510,10 +534,8 @@ const FileStoragePage: React.FC = () => {
                 >
                     <DraggablePanelContainer style={{ flex: 1 }}>
                         <DraggablePanelHeader
-                            pin={pin}
                             position="left"
                             setExpand={setExpand}
-                            setPin={setPin}
                             title="文件系统目录"
                         />
                         <DraggablePanelBody>
@@ -531,7 +553,6 @@ const FileStoragePage: React.FC = () => {
                                     setSelectedNode(info.node);
                                 }}
                                 style={{
-                                    height: "calc(100vh - 150px)",
                                     overflow: "auto",
                                 }}
                                 selectable
@@ -583,10 +604,9 @@ const FileStoragePage: React.FC = () => {
                         size="small"
                         rowKey="key"
                         style={{
-                            width: "100%",
                             overflow: "auto",
+                            height: "calc(100% - 48px)",
                         }}
-                        scroll={{ y: "calc(100vh - 320px)" }}
                         pagination={{
                             pageSize: currentData.length,
                         }}
@@ -661,59 +681,62 @@ const FileStoragePage: React.FC = () => {
                 name={renameInput.value}
                 isFile={renameInput.isFile}
             />
-            <Modal
-                footer={[]}
-                onCancel={() => {
-                    setUploadVisible(false);
-                }}
-                open={uploadVisible}
-                title="上传文件"
-            >
-                <Dragger
-                    multiple
-                    maxCount={100}
-                    name="file"
-                    beforeUpload={(_, files) => {
-                        setUploadFileList(files);
-                        return false;
-                    }}
-                >
-                    <p className="ant-upload-drag-icon">
-                        <InboxOutlined />
-                    </p>
-                    <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-                    <p className="ant-upload-hint">支持单个或批量上传。</p>
-                </Dragger>
-                <Button
-                    block
-                    onClick={() => {
-                        if (uploadFileList.length === 0) {
-                            message.error("请选择文件");
-                            return;
-                        }
-                        uploadFileList.forEach(async (file) => {
-                            const result = await uploadFile(
-                                file,
-                                selectedNode.key,
-                                selectedNode.drive
-                            );
-                            if (result.success) {
-                                message.success(file.name + "上传成功");
-                            } else {
-                                message.error(`上传失败: ${result.message}`);
-                            }
-                        });
-
-                        init();
+            {
+                uploadVisible &&
+                <Modal
+                    footer={[]}
+                    onCancel={() => {
                         setUploadVisible(false);
                     }}
-                    style={{
-                        marginTop: 20,
-                    }}
+                    open={uploadVisible}
+                    title="上传文件"
                 >
-                    上传
-                </Button>
-            </Modal>
+                    <Dragger
+                        multiple
+                        maxCount={100}
+                        name="file"
+                        beforeUpload={(_, files) => {
+                            setUploadFileList(files);
+                            return false;
+                        }}
+                    >
+                        <p className="ant-upload-drag-icon">
+                            <InboxOutlined />
+                        </p>
+                        <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+                        <p className="ant-upload-hint">支持单个或批量上传。</p>
+                    </Dragger>
+                    <Button
+                        block
+                        onClick={() => {
+                            if (uploadFileList.length === 0) {
+                                message.error("请选择文件");
+                                return;
+                            }
+                            uploadFileList.forEach(async (file) => {
+                                const result = await uploadFile(
+                                    file,
+                                    selectedNode.key,
+                                    selectedNode.drive
+                                );
+                                if (result.success) {
+                                    message.success(file.name + "上传成功");
+                                } else {
+                                    message.error(`上传失败: ${result.message}`);
+                                }
+                            });
+
+                            init();
+                            setUploadVisible(false);
+                        }}
+                        style={{
+                            marginTop: 20,
+                        }}
+                    >
+                        上传
+                    </Button>
+                </Modal>
+            }
             <CreateDirectory
                 drives={selectedNode?.drive}
                 path={selectedNode?.fullName}
@@ -728,6 +751,12 @@ const FileStoragePage: React.FC = () => {
                     init();
                 }}
             />
+            <Property
+                fullPath={property}
+                onClose={()=>{
+                    setProperty(null)
+                }} open={property!=null}>
+            </Property>
         </>
     );
 };

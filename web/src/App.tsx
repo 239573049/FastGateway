@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Layout from './layout'
 import Loading from './components/Loading'
 import { lazy, Suspense } from 'react'
+import LoginPage from './pages/login'
 const MainLayout = lazy(() => import('./pages/layout'))
 const NotFoundPage = lazy(() => import('./pages/not-page'))
 const ServerPage = lazy(() => import('./pages/server/page'))
@@ -99,7 +100,12 @@ const router = createBrowserRouter([
 
         ]
       },
-
+      {
+        path: 'login',
+        element: <Suspense fallback={<Loading></Loading>}>
+          <LoginPage />
+        </Suspense>
+      }
     ]
   }
 ])

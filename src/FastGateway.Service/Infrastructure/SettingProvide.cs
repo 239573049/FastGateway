@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FastGateway.Service.Infrastructure;
 
-public class SettingProvide(MasterContext context)
+public class SettingProvide(MasterContext context) : IScopeDependency
 {
     public async ValueTask<int> GetIntAsync(string key)
     {

@@ -1,18 +1,23 @@
 import { DomainName, ServiceType } from "@/types";
-import { SpotlightCard, Tag } from "@lobehub/ui";
+import { SpotlightCard } from "@lobehub/ui";
 import { memo, useEffect, useState, } from "react";
 import { Button, Dropdown, Empty } from 'antd';
 import { Flexbox } from 'react-layout-kit';
-import { useDomainStore } from "@/store/server";
+import { useDomainStore, useRouteStore } from "@/store/server";
 import { AlignJustify } from 'lucide-react'
 import { useParams } from "react-router-dom";
 import Divider from "@lobehub/ui/es/Form/components/FormDivider";
 import { deleteDomain, enableService, getDomains } from "@/services/DomainNameService";
 import UpdateDomain from "./UpdateDomain";
 
+import { Tag } from 'antd';
+
 const DomainNamesList = memo(() => {
     const [updateVisible, setUpdateVisible] = useState(false);
     const [updateDomain, setUpdateDomain] = useState<DomainName | null>(null);
+    const [loading] = useRouteStore((state) => [state.loading]);
+    const [tags, setTags] = useState<string[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     const { id } = useParams<{ id: string }>();
     const {
@@ -23,10 +28,17 @@ const DomainNamesList = memo(() => {
 
     function loadDomainName() {
         if (id) {
-
             getDomains(id)
                 .then((res) => {
                     setDomains(res.data);
+                    tags.splice(0, tags.length);
+                    res.data.forEach((item: any) => {
+                        tags.push(item.domains);
+                    });
+                    // tags字符串数组去重
+                    let newTags = Array.from(new Set(tags.flat()));
+
+                    setTags([...newTags]);
                 });
         }
     }
@@ -92,6 +104,7 @@ const DomainNamesList = memo(() => {
                         }}
                     >
                         <Button
+                            loading={loading}
                             type="text"
                             style={{
                                 float: 'right',
@@ -140,17 +153,49 @@ const DomainNamesList = memo(() => {
 
     return (
         <>
-            <br />
-            <SpotlightCard items={domains} renderItem={render} />
+            <div style={{
+                padding: '10px',
+            }}>
+                <span style={{
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    marginTop: '10px',
+                    marginBottom: '10px',
+                    marginRight: '10px',
+                    flex: 1,
+                }}>
+                    域名过滤
+                </span>
+                {
+                    tags.map((x, i) => {
+                        return (<Tag.CheckableTag
+                            onChange={(checked) => {
+                                if (checked) {
+                                    setSelectedTags([...selectedTags, x]);
+                                } else {
+                                    setSelectedTags(selectedTags.filter(y => y !== x));
+                                }
+                            }}
+                            style={{
+                                background: selectedTags.includes(x) ? '#1890ff' : 'transparent',
+                            }}
+                            checked={selectedTags.includes(x)}
+                            key={i}>{x}</Tag.CheckableTag>)
+                    })
+                }
+            </div>
+
+            <SpotlightCard items={domains.filter(x => selectedTags.length === 0 || x.domains.some((y:any) => selectedTags.includes(y)))}
+                renderItem={render} />
             {
                 domains.length === 0 && <Empty />
             }
-            <UpdateDomain visible={updateVisible} domainName={updateDomain} onClose={()=>{
+            <UpdateDomain visible={updateVisible} domainName={updateDomain} onClose={() => {
                 setUpdateVisible(false);
-            }} onOk={()=>{
+            }} onOk={() => {
                 setUpdateVisible(false);
                 loadDomainName();
-            }}/>
+            }} />
         </>
     );
 });

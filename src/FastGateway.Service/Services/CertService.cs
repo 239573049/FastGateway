@@ -206,11 +206,12 @@ public static class CertService
         return true;
     }
 
-    public static WebApplication MapCert(this WebApplication app)
+    public static IEndpointRouteBuilder MapCert(this IEndpointRouteBuilder app)
     {
         var cert = app.MapGroup("/api/v1/cert")
             .WithTags("证书")
             .WithDescription("证书管理")
+            .RequireAuthorization()
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("证书");
 

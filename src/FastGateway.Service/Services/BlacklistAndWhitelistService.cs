@@ -62,11 +62,12 @@ public static class BlacklistAndWhitelistService
         return app;
     }
 
-    public static WebApplication MapBlacklistAndWhitelist(this WebApplication app)
+    public static IEndpointRouteBuilder MapBlacklistAndWhitelist(this IEndpointRouteBuilder app)
     {
         var domain = app.MapGroup("/api/v1/black-and-white")
             .WithTags("黑白名单")
             .WithDescription("黑白名单管理")
+            .RequireAuthorization()
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("黑白名单");
 

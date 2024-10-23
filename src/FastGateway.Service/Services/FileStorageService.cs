@@ -19,11 +19,12 @@ public static class FileStorageService
         return driveLetter;
     }
 
-    public static WebApplication MapFileStorage(this WebApplication app)
+    public static IEndpointRouteBuilder MapFileStorage(this IEndpointRouteBuilder app)
     {
         var fileStorage = app.MapGroup("/api/v1/filestorage")
             .WithTags("文件存储")
             .WithDescription("文件存储管理")
+            .RequireAuthorization()
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("文件存储");
 
@@ -362,6 +363,49 @@ public static class FileStorageService
 
             Directory.CreateDirectory(path);
         }).WithDescription("创建文件/文件夹").WithDisplayName("创建文件/文件夹").WithTags("文件存储");
+
+        fileStorage.MapGet("property", (string path) =>
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return ResultDto.CreateFailed("路径不能为空");
+            }
+
+            if (File.Exists(path))
+            {
+                var fileInfo = new FileInfo(path);
+                var fileProperties = new
+                {
+                    Type = "File",
+                    fileInfo.Name,
+                    fileInfo.FullName,
+                    fileInfo.Extension,
+                    fileInfo.Length,
+                    fileInfo.CreationTime,
+                    fileInfo.LastAccessTime,
+                    fileInfo.LastWriteTime
+                };
+                return ResultDto.CreateSuccess(fileProperties);
+            }
+            else if (Directory.Exists(path))
+            {
+                var directoryInfo = new DirectoryInfo(path);
+                var directoryProperties = new
+                {
+                    Type = "Directory",
+                    directoryInfo.Name,
+                    directoryInfo.FullName,
+                    directoryInfo.CreationTime,
+                    directoryInfo.LastAccessTime,
+                    directoryInfo.LastWriteTime
+                };
+                return ResultDto.CreateSuccess(directoryProperties);
+            }
+            else
+            {
+                return ResultDto.CreateFailed("路径不存在");
+            }
+        }).WithDescription("获取文件或目录属性").WithDisplayName("获取文件或目录属性").WithTags("文件存储");
 
         return app;
     }

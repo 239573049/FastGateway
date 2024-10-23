@@ -118,10 +118,18 @@ const DestkopLayout = memo(() => {
     }
 
     useEffect(() => {
-        // 根据location.pathname更新memuKey
         const key = location.pathname.replace('/', '');
         setMemuKey(key);
     }, [location]);
+
+    useEffect(() => {
+        // 如果没有token则跳转到登录页
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login');
+        }
+        
+    }, []);
 
     const userStore = useUserStore();
     return (

@@ -1,13 +1,17 @@
 
 import { Flexbox } from 'react-layout-kit';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import Divider from '@lobehub/ui/es/Form/components/FormDivider';
 import { useState } from 'react';
 import CreateDomain from './CreateDomain';
+import { reloadServer } from '@/services/ServerService';
+import { useParams } from "react-router-dom";
+import { useRouteStore } from '@/store/server';
 
 export default function Header() {
     const [createVisible, setCreateVisible] = useState(false);
-    
+    const { id } = useParams<{ id: string }>();
+    const [loading, setLoading] = useRouteStore((state) => [state.loading, state.setLoading]);
 
     return (<>
         <Flexbox style={{
@@ -27,6 +31,23 @@ export default function Header() {
                 marginRight: '20px',
                 marginBottom: '20px'
             }}>
+                <Button
+                    type='primary'
+                    loading={loading}
+                    onClick={() => {
+                        setLoading(true);
+                        reloadServer(id)
+                            .then(() => {
+                                message.success('刷新成功');
+                            }).finally(() => {
+                                setLoading(false);
+                            });
+                    }}
+                    style={{
+                        marginRight: '10px',
+                    }}>
+                    刷新路由
+                </Button>
                 <Button
                     onClick={() => {
                         setCreateVisible(true);

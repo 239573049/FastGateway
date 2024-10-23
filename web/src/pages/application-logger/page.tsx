@@ -1,4 +1,5 @@
 import { getApplicationLogger } from '@/services/ApplicationLoggerService';
+import { Tooltip } from '@lobehub/ui';
 import { Table } from 'antd';
 import { useEffect, useState } from 'react';
 
@@ -8,15 +9,19 @@ export default function ApplicationLoggerPage() {
         pageSize: 10,
     });
     const [total, setTotal] = useState(0);
-    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [data, setData] = useState<any[]>([]);
 
     function loadData() {
+        setLoading(true);
         getApplicationLogger(input.page, input.pageSize)
             .then((res) => {
                 const { items, total } = res.data;
-                setData(items);
+                setData([...items]);
                 setTotal(total);
-            })
+            }).finally(() => {
+                setLoading(false);
+            });
     }
 
     useEffect(() => {
@@ -26,6 +31,8 @@ export default function ApplicationLoggerPage() {
     return (
         <>
             <Table
+                scroll={{ y: 65 * 9 }}
+                loading={loading}
                 columns={[
                     {
                         title: '请求时间',
@@ -70,12 +77,15 @@ export default function ApplicationLoggerPage() {
                         dataIndex: 'userAgent',
                         key: 'userAgent',
                         render: (text) => {
-                            return <div style={{
-                                width: '200px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                            }}>{text}</div>
+                            return <>
+                            <Tooltip title={text}>
+                                <div style={{
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}>{text}</div>
+                            </Tooltip>
+                            </>
                         }
                     },
                     {
