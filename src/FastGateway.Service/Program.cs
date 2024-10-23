@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using FastGateway.Service.BackgroundTask;
 using FastGateway.Service.DataAccess;
@@ -18,7 +19,13 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ContentRootPath = AppContext.BaseDirectory,
+            Args = args
+        });
 
         var logger = new LoggerConfiguration()
             .WriteTo.Console()
@@ -28,6 +35,15 @@ public static class Program
 
         builder.Host.UseSerilog(logger);
         builder.Services.AddHttpClient();
+
+        // 判断是否window，
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            builder.Services.AddWindowsService(option =>
+            {
+                option.ServiceName = "FastGateway";
+            });
+        }
 
         var jwtOptions = builder.Configuration.GetSection(JwtOptions.Name).Get<JwtOptions>();
 

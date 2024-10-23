@@ -25,6 +25,7 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
+      <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0-rc.2.24473.5" />
       <PackageReference Include="Serilog" Version="4.0.1-dev-02205" />
       <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
       <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
@@ -37,6 +38,9 @@
 
     <ItemGroup>
       <None Update="gateway.pfx">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="install-window.bat">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="ip2region.xdb">
