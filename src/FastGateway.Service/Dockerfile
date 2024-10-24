@@ -1,5 +1,5 @@
-﻿FROM registry.token-ai.cn/dotnet/aspnet:9.0-preview AS base
-USER root
+﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+USER $APP_UID
 RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo Asia/Shanghai > /etc/timezone
 RUN  apt update \
     && apt-get install -y --no-install-recommends curl \
@@ -11,7 +11,7 @@ RUN  apt update \
     && apt-get purge -y --auto-remove wget && apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 EXPOSE 8080
-
+EXPOSE 8081
 
 FROM node as builder
 WORKDIR /src
@@ -19,8 +19,7 @@ COPY web .
 RUN npm i
 RUN npm run build
 
-
-FROM registry.token-ai.cn/dotnet/sdk:9.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/FastGateway.Service/FastGateway.Service.csproj", "src/FastGateway.Service/"]

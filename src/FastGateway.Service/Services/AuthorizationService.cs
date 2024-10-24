@@ -10,7 +10,6 @@ public static class AuthorizationServiceExtensions
        var routeGroupBuilder =  app.MapGroup("/api/v1/authorization")
             .WithTags("授权")
             .WithDescription("授权")
-            .RequireAuthorization()
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("授权");
 
