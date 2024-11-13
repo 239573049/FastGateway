@@ -14,5 +14,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker login -u aidotnet -p ${{ secrets.DOCKER }} && docker build . --file src/FastGateway.Service/Dockerfile --tag aidotnet/fast-gateway:latest && docker push aidotnet/fast-gateway:latest
+    - name: 登录Docker Hub
+      run: docker login -u aidotnet -p ${{ secrets.DOCKER }} 
+    - uses: actions/checkout@v4
+    - name: 构建镜像
+      run: docker build . --file src/FastGateway.Service/Dockerfile --tag aidotnet/fast-gateway:latest
+    - uses: actions/checkout@v4
+    - name: 推送镜像
+      run: docker push aidotnet/fast-gateway:latest
