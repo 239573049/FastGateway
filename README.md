@@ -47,7 +47,7 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 
 ﻿services:
   fast-gateway.service:
-    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
+    image: aidotnet/fast-gateway
     container_name: fast-gateway.service
     restart: always
     volumes:
@@ -70,7 +70,7 @@ Password: Aa123456
 
 ﻿services:
   fast-gateway.service:
-    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
+    image: aidotnet/fast-gateway
     container_name: fast-gateway.service
     restart: always
     volumes:
