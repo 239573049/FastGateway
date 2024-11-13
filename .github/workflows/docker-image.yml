@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker login -u hejiale010426 -p ${{ secrets.DOCKER }} && docker build . --file src/FastGateway.Service/Dockerfile --tag hejiale010426/fast-gateway:latest && docker push hejiale010426/fast-gateway:latest
+      run: docker login -u aidotnet -p ${{ secrets.DOCKER }} && docker build . --file src/FastGateway.Service/Dockerfile --tag aidotnet/fast-gateway:latest && docker push aidotnet/fast-gateway:latest
