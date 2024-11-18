@@ -69,9 +69,12 @@ public static class Program
         {
             options.SerializerOptions.Converters.Add(new DateTimeJsonConverter());
         });
+        builder.Services.AddSystemUsage();
+        
         builder.Services.AddResponseCompression();
         builder.Services.AddSingleton<ISearcher>(new Searcher(CachePolicy.File, "ip2region.xdb"));
         builder.Services.AddHostedService<LoggerBackgroundTask>();
+        builder.Services.AddHostedService<RenewSSLBackgroundService>();
         builder.Services.AddHostedService<ClientRequestBackgroundTask>();
         builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
         {
@@ -81,7 +84,19 @@ public static class Program
                 Directory.CreateDirectory("./data");
             }
 
-            optionsBuilder.UseSqlite("Data Source=./data/gateway.db")
+            optionsBuilder.UseSqlite(builder.Configuration["Master"])
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+        });
+
+        builder.Services.AddDbContext<LoggerContext>(optionsBuilder =>
+        {
+            // 判断当前目录是否存在data文件夹
+            if (!Directory.Exists("./data"))
+            {
+                Directory.CreateDirectory("./data");
+            }
+
+            optionsBuilder.UseSqlite(builder.Configuration["Logger"])
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
 
@@ -89,10 +104,12 @@ public static class Program
 
         using (var scope = app.Services.CreateScope())
         {
+            var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
             var dbContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
             await dbContext.Database.MigrateAsync();
+			await loggerContext.Database.MigrateAsync();
 
-            var certs = await dbContext.Certs.Where(x => x.Expired == false).ToListAsync();
+			var certs = await dbContext.Certs.Where(x => x.Expired == false).ToListAsync();
 
             CertService.InitCert(certs);
 

@@ -19,15 +19,15 @@ public static class ApplicationLoggerService
             .RequireAuthorization()
             .WithDisplayName("应用日志");
 
-        applicationLogger.MapGet(string.Empty, async (MasterContext dbContext, int page, int pageSize) =>
+        applicationLogger.MapGet(string.Empty, async (LoggerContext loggerContext, int page, int pageSize) =>
         {
-            var result = await dbContext.ApplicationLoggers
+            var result = await loggerContext.ApplicationLoggers
                 .OrderByDescending(x => x.RequestTime)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var total = await dbContext.ApplicationLoggers.CountAsync();
+            var total = await loggerContext.ApplicationLoggers.CountAsync();
 
             return new PagingDto<ApplicationLogger>(total, result);
         });

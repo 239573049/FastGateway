@@ -1,10 +1,8 @@
-import { config } from '../config'
 
 
 export async function getQpsChart() {
     // 拼接baseUrl并且处理/重复问题
-    const baseUrl = config.FAST_API_URL?.replace(/\/$/, "") ?? ""
-    const url = `${baseUrl}/api/v1/qps`.replace(/([^:]\/)\/+/g, '$1');
+    const url = `/api/v1/qps`
     const response = await window.fetch(url, {
         method: 'GET',
         headers: {

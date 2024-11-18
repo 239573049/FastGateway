@@ -27,6 +27,8 @@ public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISear
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // 暂停1分钟
+        await Task.Delay(1000 * 60, stoppingToken);
         _ = Start(stoppingToken);
         await RunLoggerSave(stoppingToken);
     }
@@ -35,6 +37,7 @@ public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISear
     {
         await using var scope = serviceProvider.CreateAsyncScope();
         var masterContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
+        var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<LoggerBackgroundTask>>();
 
         while (!stoppingToken.IsCancellationRequested)
@@ -89,7 +92,7 @@ public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISear
 
                 var ips = list.Keys.ToList();
 
-                var existIps = await masterContext.ClientRequestLoggers
+                var existIps = await loggerContext.ClientRequestLoggers
                     .Where(x => x.RequestTime == now && ips.Contains(x.Ip))
                     .Select(x => x.Ip)
                     .ToListAsync(stoppingToken);
@@ -123,14 +126,14 @@ public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISear
 
                 foreach (var item in updateLoggerList)
                 {
-                    await masterContext.ClientRequestLoggers.Where(x => x.RequestTime == now && x.Ip == item.Ip)
+                    await loggerContext.ClientRequestLoggers.Where(x => x.RequestTime == now && x.Ip == item.Ip)
                         .ExecuteUpdateAsync(x => x.SetProperty(a => a.Total, a => a.Total + item.Total)
                                 .SetProperty(a => a.Success, a => a.Success + item.Success)
                                 .SetProperty(a => a.Fail, a => a.Fail),
                             cancellationToken: stoppingToken);
                 }
 
-                await masterContext.ClientRequestLoggers.AddRangeAsync(newLoggerList, stoppingToken);
+                await loggerContext.ClientRequestLoggers.AddRangeAsync(newLoggerList, stoppingToken);
 
                 await masterContext.SaveChangesAsync(stoppingToken);
             }

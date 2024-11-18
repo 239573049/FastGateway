@@ -22,6 +22,8 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // 暂停1分钟
+        await Task.Delay(1000 * 60, stoppingToken);
         _ = Start(stoppingToken);
         await RunLoggerSave(stoppingToken);
     }
@@ -30,6 +32,7 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
     {
         await using var scope = serviceProvider.CreateAsyncScope();
         var masterContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
+        var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<LoggerBackgroundTask>>();
 
         while (!stoppingToken.IsCancellationRequested)
@@ -69,7 +72,7 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
                         .TrimEnd('|');
                 }
 
-                await masterContext.ApplicationLoggers.AddRangeAsync(loggerList, stoppingToken);
+                await loggerContext.ApplicationLoggers.AddRangeAsync(loggerList, stoppingToken);
                 await masterContext.SaveChangesAsync(stoppingToken);
             }
             catch (Exception e)

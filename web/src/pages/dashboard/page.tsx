@@ -8,11 +8,13 @@ import { Row, Col, Card, Statistic } from 'antd';
 import { getQpsChart } from '@/services/QpsService';
 import { Tag, Tooltip } from '@lobehub/ui';
 import { bytesToSize } from '@/utils/byte';
-import { GetDashboard } from '@/services/DashboardService';
+import { GetDashboard, realtime } from '@/services/DashboardService';
 import Map from './features/map';
 import MapList from './features/map.list';
+import { DonutChart, LineChart, LineChartProps, ProgressBar } from '@lobehub/charts';
 
 const Dashboard = () => {
+
     const [qps, setQps] = useState(0)
     const [locationData, setLocationData] = useState([] as any[]);
 
@@ -26,10 +28,13 @@ const Dashboard = () => {
         fail: 0,
         todayTotal: 0,
         todaySuccess: 0,
-        todayFail: 0
+        todayFail: 0,
+        totalMemory: 0,
+        memoryUsage: 0,
     });
-
-
+    const [diskChart, setDiskChart] = useState<any>([])
+    const [cpuChart, setCpuChart] = useState<any>([])
+    const [memoryChart, setMemoryChart] = useState<any>([])
     const [qps_chartData] = useState({
         tooltip: {
             trigger: 'axis',
@@ -118,17 +123,63 @@ const Dashboard = () => {
             }
         }
 
-        stream();
-        loadDashboard();
 
+        const diakChart = [] as any[]
+        const cpuChart = [] as any[]
+        async function loadRealtime() {
+            const response = await realtime() as any;
+            for await (const item of response) {
+                const { cpu, memoryUsage, totalMemory, useMemory, diskRead, diskWrite } = item;
+                // 如果cpuChart数量存在100个则删除第一个
+                if (diakChart.length >= 100) {
+                    diakChart.shift();
+                    cpuChart.shift();
+                }
+
+                const memoryChart = [{
+                    name: '剩余内存',
+                    value: totalMemory - useMemory,
+                }, {
+                    name: '使用内存',
+                    value: useMemory,
+                }];
+
+                setMemoryChart([...memoryChart])
+                setData({
+                    ...data,
+                    totalMemory,
+                    memoryUsage
+                })
+                cpuChart.push({
+                    CPU使用率: cpu,
+                    name: 'CPU',
+                    date: new Date().toLocaleTimeString('en-GB', { hour12: false })
+                });
+                setCpuChart([...cpuChart]);
+                diakChart.push(
+                    {
+                        read: diskRead,
+                        write: diskWrite,
+                        date: new Date().toLocaleTimeString('en-GB', { hour12: false })
+                    })
+                setDiskChart([...diakChart]);
+
+            }
+        }
+
+        stream();
+        loadRealtime();
+        loadDashboard();
         // 定时器
         const timer = setInterval(() => {
             stream();
+            loadRealtime();
         }, 10000);
 
+
         return () => {
-            clearInterval(timer);
             window.removeEventListener('resize', resizeHandler);
+            timer && clearInterval(timer);
         }
     }, []);
 
@@ -139,8 +190,22 @@ const Dashboard = () => {
             })
     }
 
+    const percentFormatter: LineChartProps['valueFormatter'] = (number) => {
+        return new Intl.NumberFormat('us').format(number).toString() + "%";
+    };
+
+    const diskFormatter: LineChartProps['valueFormatter'] = (number) => {
+        // 默认是btye需要将byte转换可视化字符串
+        return bytesToSize(number);
+    }
+
+
     return (
-        <div style={{ padding: '20px' }}>
+        <div style={{
+            padding: '20px',
+            overflow: 'auto',
+            height: "100%"
+        }}>
             <Card style={{
                 float: 'right',
                 width: '280px',
@@ -226,6 +291,59 @@ const Dashboard = () => {
                         height: '120px',
                     }} hoverable>
                         <Statistic title="今日失败总数" value={data.todayFail} />
+                    </Card>
+                </Col>
+            </Row>
+            <Row style={{
+                marginTop: '20px',
+            }} gutter={16}>
+                <Col span={8}>
+                    <Card style={{
+                        height: '420px',
+                    }}
+                        title="CPU"
+                        hoverable>
+                        <LineChart
+                            categories={['CPU使用率']}
+                            data={cpuChart}
+                            index="date"
+                            valueFormatter={percentFormatter}
+                        />
+                    </Card>
+                </Col>
+                <Col span={8}>
+                    <Card
+                        title="内存"
+                        style={{
+                            height: '420px',
+                        }} hoverable>
+                        <DonutChart
+                            label={"总内存" + bytesToSize(data.totalMemory, 0)}
+                            data={memoryChart}
+                            noDataText="暂无数据"
+                            onValueChange={(v) => console.log(v)}
+                            valueFormatter={diskFormatter}
+                            variant="donut"
+                        />
+                        <ProgressBar 
+                        
+                        style={{
+                            marginTop: '40px',
+                        }} color={'blue'} tooltip={`内存使用率${data.memoryUsage}%`} value={data.memoryUsage} />
+                    </Card>
+                </Col>
+                <Col span={8}>
+                    <Card
+                        title='硬盘读/写'
+                        style={{
+                            height: '420px',
+                        }} hoverable>
+                        <LineChart
+                            categories={['read', 'write']}
+                            data={diskChart}
+                            index="date"
+                            valueFormatter={diskFormatter}
+                        />
                     </Card>
                 </Col>
             </Row>
