@@ -41,7 +41,7 @@ public static class DashboardService
             {
                 // 获取系统使用率
 
-                var cpu = systemUsage.GetCpuUsage();
+                var cpu = await systemUsage.GetCpuUsage();
                 var memory = systemUsage.GetMemoryUsage();
                 var disk = systemUsage.GetDiskUsage();
 
@@ -57,8 +57,6 @@ public static class DashboardService
                 })}\n\n");
 
                 await context.Response.Body.FlushAsync();
-
-                await Task.Delay(1000);
             }
         });
 

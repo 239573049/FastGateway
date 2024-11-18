@@ -5,7 +5,7 @@ namespace FastGateway.Service.Infrastructure;
 
 public interface ISystemUsage
 {
-    float GetCpuUsage();
+    Task<float> GetCpuUsage();
 
     (float memoryUsage, ulong totalMemory, ulong useMemory) GetMemoryUsage();
 
@@ -42,8 +42,9 @@ public class WindowsSystemUsage : ISystemUsage
         _ioWriteCounter = new("PhysicalDisk", "Disk Write Bytes/sec", "_Total");
     }
 
-    public float GetCpuUsage()
+    public async Task<float> GetCpuUsage()
     {
+        await Task.Delay(1000);
         return cpuCounter.NextValue();
     }
 
@@ -97,87 +98,104 @@ public class WindowsSystemUsage : ISystemUsage
 
 public class LinuxSystemUsage : ISystemUsage
 {
-    public float GetCpuUsage()
+    public async Task<float> GetCpuUsage()
     {
-        var result = ExecuteCommand("mpstat 1 1 | awk '/^Average:/ {print 100 - $NF}'", "/bin/bash");
-        if (string.IsNullOrWhiteSpace(result))
-        {
-            return 0;
-        }
+        var cpuInfo1 = GetCpuTimes();
+        await Task.Delay(1000);
+        var cpuInfo2 = GetCpuTimes();
 
-        var lines = result.Split('\n');
-        if (lines.Length == 0 || !float.TryParse(lines[0].Trim(), out var usage))
-        {
-            return 0;
-        }
+        var idleTime = cpuInfo2.idle - cpuInfo1.idle;
+        var totalTime = cpuInfo2.total - cpuInfo1.total;
 
-        return usage;
+        return (1.0f - (float)idleTime / totalTime) * 100;
+    }
+
+    private (ulong idle, ulong total) GetCpuTimes()
+    {
+        var cpuInfo = ExecuteCommand("cat /proc/stat | grep 'cpu '", "/bin/bash");
+        var parts = cpuInfo.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+        var user = ulong.Parse(parts[1]);
+        var nice = ulong.Parse(parts[2]);
+        var system = ulong.Parse(parts[3]);
+        var idle = ulong.Parse(parts[4]);
+        var iowait = ulong.Parse(parts[5]);
+        var irq = ulong.Parse(parts[6]);
+        var softirq = ulong.Parse(parts[7]);
+        var steal = ulong.Parse(parts[8]);
+
+        var total = user + nice + system + idle + iowait + irq + softirq + steal;
+
+        return (idle, total);
     }
 
     public (float memoryUsage, ulong totalMemory, ulong useMemory) GetMemoryUsage()
     {
-        var result = ExecuteCommand("free -m | awk '/Mem:/ {print}'", "/bin/bash");
-        var lines = result.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length == 0 || !ulong.TryParse(lines[1].Trim(), out var total) ||
-            !ulong.TryParse(lines[2].Trim(), out var usage))
+        var memInfo = ExecuteCommand("cat /proc/meminfo", "/bin/bash");
+        var lines = memInfo.Split('\n');
+        ulong totalMemory = 0;
+        ulong freeMemory = 0;
+        ulong availableMemory = 0;
+
+        foreach (var line in lines)
         {
-            return (0, 0, 0);
+            var parts = line.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2) continue;
+
+            var key = parts[0].Trim();
+            var value = ulong.Parse(parts[1].Trim().Split(' ')[0]);
+
+            switch (key)
+            {
+                case "MemTotal":
+                    totalMemory = value;
+                    break;
+                case "MemFree":
+                    freeMemory = value;
+                    break;
+                case "MemAvailable":
+                    availableMemory = value;
+                    break;
+            }
         }
 
-        return ((float)Math.Round(Math.Round((double)usage / total, 1), 1), total * 1024 * 1024, usage * 1024 * 1024);
+        ulong usedMemory = totalMemory - availableMemory;
+        float memoryUsage = (float)usedMemory / totalMemory * 100;
+
+        return (memoryUsage, totalMemory, usedMemory);
     }
 
     public (float read, float write) GetDiskUsage()
     {
-        var result = ExecuteCommand("iostat -dx 1 1", "/bin/bash");
-        if (string.IsNullOrWhiteSpace(result))
-        {
-            return (0, 0);
-        }
+        var diskStats = ExecuteCommand("cat /proc/diskstats", "/bin/bash");
+        var lines = diskStats.Split('\n');
+        float readBytes = 0;
+        float writeBytes = 0;
 
-        var lines = result.Split('\n');
-
-        float read = 0;
-        float write = 0;
         foreach (var line in lines)
         {
-            if (!string.IsNullOrWhiteSpace(line))
+            var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length > 13)
             {
-                var data = line.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-                if (data.Length > 8)
-                {
-                    //读
-                    if (float.TryParse(data[2], out var readKbs))
-                    {
-                        read += readKbs;
-                    }
-
-                    //写
-                    if (float.TryParse(data[8], out var writeKbs))
-                    {
-                        write += writeKbs;
-                    }
-                }
+                readBytes += float.Parse(parts[5]) * 512 / 1024; // sectors read * 512 bytes per sector to KB
+                writeBytes += float.Parse(parts[9]) * 512 / 1024; // sectors written * 512 bytes per sector to KB
             }
         }
 
-        return (read, write);
+        return (readBytes, writeBytes);
     }
-
 
     private static string ExecuteCommand(string pmCommand, string executor)
     {
         using var process = new Process();
-        process.StartInfo = new ProcessStartInfo(executor, string.Empty)
+        process.StartInfo = new ProcessStartInfo(executor, "-c \"" + pmCommand + "\"")
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            UseShellExecute = false
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
         process.Start();
-        process.StandardInput.WriteLine(pmCommand);
-        //process.StandardInput.WriteLine("netstat -an |grep ESTABLISHED |wc -l");
-        process.StandardInput.Close();
         var output = process.StandardOutput.ReadToEnd();
         process.WaitForExit();
         return output;
