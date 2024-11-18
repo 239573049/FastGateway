@@ -14,7 +14,6 @@ public static class DashboardService
             .WithTags("仪表盘")
             .RequireAuthorization()
             .WithDescription("仪表盘")
-            .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("仪表盘");
 
         dashboard.MapGet(string.Empty, async (LoggerContext loggerContext) =>
@@ -32,7 +31,8 @@ public static class DashboardService
                 await loggerContext.ClientRequestLoggers.Where(x => x.RequestTime == now).SumAsync(x => x.Fail);
 
             return dashboardDto;
-        });
+        })
+        .AddEndpointFilter<ResultFilter>();
 
         // 实时数据
         dashboard.MapGet("/realtime", async (ISystemUsage systemUsage, HttpContext context) =>
