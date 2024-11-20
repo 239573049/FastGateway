@@ -130,40 +130,41 @@ public class LinuxSystemUsage : ISystemUsage
     }
 
     public (float memoryUsage, ulong totalMemory, ulong useMemory) GetMemoryUsage()
-    {
-        var memInfo = ExecuteCommand("cat /proc/meminfo", "/bin/bash");
-        var lines = memInfo.Split('\n');
-        ulong totalMemory = 0;
-        ulong freeMemory = 0;
-        ulong availableMemory = 0;
+	{
+		var memInfo = ExecuteCommand("cat /proc/meminfo", "/bin/bash");
+		var lines = memInfo.Split('\n');
+		ulong totalMemory = 0;
+		ulong availableMemory = 0;
 
-        foreach (var line in lines)
-        {
-            var parts = line.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 2) continue;
+		foreach (var line in lines)
+		{
+			var parts = line.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+			if (parts.Length < 2) continue;
 
-            var key = parts[0].Trim();
-            var value = ulong.Parse(parts[1].Trim().Split(' ')[0]);
+			var key = parts[0].Trim();
+			var value = ulong.Parse(parts[1].Trim().Split(' ')[0]);
 
-            switch (key)
-            {
-                case "MemTotal":
-                    totalMemory = value;
-                    break;
-                case "MemFree":
-                    freeMemory = value;
-                    break;
-                case "MemAvailable":
-                    availableMemory = value;
-                    break;
-            }
-        }
+			switch (key)
+			{
+				case "MemTotal":
+					totalMemory = value;
+					break;
+				case "MemAvailable":
+					availableMemory = value;
+					break;
+			}
+		}
 
-        ulong usedMemory = totalMemory - availableMemory;
-        float memoryUsage = (float)usedMemory / totalMemory * 100;
+		// 默认单位是KB，需要转换byte
+		totalMemory *= 1024;
+		availableMemory *= 1024;
 
-        return (memoryUsage, totalMemory, usedMemory);
-    }
+		ulong usedMemory = totalMemory - availableMemory;
+		float memoryUsage = (float)usedMemory / totalMemory * 100;
+
+
+		return (memoryUsage, totalMemory, usedMemory);
+	}
 
     public (float read, float write) GetDiskUsage()
     {
