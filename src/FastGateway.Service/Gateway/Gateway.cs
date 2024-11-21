@@ -214,6 +214,7 @@ public static class Gateway
             }
 
             app.UseInitGatewayMiddleware();
+            
 
             app.UseMiddleware<ApplicationLoggerMiddleware>();
             app.UseMiddleware<ClientRequestLoggerMiddleware>();
@@ -252,6 +253,9 @@ public static class Gateway
 
             // 如果存在泛域名则需要保留原始Host
             if (context.Route.Match.Hosts?.Any(x => x.Contains('*')) == true)
+            {
+                context.AddOriginalHost(true);
+            }else if (server.CopyRequestHost)
             {
                 context.AddOriginalHost(true);
             }
@@ -300,20 +304,6 @@ public static class Gateway
             }
 
             #endregion
-
-            if (server.CopyRequestHost)
-            {
-                context.AddRequestTransform(async transformContext =>
-                {
-                    // 获取请求的host
-                    var host = transformContext.HttpContext.Request.Host.Host;
-
-                    // 设置到请求头
-                    transformContext.ProxyRequest.Headers.Host = host;
-
-                    await Task.CompletedTask.ConfigureAwait(false);
-                });
-            }
         });
 
         return builder;
