@@ -18,6 +18,13 @@ public class LoggerContext(DbContextOptions<LoggerContext> options) : DbContext(
     
     public DbSet<ClientRequestLogger> ClientRequestLoggers { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+
+        optionsBuilder.LogTo(_ => {});
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

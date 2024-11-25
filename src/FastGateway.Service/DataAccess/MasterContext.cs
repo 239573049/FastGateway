@@ -25,6 +25,13 @@ public sealed class MasterContext(DbContextOptions<MasterContext> options) : DbC
 
     public DbSet<Setting> Settings { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+
+        optionsBuilder.LogTo(_ => {});
+    }
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
