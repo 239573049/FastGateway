@@ -28,6 +28,7 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
         await using var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
 
         int count = 0;
+        var loggers = new List<ApplicationLogger>();
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -53,11 +54,13 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
                     .TrimStart('|')
                     .TrimEnd('|');
 
-                await loggerContext.ApplicationLoggers.AddAsync(item, stoppingToken);
+                loggers.Add(item);
                 count++;
-                if (count >= 100)
+                if (count >= 50)
                 {
+                    await loggerContext.ApplicationLoggers.AddRangeAsync(loggers, stoppingToken);
                     await loggerContext.SaveChangesAsync(stoppingToken);
+                    loggers.Clear();
                     count = 0;
                 }
             }
