@@ -63,7 +63,7 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
 
                 if (isRenew)
                 {
-                    CertService.InitCert(await dbContext.Certs.ToArrayAsync(cancellationToken: stoppingToken));
+                    CertService.InitCert(await dbContext.Certs.ToListAsync(cancellationToken: stoppingToken));
                 }
 
                 // 每24小时检查一次

@@ -75,7 +75,6 @@ public static class ServerService
             dbContext.Servers.Update(server);
 
             await dbContext.SaveChangesAsync();
-            
         }).WithDescription("更新服务").WithDisplayName("更新服务").WithTags("服务");
 
         server.MapPut("{id}/enable", async (MasterContext dbContext, string id) =>
@@ -83,7 +82,6 @@ public static class ServerService
             await dbContext.Servers
                 .Where(x => x.Id == id)
                 .ExecuteUpdateAsync(i => i.SetProperty(a => a.Enable, a => !a.Enable));
-            
         }).WithDescription("启用/禁用服务").WithDisplayName("启用/禁用服务").WithTags("服务");
 
         // 启用服务
@@ -92,15 +90,14 @@ public static class ServerService
             if (!Gateway.Gateway.CheckServerOnline(id))
             {
                 var server = await dbContext.Servers.FirstOrDefaultAsync(x => x.Id == id);
-                var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToArrayAsync();
-                var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToArrayAsync();
-                var rateLimits = await dbContext.RateLimits.ToArrayAsync();
+                var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToListAsync();
+                var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
+                var rateLimits = await dbContext.RateLimits.ToListAsync();
                 await Task.Factory.StartNew(async () =>
                     await Gateway.Gateway.BuilderGateway(server, domainNames, blacklistAndWhitelists, rateLimits));
 
                 for (int i = 0; i < 10; i++)
                 {
-                    // 等待服务启动
                     if (Gateway.Gateway.CheckServerOnline(id))
                     {
                         break;
@@ -124,9 +121,11 @@ public static class ServerService
                 throw new ValidationException("服务不存在");
             }
 
-            Gateway.Gateway.ReloadGateway(server,
-                await dbContext.DomainNames.Where(x => x.ServerId == id).ToArrayAsync());
+            var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToListAsync();
 
+            Gateway.Gateway.ReloadGateway(server, domainNames);
+
+            await Task.Delay(1000);
         }).WithDescription("重载服务").WithDisplayName("重载服务").WithTags("服务");
 
         return app;

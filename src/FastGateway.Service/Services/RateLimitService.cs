@@ -10,10 +10,10 @@ namespace FastGateway.Service.Services;
 
 public static class RateLimitService
 {
-    public static IServiceCollection AddRateLimitService(this IServiceCollection services, RateLimit[] rateLimits)
+    public static IServiceCollection AddRateLimitService(this IServiceCollection services, List<RateLimit> rateLimits)
     {
         // 如果启用限流则添加限流中间件
-        if (rateLimits.Length != 0)
+        if (rateLimits.Count != 0)
         {
             services.AddMemoryCache();
             services.Configure<IpRateLimitOptions>
@@ -48,9 +48,9 @@ public static class RateLimitService
         return services;
     }
 
-    public static IEndpointRouteBuilder UseRateLimitMiddleware(this WebApplication app, RateLimit[] rateLimits)
+    public static IEndpointRouteBuilder UseRateLimitMiddleware(this WebApplication app, List<RateLimit> rateLimits)
     {
-        if (rateLimits.Length == 0)
+        if (rateLimits.Count == 0)
         {
             return app;
         }

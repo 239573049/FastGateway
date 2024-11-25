@@ -43,7 +43,7 @@ public static class CertService
         return CertWebApplications.TryGetValue(domain, out var cert) ? cert : null;
     }
 
-    public static void InitCert(Cert[] certs)
+    public static void InitCert(List<Cert> certs)
     {
         foreach (var cert in certs)
         {
@@ -111,7 +111,7 @@ public static class CertService
                     .SetProperty(x => x.RenewTime, x => cert.RenewTime)
                 );
 
-            InitCert(await masterContext.Certs.ToArrayAsync());
+            InitCert(await masterContext.Certs.Where(x => !x.Expired).ToListAsync());
         }
 
         return ResultDto.CreateSuccess();
