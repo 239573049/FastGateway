@@ -29,9 +29,11 @@ const Dashboard = () => {
         todayTotal: 0,
         todaySuccess: 0,
         todayFail: 0,
+    });
+    const [memory, setMemory] = useState({
         totalMemory: 0,
         memoryUsage: 0,
-    });
+    })
     const [diskChart, setDiskChart] = useState<any>([])
     const [cpuChart, setCpuChart] = useState<any>([])
     const [memoryChart, setMemoryChart] = useState<any>([])
@@ -145,8 +147,7 @@ const Dashboard = () => {
                 }];
 
                 setMemoryChart([...memoryChart])
-                setData({
-                    ...data,
+                setMemory({
                     totalMemory,
                     memoryUsage
                 })
@@ -183,11 +184,9 @@ const Dashboard = () => {
         }
     }, []);
 
-    function loadDashboard() {
-        GetDashboard()
-            .then(res => {
-                setData(res.data)
-            })
+    async function loadDashboard() {
+        const result = await GetDashboard()
+        setData(result.data)
     }
 
     const percentFormatter: LineChartProps['valueFormatter'] = (number) => {
@@ -318,7 +317,7 @@ const Dashboard = () => {
                             height: '420px',
                         }} hoverable>
                         <DonutChart
-                            label={"总内存" + bytesToSize(data.totalMemory, 0)}
+                            label={"总内存" + bytesToSize(memory.totalMemory, 0)}
                             data={memoryChart}
                             noDataText="暂无数据"
                             onValueChange={(v) => console.log(v)}
@@ -329,7 +328,7 @@ const Dashboard = () => {
                         
                         style={{
                             marginTop: '40px',
-                        }} color={'blue'} tooltip={`内存使用率${data.memoryUsage}%`} value={data.memoryUsage} />
+                        }} color={'blue'} tooltip={`内存使用率${memory.memoryUsage}%`} value={memory.memoryUsage} />
                     </Card>
                 </Col>
                 <Col span={8}>
