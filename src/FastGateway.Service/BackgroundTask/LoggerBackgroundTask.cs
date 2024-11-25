@@ -27,11 +27,11 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
         await using var scope = serviceProvider.CreateAsyncScope();
         await using var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
 
+        int count = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                int count = 0;
                 var item = await LoggerBag.Reader.ReadAsync(stoppingToken);
                 
                 if (string.IsNullOrWhiteSpace(item.Ip))
@@ -58,6 +58,7 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
                 if (count >= 100)
                 {
                     await loggerContext.SaveChangesAsync(stoppingToken);
+                    count = 0;
                 }
             }
             catch (Exception e)
