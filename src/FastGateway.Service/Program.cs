@@ -76,7 +76,6 @@ public static class Program
         builder.Services.AddHostedService<LoggerBackgroundTask>();
         builder.Services.AddHostedService<RenewSSLBackgroundService>();
         builder.Services.AddHostedService<ClientRequestBackgroundTask>();
-        builder.Services.AddHostedService<LogCleaningBackgroundService>();
         builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
         {
             // 判断当前目录是否存在data文件夹
