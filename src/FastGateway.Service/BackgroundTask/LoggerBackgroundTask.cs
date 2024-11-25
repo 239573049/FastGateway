@@ -32,33 +32,32 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
             try
             {
                 int count = 0;
-                while (LoggerBag.Reader.TryRead(out var item))
+                var item = await LoggerBag.Reader.ReadAsync(stoppingToken);
+                
+                if (string.IsNullOrWhiteSpace(item.Ip))
+                    continue;
+
+                var locations = searcher.Search(item.Ip)?.Split("|", StringSplitOptions.RemoveEmptyEntries);
+
+                locations = locations?.Where(x => x != "0").ToArray();
+                if (locations == null || locations?.Length == 0)
                 {
-                    if (string.IsNullOrWhiteSpace(item.Ip))
-                        continue;
+                    continue;
+                }
 
-                    var locations = searcher.Search(item.Ip)?.Split("|", StringSplitOptions.RemoveEmptyEntries);
+                item.Country = locations?.First();
+                item.Region = string.Join("|", locations)
+                    .Replace("电信", "")
+                    .Replace("联通", "")
+                    .Replace("移动", "")
+                    .TrimStart('|')
+                    .TrimEnd('|');
 
-                    locations = locations?.Where(x => x != "0").ToArray();
-                    if (locations == null || locations?.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    item.Country = locations?.First();
-                    item.Region = string.Join("|", locations)
-                        .Replace("电信", "")
-                        .Replace("联通", "")
-                        .Replace("移动", "")
-                        .TrimStart('|')
-                        .TrimEnd('|');
-
-                    await loggerContext.ApplicationLoggers.AddAsync(item, stoppingToken);
-                    count++;
-                    if (count >= 100)
-                    {
-                        await loggerContext.SaveChangesAsync(stoppingToken);
-                    }
+                await loggerContext.ApplicationLoggers.AddAsync(item, stoppingToken);
+                count++;
+                if (count >= 100)
+                {
+                    await loggerContext.SaveChangesAsync(stoppingToken);
                 }
             }
             catch (Exception e)

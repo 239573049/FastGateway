@@ -90,7 +90,7 @@ public static class ServerService
             if (!Gateway.Gateway.CheckServerOnline(id))
             {
                 var server = await dbContext.Servers.FirstOrDefaultAsync(x => x.Id == id);
-                var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToListAsync();
+                var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToArrayAsync();
                 var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
                 var rateLimits = await dbContext.RateLimits.ToListAsync();
                 await Task.Factory.StartNew(async () =>
@@ -121,7 +121,7 @@ public static class ServerService
                 throw new ValidationException("服务不存在");
             }
 
-            var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToListAsync();
+            var domainNames = await dbContext.DomainNames.Where(x => x.ServerId == id).ToArrayAsync();
 
             Gateway.Gateway.ReloadGateway(server, domainNames);
 

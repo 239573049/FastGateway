@@ -47,7 +47,7 @@ public static class Gateway
     /// </summary>
     /// <param name="server"></param>
     /// <param name="domainNames"></param>
-    public static void ReloadGateway(Server server, List<DomainName> domainNames)
+    public static void ReloadGateway(Server server, DomainName[] domainNames)
     {
         if (GatewayWebApplications.TryGetValue(server.Id, out var webApplication))
         {
@@ -107,7 +107,7 @@ public static class Gateway
     /// <summary>
     /// 构建网关
     /// </summary>
-    public static async Task BuilderGateway(Server server, List<DomainName> domainNames,
+    public static async Task BuilderGateway(Server server, DomainName[] domainNames,
         List<BlacklistAndWhitelist> blacklistAndWhitelists, List<RateLimit> rateLimits)
     {
         try
@@ -339,7 +339,7 @@ public static class Gateway
     }
 
     private static (IReadOnlyList<RouteConfig> routes,
-        IReadOnlyList<ClusterConfig> clusters) BuildConfig(List<DomainName> domainNames)
+        IReadOnlyList<ClusterConfig> clusters) BuildConfig(DomainName[] domainNames)
     {
         var routes = new List<RouteConfig>();
         var clusters = new List<ClusterConfig>();

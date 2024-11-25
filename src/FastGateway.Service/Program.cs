@@ -76,6 +76,7 @@ public static class Program
         builder.Services.AddHostedService<LoggerBackgroundTask>();
         builder.Services.AddHostedService<RenewSSLBackgroundService>();
         builder.Services.AddHostedService<ClientRequestBackgroundTask>();
+        builder.Services.AddHostedService<LogCleaningBackgroundService>();
         builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
         {
             // 判断当前目录是否存在data文件夹
@@ -109,16 +110,17 @@ public static class Program
             await dbContext.Database.MigrateAsync();
 			await loggerContext.Database.MigrateAsync();
 
-            CertService.InitCert(await dbContext.Certs.Where(x => x.Expired == false).ToListAsync());
+			var certs = await dbContext.Certs.Where(x => x.Expired == false).ToArrayAsync();
 
-            var server = await dbContext.Servers.ToListAsync();
-            var domainNames = await dbContext.DomainNames.ToListAsync();
+            CertService.InitCert(certs);
+
+            var domainNames = await dbContext.DomainNames.ToArrayAsync();
             var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
             var rateLimits = await dbContext.RateLimits.ToListAsync();
-            foreach (var item in server)
+            foreach (var item in  await dbContext.Servers.ToArrayAsync())
             {
                 await Task.Factory.StartNew(async () =>
-                    await Gateway.Gateway.BuilderGateway(item, domainNames.Where(x => x.ServerId == item.Id).ToList(),
+                    await Gateway.Gateway.BuilderGateway(item, domainNames.Where(x => x.ServerId == item.Id).ToArray(),
                         blacklistAndWhitelists, rateLimits));
             }
         }
