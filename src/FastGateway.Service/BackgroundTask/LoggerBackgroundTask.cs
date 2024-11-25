@@ -23,7 +23,6 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // 暂停1分钟
-        await Task.Delay(1000 * 60, stoppingToken);
         _ = Start(stoppingToken);
         await RunLoggerSave(stoppingToken);
     }
@@ -73,7 +72,7 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
                 }
 
                 await loggerContext.ApplicationLoggers.AddRangeAsync(loggerList, stoppingToken);
-                await masterContext.SaveChangesAsync(stoppingToken);
+                await loggerContext.SaveChangesAsync(stoppingToken);
             }
             catch (Exception e)
             {

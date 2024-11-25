@@ -167,7 +167,6 @@ public static class Gateway
                 options.MultipartHeadersLengthLimit = int.MaxValue;
             });
 
-            
             builder.Services
                 .AddCors(options =>
                 {
@@ -178,10 +177,14 @@ public static class Gateway
                             .AllowAnyHeader()
                             .AllowCredentials());
                 });
-            
+
             var (routes, clusters) = BuildConfig(domainNames);
 
             builder.Services.AddRateLimitService(rateLimits);
+
+            if (server.StaticCompress)
+                builder.Services.AddResponseCompression();
+
 
             builder.Services
                 .AddReverseProxy()
@@ -196,7 +199,10 @@ public static class Gateway
             var app = builder.Build();
 
             app.UseCors("AllowAll");
-            
+
+            if (server.StaticCompress)
+                app.UseResponseCompression();
+
             if (is80)
             {
                 // 用于HTTPS证书签名校验
@@ -214,7 +220,7 @@ public static class Gateway
             }
 
             app.UseInitGatewayMiddleware();
-            
+
 
             app.UseMiddleware<ApplicationLoggerMiddleware>();
             app.UseMiddleware<ClientRequestLoggerMiddleware>();
@@ -230,10 +236,7 @@ public static class Gateway
 
             app.MapReverseProxy();
 
-            app.Lifetime.ApplicationStopping.Register(() =>
-            {
-                GatewayWebApplications.Remove(server.Id, out _);
-            });
+            app.Lifetime.ApplicationStopping.Register(() => { GatewayWebApplications.Remove(server.Id, out _); });
 
             await app.RunAsync();
         }
@@ -255,7 +258,8 @@ public static class Gateway
             if (context.Route.Match.Hosts?.Any(x => x.Contains('*')) == true)
             {
                 context.AddOriginalHost(true);
-            }else if (server.CopyRequestHost)
+            }
+            else if (server.CopyRequestHost)
             {
                 context.AddOriginalHost(true);
             }
@@ -327,7 +331,7 @@ public static class Gateway
             }
 
             await next(context);
-            
+
             QpsService.IncrementServiceRequests();
         });
 

@@ -8,7 +8,7 @@ import { DomainName, ServiceType } from '@/types';
 import {
     CircleX
 } from 'lucide-react';
-import { check, checkSrvcie,  updateDomain } from '@/services/DomainNameService';
+import { check, checkSrvcie, updateDomain } from '@/services/DomainNameService';
 import { useParams } from 'react-router-dom';
 import { useDomainStore } from '@/store/server';
 
@@ -192,6 +192,7 @@ export default function UpdateDomain({
                                 </div>
                                 <Select
                                     value={value.tryFiles}
+                                    mode='tags'
                                     onChange={(e) => setValue({ ...value, tryFiles: e })}
                                     placeholder='请输入异常时的文件列表'
                                     style={{

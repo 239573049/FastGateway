@@ -135,7 +135,7 @@ public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISear
 
                 await loggerContext.ClientRequestLoggers.AddRangeAsync(newLoggerList, stoppingToken);
 
-                await masterContext.SaveChangesAsync(stoppingToken);
+                await loggerContext.SaveChangesAsync(stoppingToken);
             }
             catch (Exception e)
             {

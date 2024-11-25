@@ -184,6 +184,8 @@ export default function CreateDomain({
                                 <Select
                                     value={value.tryFiles}
                                     onChange={(e) => setValue({ ...value, tryFiles: e })}
+                                    mode='tags'
+                                    
                                     placeholder='请输入异常时的文件列表'
                                     style={{
                                         width: '100%',
