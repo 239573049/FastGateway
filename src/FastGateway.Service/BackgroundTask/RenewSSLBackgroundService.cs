@@ -10,7 +10,7 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("证书自动续期服务已启动");
-        
+
         // 暂停1分钟
         await Task.Delay(1000 * 60, stoppingToken);
 
@@ -26,6 +26,8 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
                 var certs = await dbContext.Certs
                     .Where(x => x.NotAfter == null || x.NotAfter < DateTime.Now.AddDays(15) && x.AutoRenew)
                     .ToArrayAsync(stoppingToken);
+
+                var isRenew = false;
 
                 foreach (var cert in certs)
                 {
@@ -43,6 +45,8 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
                                 .SetProperty(y => y.Certs, cert.Certs), stoppingToken);
 
                         logger.LogInformation($"证书续期成功：{cert.Id} {cert.Domain}");
+
+                        isRenew = true;
                     }
                     catch (Exception e)
                     {
@@ -57,7 +61,10 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
                     }
                 }
 
-                CertService.InitCert(await dbContext.Certs.ToListAsync(cancellationToken: stoppingToken));
+                if (isRenew)
+                {
+                    CertService.InitCert(await dbContext.Certs.ToArrayAsync(cancellationToken: stoppingToken));
+                }
 
                 // 每24小时检查一次
                 await Task.Delay(1000 * 60 * 60 * 24, stoppingToken);

@@ -31,7 +31,7 @@ public sealed class QpsItem
 
 public static class QpsService
 {
-    private static readonly QpsItem qpsItem = new();
+    private static readonly QpsItem QpsItem = new();
     private static bool _enable;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -42,7 +42,7 @@ public static class QpsService
             return;
         }
 
-        qpsItem.IncrementRequests();
+        QpsItem.IncrementRequests();
     }
 
     public static void CalculateServiceQps()
@@ -52,14 +52,14 @@ public static class QpsService
             return;
         }
 
-        qpsItem.CalculateQps();
+        QpsItem.CalculateQps();
     }
 
     public static int GetServiceQps()
     {
-        var qps = qpsItem.GetQps();
+        var qps = QpsItem.GetQps();
 
-        qpsItem.CalculateQps();
+        QpsItem.CalculateQps();
 
         return qps;
     }

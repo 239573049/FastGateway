@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using FastGateway.Entities;
 using FastGateway.Service.DataAccess;
 using IP2Region.Net.Abstractions;
@@ -8,52 +7,36 @@ namespace FastGateway.Service.BackgroundTask;
 
 public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISearcher searcher) : BackgroundService
 {
-    private static Channel<ApplicationLogger> LoggerChannel { get; } = Channel.CreateUnbounded<ApplicationLogger>();
-
-    public static void AddLogger(ApplicationLogger logger)
-    {
-        LoggerChannel.Writer.TryWrite(logger);
-    }
-
     /// <summary>
     /// 线程安全集合
     /// </summary>
-    private readonly ConcurrentBag<ApplicationLogger> _loggerBag = new();
+    private static readonly Channel<ApplicationLogger> LoggerBag = Channel.CreateUnbounded<ApplicationLogger>();
+
+    public static void AddLogger(ApplicationLogger logger)
+    {
+        LoggerBag.Writer.TryWrite(logger);
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // 暂停1分钟
-        _ = Start(stoppingToken);
         await RunLoggerSave(stoppingToken);
     }
 
     private async Task RunLoggerSave(CancellationToken stoppingToken)
     {
         await using var scope = serviceProvider.CreateAsyncScope();
-        var masterContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
-        var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<LoggerBackgroundTask>>();
+        await using var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (_loggerBag.IsEmpty)
-            {
-                // 等待5s
-                await Task.Delay(5000, stoppingToken);
-                continue;
-            }
-
-            var loggerList = new List<ApplicationLogger>();
-            while (_loggerBag.TryTake(out var loggerItem))
-            {
-                loggerList.Add(loggerItem);
-            }
-
             try
             {
-                foreach (var item in loggerList)
+                int count = 0;
+                while (LoggerBag.Reader.TryRead(out var item))
                 {
-                    if (string.IsNullOrWhiteSpace(item.Ip)) continue;
+                    if (string.IsNullOrWhiteSpace(item.Ip))
+                        continue;
+
                     var locations = searcher.Search(item.Ip)?.Split("|", StringSplitOptions.RemoveEmptyEntries);
 
                     locations = locations?.Where(x => x != "0").ToArray();
@@ -69,23 +52,20 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
                         .Replace("移动", "")
                         .TrimStart('|')
                         .TrimEnd('|');
-                }
 
-                await loggerContext.ApplicationLoggers.AddRangeAsync(loggerList, stoppingToken);
-                await loggerContext.SaveChangesAsync(stoppingToken);
+                    await loggerContext.ApplicationLoggers.AddAsync(item, stoppingToken);
+                    count++;
+                    if (count >= 100)
+                    {
+                        await loggerContext.SaveChangesAsync(stoppingToken);
+                    }
+                }
             }
             catch (Exception e)
             {
-                logger.LogError(e, "日志保存失败");
+                Console.WriteLine(e);
+                await Task.Delay(500, stoppingToken);
             }
-        }
-    }
-
-    private async Task Start(CancellationToken stoppingToken)
-    {
-        await foreach (var item in LoggerChannel.Reader.ReadAllAsync(stoppingToken))
-        {
-            _loggerBag.Add(item);
         }
     }
 }

@@ -10,10 +10,10 @@ namespace FastGateway.Service.Services;
 
 public static class RateLimitService
 {
-    public static IServiceCollection AddRateLimitService(this IServiceCollection services, List<RateLimit> rateLimits)
+    public static IServiceCollection AddRateLimitService(this IServiceCollection services, RateLimit[] rateLimits)
     {
         // 如果启用限流则添加限流中间件
-        if (rateLimits.Count != 0)
+        if (rateLimits.Length != 0)
         {
             services.AddMemoryCache();
             services.Configure<IpRateLimitOptions>
@@ -48,9 +48,9 @@ public static class RateLimitService
         return services;
     }
 
-    public static IEndpointRouteBuilder UseRateLimitMiddleware(this WebApplication app, List<RateLimit> rateLimits)
+    public static IEndpointRouteBuilder UseRateLimitMiddleware(this WebApplication app, RateLimit[] rateLimits)
     {
-        if (rateLimits.Count == 0)
+        if (rateLimits.Length == 0)
         {
             return app;
         }
@@ -69,33 +69,31 @@ public static class RateLimitService
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("限流");
 
-        rateLimit.MapPost(string.Empty, async (MasterContext dbContext, RateLimit rateLimit) =>
+        rateLimit.MapPost(string.Empty, async (MasterContext dbContext, RateLimit limit) =>
         {
-            if (string.IsNullOrWhiteSpace(rateLimit.Name))
+            if (string.IsNullOrWhiteSpace(limit.Name))
             {
                 throw new ValidationException("限流名称不能为空");
             }
 
-            if (await dbContext.RateLimits.AnyAsync(x => x.Name == rateLimit.Name))
+            if (await dbContext.RateLimits.AnyAsync(x => x.Name == limit.Name))
             {
                 throw new ValidationException("限流名称已存在");
             }
 
 
-            dbContext.RateLimits.Add(rateLimit);
+            dbContext.RateLimits.Add(limit);
 
             await dbContext.SaveChangesAsync();
         }).WithDescription("创建限流").WithDisplayName("创建限流").WithTags("限流");
 
         rateLimit.MapGet(string.Empty, async (MasterContext dbContext, int page, int pageSize) =>
             {
-                var result = await dbContext.RateLimits
-                    .Skip((page - 1) * pageSize)
-                    .ToListAsync();
-
                 var total = await dbContext.RateLimits.CountAsync();
 
-                return new PagingDto<RateLimit>(total, result);
+                return new PagingDto<RateLimit>(total,  await dbContext.RateLimits
+                    .Skip((page - 1) * pageSize)
+                    .ToListAsync());
             })
             .WithDescription("获取限流列表")
             .WithDisplayName("获取限流列表")

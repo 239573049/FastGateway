@@ -10,7 +10,7 @@ namespace FastGateway.Service.Services;
 public static class BlacklistAndWhitelistService
 {
     public static WebApplication UseBlacklistMiddleware(this WebApplication app,
-        List<BlacklistAndWhitelist> blacklistAndWhitelists)
+        BlacklistAndWhitelist[] blacklistAndWhitelists)
     {
         var whitelist = blacklistAndWhitelists.Where(x => x.Enable && !x.IsBlacklist).ToArray();
 

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using System.Threading.Channels;
 using FastGateway.Entities;
 using FastGateway.Service.DataAccess;
 using FastGateway.Service.Dto;
@@ -10,47 +9,40 @@ namespace FastGateway.Service.BackgroundTask;
 
 public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISearcher searcher) : BackgroundService
 {
-    private static Channel<ClientRequestLoggerInput> ClientRequestChannel { get; } =
-        Channel.CreateUnbounded<ClientRequestLoggerInput>();
-
     /// <summary>
     /// 线程安全集合
     /// </summary>
-    private readonly ConcurrentBag<ClientRequestLoggerInput> _loggerBag = new();
+    private static readonly ConcurrentBag<ClientRequestLoggerInput> LoggerBag = new();
 
 
     public static void AddLogger(ClientRequestLoggerInput input)
     {
-        ClientRequestChannel.Writer.TryWrite(input);
+        LoggerBag.Add(input);
     }
-
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // 暂停1分钟
         await Task.Delay(1000 * 60, stoppingToken);
-        _ = Start(stoppingToken);
         await RunLoggerSave(stoppingToken);
     }
 
     private async Task RunLoggerSave(CancellationToken stoppingToken)
     {
         await using var scope = serviceProvider.CreateAsyncScope();
-        var masterContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
         var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<LoggerBackgroundTask>>();
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (_loggerBag.IsEmpty)
+            if (LoggerBag.IsEmpty)
             {
-                // 等待5s
                 await Task.Delay(10000, stoppingToken);
                 continue;
             }
 
             var loggerList = new List<ClientRequestLoggerInput>();
-            while (_loggerBag.TryTake(out var loggerItem))
+            while (LoggerBag.TryTake(out var loggerItem))
             {
                 loggerList.Add(loggerItem);
             }
@@ -126,7 +118,7 @@ public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISear
 
                 foreach (var item in updateLoggerList)
                 {
-                    await loggerContext.ClientRequestLoggers.Where(x => x.RequestTime == now && x.Ip == item.Ip)
+                    await loggerContext.ClientRequestLoggers.Where(x => x.Ip == item.Ip && x.RequestTime == now)
                         .ExecuteUpdateAsync(x => x.SetProperty(a => a.Total, a => a.Total + item.Total)
                                 .SetProperty(a => a.Success, a => a.Success + item.Success)
                                 .SetProperty(a => a.Fail, a => a.Fail),
@@ -141,14 +133,6 @@ public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISear
             {
                 logger.LogError(e, "日志保存失败");
             }
-        }
-    }
-
-    private async Task Start(CancellationToken stoppingToken)
-    {
-        await foreach (var item in ClientRequestChannel.Reader.ReadAllAsync(stoppingToken))
-        {
-            _loggerBag.Add(item);
         }
     }
 }

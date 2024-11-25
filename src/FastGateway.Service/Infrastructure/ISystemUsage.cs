@@ -130,41 +130,47 @@ public class LinuxSystemUsage : ISystemUsage
     }
 
     public (float memoryUsage, ulong totalMemory, ulong useMemory) GetMemoryUsage()
-	{
-		var memInfo = ExecuteCommand("cat /proc/meminfo", "/bin/bash");
-		var lines = memInfo.Split('\n');
-		ulong totalMemory = 0;
-		ulong availableMemory = 0;
+    {
+        var memInfo = ExecuteCommand("cat /proc/meminfo", "/bin/bash");
+        var lines = memInfo.Split('\n');
+        ulong totalMemory = 0;
+        ulong availableMemory = 0;
 
-		foreach (var line in lines)
-		{
-			var parts = line.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-			if (parts.Length < 2) continue;
+        foreach (var line in lines)
+        {
+            var parts = line.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2) continue;
 
-			var key = parts[0].Trim();
-			var value = ulong.Parse(parts[1].Trim().Split(' ')[0]);
+            var key = parts[0].Trim();
+            var value = ulong.Parse(parts[1].Trim().Split(' ')[0]);
 
-			switch (key)
-			{
-				case "MemTotal":
-					totalMemory = value;
-					break;
-				case "MemAvailable":
-					availableMemory = value;
-					break;
-			}
-		}
+            switch (key)
+            {
+                case "MemTotal":
+                    totalMemory = value;
+                    break;
+                case "MemAvailable":
+                    availableMemory = value;
+                    break;
+            }
+        }
 
-		// 默认单位是KB，需要转换byte
-		totalMemory *= 1024;
-		availableMemory *= 1024;
+        // 默认单位是KB，需要转换byte
+        totalMemory *= 1024;
+        availableMemory *= 1024;
 
-		ulong usedMemory = totalMemory - availableMemory;
-		float memoryUsage = (float)usedMemory / totalMemory * 100;
+        ulong usedMemory = totalMemory - availableMemory;
+        float memoryUsage = (float)usedMemory / totalMemory * 100;
 
 
-		return (memoryUsage, totalMemory, usedMemory);
-	}
+        return (memoryUsage, totalMemory, usedMemory);
+    }
+
+    private long previousReads = 0;
+    private long previousSectorsRead = 0;
+    private long previousWrites = 0;
+    private long previousSectorsWritten = 0;
+
 
     public (float read, float write) GetDiskUsage()
     {
@@ -178,8 +184,24 @@ public class LinuxSystemUsage : ISystemUsage
             var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length > 13)
             {
-                readBytes += float.Parse(parts[5]) * 512 / 1024; // sectors read * 512 bytes per sector to KB
-                writeBytes += float.Parse(parts[9]) * 512 / 1024; // sectors written * 512 bytes per sector to KB
+                string deviceName = parts[2]; // 设备名，通常是第三列
+                long readsCompleted = long.Parse(parts[3]); // 完成的读操作
+                long sectorsRead = long.Parse(parts[5]); // 读取的扇区数
+                long writesCompleted = long.Parse(parts[7]); // 完成的写操作
+                long sectorsWritten = long.Parse(parts[9]); // 写入的扇区数
+                long byteRead = (sectorsRead - previousSectorsRead) * 512; // 每个扇区512字节
+                long byteWritten = (sectorsWritten - previousSectorsWritten) * 512;
+
+                previousReads = readsCompleted;
+                previousSectorsRead = sectorsRead;
+                previousWrites = writesCompleted;
+                previousSectorsWritten = sectorsWritten;
+                
+                if (deviceName == "sda")
+                {
+                    readBytes += byteRead;
+                    writeBytes += byteWritten;
+                }
             }
         }
 
