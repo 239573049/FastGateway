@@ -1,7 +1,7 @@
 import { memo } from "react";
 
 const MobileLayout = memo((
-    children
+    children:any
 ) => {
     return (
         <>
