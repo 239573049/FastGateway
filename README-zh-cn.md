@@ -38,7 +38,7 @@ FastGateway提供了基本的管理服务，提供简单的登录授权，和实
 ## 快速运行Gateway
 
 ```bash
-docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ hejiale010426/gateway-api:v1.0.0
+docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ aidotnet/fast-gateway
 ```
 
 ## Docker-Compose文件
@@ -47,9 +47,9 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 
 
 ﻿services:
-  fast-gateway.service:
-    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
-    container_name: fast-gateway.service
+  fast-gateway:
+    image: aidotnet/fast-gateway
+    container_name: fast-gateway
     restart: always
     volumes:
       - ./data:/app/data
@@ -69,9 +69,9 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 ```yml
 
 ﻿services:
-  fast-gateway.service:
-    image: registry.token-ai.cn/ai-dotnet/fast-gateway.service:v2.0.0.0
-    container_name: fast-gateway.service
+  fast-gateway:
+    image: aidotnet/fast-gateway
+    container_name: fast-gateway
     restart: always
     volumes:
       - ./data:/app/data
