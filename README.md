@@ -38,7 +38,7 @@ Document Language: [English](README.md) | [简体中文](README-zh-cn.md)
 ## Quick Start Gateway
 
 ```bash
-docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ hejiale010426/gateway-api:v1.0.0
+docker run -d --restart=always --name=fast-gateway -e PASSWORD=Aa123456 -p 8080:8080 -p 80:80 -p 443:443 -v $(pwd)/data:/data/ aidotnet/fast-gateway
 ```
 
 ## Docker-Compose File
@@ -46,9 +46,9 @@ docker run -d --restart=always --name=gateway-api -e PASSWORD=Aa123456 -p 8080:8
 ```yml
 
 ﻿services:
-  fast-gateway.service:
+  fast-gateway:
     image: aidotnet/fast-gateway
-    container_name: fast-gateway.service
+    container_name: fast-gateway
     restart: always
     volumes:
       - ./data:/app/data
