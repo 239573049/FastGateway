@@ -412,34 +412,18 @@ public static class Gateway
 
             if (domainName.ServiceType == ServiceType.ServiceCluster)
             {
-                if (string.IsNullOrWhiteSpace(domainName.Path))
+                var destinations = domainName.UpStreams.Select(x => new DestinationConfig
                 {
-                    domainName.Path = "/{**catch-all}";
-                }
-                else if (domainName.Path == "/")
-                {
-                    domainName.Path = $"/{{**catch-all}}";
-                }
-                else
-                {
-                    domainName.Path = $"/{domainName.Path}/{{**catch-all}}";
-                }
+                    Address = x.Service
+                }).ToDictionary(x => Guid.NewGuid().ToString("N"));
 
-                if (domainName.ServiceType == ServiceType.Service)
+                var cluster = new ClusterConfig
                 {
-                    var destinations = domainName.UpStreams.Select(x => new DestinationConfig
-                    {
-                        Address = x.Service
-                    }).ToDictionary(x => Guid.NewGuid().ToString("N"));
+                    ClusterId = domainName.Id,
+                    Destinations = destinations
+                };
 
-                    var cluster = new ClusterConfig
-                    {
-                        ClusterId = domainName.Id,
-                        Destinations = destinations
-                    };
-
-                    clusters.Add(cluster);
-                }
+                clusters.Add(cluster);
             }
 
             if (domainName.ServiceType == ServiceType.StaticFile)
