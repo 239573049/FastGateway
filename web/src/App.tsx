@@ -58,6 +58,13 @@ const router = createBrowserRouter([
               </Suspense>
           },
           {
+            path: '',
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <DashboardPage />
+              </Suspense>
+          },
+          {
             path: 'protect-config/whitelist',
             element: <Suspense fallback={<Loading></Loading>}>
               <WhiteListPage />

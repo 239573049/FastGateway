@@ -100,7 +100,9 @@ export default function UpdateDomain({
                         mode='tags'>
                     </Select>
                 </div>
-                <FInput value={value.path} onChange={(e) => setValue({ ...value, path: e.target.value })} label='匹配路由:' placeholder='请输入匹配的路由' />
+                <FInput value={value.path} 
+                    defaultValue={'/'}
+                    onChange={(e) => setValue({ ...value, path: e.target.value })} label='匹配路由:' placeholder='请输入匹配的路由' />
 
                 <div style={{
                     display: 'flex',

@@ -66,6 +66,7 @@ const FileStoragePage: React.FC = () => {
     });
 
     const [loadingKeys, setLoadingKeys] = useState<any[]>([]);
+    const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
     const baseColumns = [
         {
@@ -129,7 +130,7 @@ const FileStoragePage: React.FC = () => {
         },
         {
             title: "操作",
-            width: 50,
+            width: 100,
             dataIndex: "operation",
             key: "operation",
             render: (_: any, item: any) => {
@@ -141,6 +142,7 @@ const FileStoragePage: React.FC = () => {
                                     {
                                         key: "1",
                                         label: "下载",
+                                        onClick: () => handleFileDownload(item),
                                     },
                                     {
                                         key: "2",
@@ -187,7 +189,7 @@ const FileStoragePage: React.FC = () => {
                                 ],
                             }}
                         >
-                            <Button type="text">
+                            <Button type="text" loading={downloadingFile === item.key}>
                                 <DownOutlined />
                             </Button>
                         </Dropdown>
@@ -513,6 +515,13 @@ const FileStoragePage: React.FC = () => {
             return node;
         });
 
+    const handleFileDownload = (file: any) => {
+        setDownloadingFile(file.key);
+        // Implement file download logic here
+        // You may want to call an API endpoint to initiate the download
+        // Once download is complete or fails, set setDownloadingFile(null)
+    };
+
     return (
         <>
             <Flexbox
@@ -612,6 +621,7 @@ const FileStoragePage: React.FC = () => {
                         }}
                         dataSource={currentData}
                         columns={baseColumns}
+                        loading={loadingKeys.length > 0}
                     />
                 </div>
             </Flexbox>

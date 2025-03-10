@@ -53,6 +53,13 @@ export default function CreateDomain({
     }, [id]);
 
     function save() {
+
+        // 路由需要/开头
+        if (!value.path.startsWith('/')) {
+            message.error('路由需要以/开头');
+            return;
+        }
+        
         createDomain(value)
             .then(() => {
                 onOk();
@@ -91,7 +98,10 @@ export default function CreateDomain({
                         mode='tags'>
                     </Select>
                 </div>
-                <FInput value={value.path} onChange={(e) => setValue({ ...value, path: e.target.value })} label='匹配路由:' placeholder='请输入匹配的路由' />
+                <FInput value={value.path} 
+                    onChange={(e) => setValue({ ...value, path: e.target.value })} 
+                    label='匹配路由:' 
+                    placeholder='请输入匹配的路由' />
 
                 <div style={{
                     display: 'flex',
@@ -146,7 +156,9 @@ export default function CreateDomain({
                                     }
                                 });
                             }} />
-                        } onChange={(e) => setValue({ ...value, service: e.target.value })} label='服务名称:' placeholder='请输入服务名称' />
+                        } onChange={(e) => setValue({ ...value, service: e.target.value })} 
+                        defaultValue={'/'}
+                        label='请求服务地址:(示例：http://127.0.0.1:8080)' placeholder='请输入请求服务地址 (示例：http://127.0.0.1:8080)' />
                     )
                 }
                 {

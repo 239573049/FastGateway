@@ -123,7 +123,7 @@ public static class Gateway
                 Has80Service = true;
             }
 
-            var builder = WebApplication.CreateBuilder();
+            var builder = WebApplication.CreateSlimBuilder();
 
             builder.Services.AddSingleton<ApplicationLoggerMiddleware>();
             builder.Services.AddSingleton<ClientRequestLoggerMiddleware>();
@@ -156,8 +156,9 @@ public static class Gateway
                 {
                     options.Listen(IPAddress.Any, server.Listen);
                 }
-
+                
                 options.Limits.MaxRequestBodySize = null;
+                
             });
 
             builder.Services.Configure<FormOptions>(options =>
@@ -194,6 +195,11 @@ public static class Gateway
                 {
                     handler.SslOptions.RemoteCertificateValidationCallback =
                         (sender, certificate, chain, errors) => true;
+                    
+                    // 尽可能保持连接
+                    handler.ConnectTimeout = TimeSpan.FromMinutes(10);
+                    handler.EnableMultipleHttp2Connections = true;
+                    handler.MaxConnectionsPerServer = 1000;
                 }));
 
             var app = builder.Build();

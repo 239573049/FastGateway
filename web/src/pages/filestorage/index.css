@@ -13,3 +13,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+:where(.css-dev-only-do-not-override-1l6l2ek).ant-tree.ant-tree-directory .ant-tree-treenode-selected .ant-tree-node-content-wrapper:before, :where(.css-dev-only-do-not-override-1l6l2ek).ant-tree.ant-tree-directory .ant-tree-treenode-selected .ant-tree-node-content-wrapper:hover:before{
+    background: #0066CC !important;
+}

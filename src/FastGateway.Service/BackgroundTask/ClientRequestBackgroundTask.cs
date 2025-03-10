@@ -7,21 +7,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FastGateway.Service.BackgroundTask;
 
-public class ClientRequestBackgroundTask(IServiceProvider serviceProvider, ISearcher searcher) : BackgroundService
+public class ClientRequestBackgroundTask(
+    IServiceProvider serviceProvider,
+    ISearcher searcher,
+    IConfiguration configuration) : BackgroundService
 {
     /// <summary>
     /// 线程安全集合
     /// </summary>
     private static readonly ConcurrentBag<ClientRequestLoggerInput> LoggerBag = new();
 
+    private static bool _isRunning = false;
 
     public static void AddLogger(ClientRequestLoggerInput input)
     {
-        LoggerBag.Add(input);
+        if (_isRunning)
+            LoggerBag.Add(input);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (configuration["EnableLog"] == "false")
+            return;
+
+        _isRunning = true;
         // 暂停1分钟
         await Task.Delay(1000 * 60, stoppingToken);
         await RunLoggerSave(stoppingToken);

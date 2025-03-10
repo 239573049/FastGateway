@@ -5,20 +5,34 @@ using IP2Region.Net.Abstractions;
 
 namespace FastGateway.Service.BackgroundTask;
 
-public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISearcher searcher) : BackgroundService
+public sealed class LoggerBackgroundTask(
+    IServiceProvider serviceProvider,
+    ISearcher searcher,
+    IConfiguration configuration) : BackgroundService
 {
     /// <summary>
     /// 线程安全集合
     /// </summary>
     private static readonly Channel<ApplicationLogger> LoggerBag = Channel.CreateUnbounded<ApplicationLogger>();
 
+    private static bool _isRunning = false;
+
     public static void AddLogger(ApplicationLogger logger)
     {
+        if (!_isRunning)
+        {
+            return;
+        }
+
         LoggerBag.Writer.TryWrite(logger);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (configuration["EnableLog"] == "false")
+            return;
+
+        _isRunning = true;
         await RunLoggerSave(stoppingToken);
     }
 
@@ -34,7 +48,7 @@ public sealed class LoggerBackgroundTask(IServiceProvider serviceProvider, ISear
             try
             {
                 var item = await LoggerBag.Reader.ReadAsync(stoppingToken);
-                
+
                 if (string.IsNullOrWhiteSpace(item.Ip))
                     continue;
 
