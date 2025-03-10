@@ -13,7 +13,7 @@ WORKDIR /app
 EXPOSE 8080
 
 
-FROM node as builder
+FROM node:alpine AS builder
 WORKDIR /src
 COPY web .
 RUN npm i

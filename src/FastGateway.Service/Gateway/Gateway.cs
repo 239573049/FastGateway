@@ -123,7 +123,7 @@ public static class Gateway
                 Has80Service = true;
             }
 
-            var builder = WebApplication.CreateSlimBuilder();
+            var builder = WebApplication.CreateBuilder();
 
             builder.Services.AddSingleton<ApplicationLoggerMiddleware>();
             builder.Services.AddSingleton<ClientRequestLoggerMiddleware>();
