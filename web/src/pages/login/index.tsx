@@ -1,14 +1,27 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, Typography, message, Spin } from 'antd';
-import { LockOutlined } from '@ant-design/icons';
+import {
+    Form,
+    Input,
+    Button,
+    Typography,
+    message,
+    Spin,
+    Layout,
+    Row,
+    Col,
+    Space
+} from 'antd';
+import { LockOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { Auth } from '@/services/AuthorizationService';
 import { useNavigate } from 'react-router-dom';
+
 const { Title, Text } = Typography;
+const { Content } = Layout;
 
 const LoginPage = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    
+
     const handleLogin = async (values: any) => {
         setLoading(true);
         try {
@@ -27,170 +40,253 @@ const LoginPage = () => {
     };
 
     return (
-        <div style={styles.pageContainer}>
-            <div style={styles.leftSection}>
-                <div style={styles.brandingContainer}>
-                    <Title level={1} style={styles.mainTitle}>FastGateway</Title>
-                    <Title level={3} style={styles.subtitle}>网关管理系统</Title>
-                    <Text style={styles.description}>
-                        高效、安全、可靠的API网关管理平台，为您的服务提供强大的流量控制与安全保障
-                    </Text>
-                </div>
-            </div>
-            
-            <div style={styles.rightSection}>
-                <Card style={styles.card} bordered={false}>
-                    <Spin spinning={loading} tip="登录中...">
-                        <div style={styles.formContainer}>
-                            <div style={styles.logoContainer}>
-                                <div style={styles.logo}>FG</div>
+        <>
+            <Layout style={{ minHeight: '100vh', width: '100%', background: '#f5f7fa' }}>
+                <Content style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
+                    width: '100%'
+                }}>
+                    <Row style={{ width: '100%', maxWidth: '1200px', minHeight: '600px' }} gutter={0}>
+                        {/* 左侧品牌区域 */}
+                        <Col
+                            xs={0}
+                            sm={0}
+                            md={12}
+                            lg={14}
+                            xl={15}
+                            style={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderTopLeftRadius: '12px',
+                                borderBottomLeftRadius: '12px',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Cpath d="m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat',
+                                opacity: 0.3
+                            }} />
+
+                            <div style={{
+                                padding: '40px',
+                                textAlign: 'center',
+                                color: 'white',
+                                position: 'relative',
+                                zIndex: 1
+                            }}>
+                                <div style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    background: 'rgba(255,255,255,0.15)',
+                                    borderRadius: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 24px',
+                                    boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                                    backdropFilter: 'blur(10px)'
+                                }}>
+                                    <SafetyCertificateOutlined style={{ fontSize: '36px', color: 'white' }} />
+                                </div>
+
+                                <Title level={1} style={{
+                                    color: 'white',
+                                    marginBottom: '16px',
+                                    fontSize: 'clamp(28px, 4vw, 48px)',
+                                    fontWeight: '600'
+                                }}>
+                                    FastGateway
+                                </Title>
+
+                                <Title level={4} style={{
+                                    color: 'rgba(255,255,255,0.9)',
+                                    marginBottom: '24px',
+                                    fontWeight: '400'
+                                }}>
+                                    网关管理系统
+                                </Title>
+
+                                <Text style={{
+                                    color: 'rgba(255,255,255,0.8)',
+                                    fontSize: '16px',
+                                    lineHeight: '1.6',
+                                    display: 'block',
+                                    maxWidth: '320px',
+                                    margin: '0 auto'
+                                }}>
+                                    高效、安全、可靠的API网关管理平台
+                                </Text>
                             </div>
-                            
-                            <Title level={2} style={styles.welcomeTitle}>欢迎回来</Title>
-                            <Text style={styles.welcomeSubtitle}>请输入您的管理员密码以继续</Text>
-                            
-                            <Form
-                                name="login"
-                                onFinish={handleLogin}
-                                style={styles.form}
-                                size="large"
-                            >
-                                <Form.Item
-                                    name="password"
-                                    rules={[{ required: true, message: '请输入密码!' }]}
-                                >
-                                    <Input.Password 
-                                        prefix={<LockOutlined style={styles.inputIcon} />}
-                                        placeholder="管理员密码" 
-                                        style={styles.input}
-                                    />
-                                </Form.Item>
-                                
-                                <Form.Item>
-                                    <Button 
-                                        type="primary" 
-                                        htmlType="submit" 
-                                        style={styles.button}
-                                    >
-                                        登录系统
-                                    </Button>
-                                </Form.Item>
-                            </Form>
-                        </div>
-                    </Spin>
-                </Card>
-            </div>
-        </div>
+                        </Col>
+
+                        {/* 右侧登录区域 */}
+                        <Col
+                            xs={24}
+                            sm={24}
+                            md={12}
+                            lg={10}
+                            xl={9}
+                            style={{
+                                background: 'white',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderTopRightRadius: '12px',
+                                borderBottomRightRadius: '12px',
+                                boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                                padding: '40px 32px'
+                            }}
+                            className="login-form-col"
+                        >
+                            <div style={{ width: '100%', maxWidth: '360px' }}>
+                                <Spin spinning={loading} tip="登录中...">
+                                    <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center' }}>
+                                        <div className="mobile-logo" style={{ display: 'none' }}>
+                                            <div style={{
+                                                width: '64px',
+                                                height: '64px',
+                                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                borderRadius: '16px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                margin: '0 auto 16px',
+                                                boxShadow: '0 4px 16px rgba(102,126,234,0.3)'
+                                            }}>
+                                                <SafetyCertificateOutlined style={{ fontSize: '28px', color: 'white' }} />
+                                            </div>
+                                            <Title level={3} style={{ marginBottom: '8px', color: '#1f2937' }}>
+                                                FastGateway
+                                            </Title>
+                                        </div>
+
+                                        <div>
+                                            <Title level={2} style={{
+                                                marginBottom: '8px',
+                                                color: '#1f2937',
+                                                fontSize: '28px',
+                                                fontWeight: '600'
+                                            }}>
+                                                欢迎回来
+                                            </Title>
+                                            <Text style={{
+                                                fontSize: '15px'
+                                            }}>
+                                                请输入管理员密码以继续访问系统
+                                            </Text>
+                                        </div>
+
+                                        <Form
+                                            name="login"
+                                            onFinish={handleLogin}
+                                            size="large"
+                                            style={{ width: '100%' }}
+                                            autoComplete="off"
+                                        >
+                                            <Form.Item
+                                                name="password"
+                                                rules={[
+                                                    { required: true, message: '请输入管理员密码' },
+                                                    { min: 1, message: '密码不能为空' }
+                                                ]}
+                                            >
+                                                <Input.Password
+                                                    prefix={<LockOutlined style={{ color: '#9ca3af' }} />}
+                                                    placeholder="请输入管理员密码"
+                                                    style={{
+                                                        height: '48px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid #e5e7eb',
+                                                        fontSize: '14px'
+                                                    }}
+                                                    onPressEnter={() => {
+                                                        const form = document.querySelector('form[name="login"]') as HTMLFormElement;
+                                                        if (form) {
+                                                            const event = new Event('submit', { bubbles: true });
+                                                            form.dispatchEvent(event);
+                                                        }
+                                                    }}
+                                                />
+                                            </Form.Item>
+
+                                            <Form.Item style={{ marginBottom: 0 }}>
+                                                <Button
+                                                    type="primary"
+                                                    htmlType="submit"
+                                                    loading={loading}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '48px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '15px',
+                                                        fontWeight: '500',
+                                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                        border: 'none',
+                                                        boxShadow: '0 2px 8px rgba(102,126,234,0.3)',
+                                                        transition: 'all 0.3s ease'
+                                                    }}
+                                                >
+                                                    {loading ? '登录中...' : '登录系统'}
+                                                </Button>
+                                            </Form.Item>
+                                        </Form>
+                                    </Space>
+                                </Spin>
+                            </div>
+                        </Col>
+                    </Row>
+                </Content>
+            </Layout>
+
+            {/* 响应式样式 */}
+            <style>{`
+                @media (max-width: 768px) {
+                    .mobile-logo {
+                        display: block !important;
+                    }
+                    
+                    .login-form-col {
+                        border-top-left-radius: 12px !important;
+                        border-bottom-left-radius: 12px !important;
+                    }
+                }
+                
+                @media (max-width: 576px) {
+                    .ant-layout-content {
+                        padding: 16px !important;
+                    }
+                    
+                    .login-form-col {
+                        padding: 24px 20px !important;
+                    }
+                }
+                
+                .login-form-col:hover {
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
+                    transition: box-shadow 0.3s ease;
+                }
+                
+                .ant-btn-primary:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 16px rgba(102,126,234,0.4) !important;
+                }
+                
+                .ant-input-affix-wrapper:focus,
+                .ant-input-affix-wrapper-focused {
+                    border-color: #667eea !important;
+                    box-shadow: 0 0 0 2px rgba(102,126,234,0.1) !important;
+                }
+            `}</style>
+        </>
     );
 };
-
-const styles = {
-    pageContainer: {
-        display: 'flex',
-        minHeight: '100vh',
-        width: '100%',
-        margin: 0,
-        padding: 0,
-        overflow: 'hidden',
-    },
-    leftSection: {
-        flex: '1 1 50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #2a3eb1 0%, #1e4d8c 100%)',
-        padding: '2rem',
-    },
-    brandingContainer: {
-        maxWidth: '500px',
-        color: 'white',
-        padding: '0 2rem',
-    },
-    mainTitle: {
-        color: 'white',
-        margin: 0,
-        fontSize: '3.5rem',
-        fontWeight: 'bold',
-    },
-    subtitle: {
-        color: 'rgba(255, 255, 255, 0.9)',
-        marginTop: '0.5rem',
-        fontWeight: 'normal',
-    },
-    description: {
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontSize: '1.1rem',
-        marginTop: '1.5rem',
-        lineHeight: '1.6',
-    },
-    rightSection: {
-        flex: '1 1 50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-        background: '#f8fafc',
-    },
-    card: {
-        width: '100%',
-        maxWidth: '450px',
-        borderRadius: '16px',
-        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.05)',
-        background: 'white',
-    },
-    formContainer: {
-        padding: '2rem',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-    },
-    logoContainer: {
-        marginBottom: '1.5rem',
-    },
-    logo: {
-        width: '64px',
-        height: '64px',
-        borderRadius: '16px',
-        background: 'linear-gradient(135deg, #2a3eb1 0%, #1e4d8c 100%)',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '1.8rem',
-        fontWeight: 'bold',
-        boxShadow: '0 4px 10px rgba(42, 62, 177, 0.3)',
-    },
-    welcomeTitle: {
-        marginBottom: '0.5rem',
-        textAlign: 'center',
-        color: '#1a202c',
-    },
-    welcomeSubtitle: {
-        color: '#64748b',
-        marginBottom: '2rem',
-        textAlign: 'center',
-    },
-    form: {
-        width: '100%',
-    },
-    input: {
-        height: '50px',
-        borderRadius: '10px',
-    },
-    inputIcon: {
-        color: '#94a3b8',
-    },
-    button: {
-        width: '100%',
-        height: '50px',
-        borderRadius: '10px',
-        fontSize: '1rem',
-        fontWeight: 'bold',
-        background: 'linear-gradient(135deg, #2a3eb1 0%, #1e4d8c 100%)',
-        border: 'none',
-        boxShadow: '0 4px 10px rgba(42, 62, 177, 0.2)',
-        marginTop: '0.5rem',
-    },
-} as const;
 
 export default LoginPage;

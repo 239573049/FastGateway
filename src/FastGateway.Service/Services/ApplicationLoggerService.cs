@@ -32,6 +32,22 @@ public static class ApplicationLoggerService
             return new PagingDto<ApplicationLogger>(total, result);
         });
 
+        applicationLogger.MapDelete("/deleteOldLogs", async (LoggerContext loggerContext) =>
+        {
+            var oneMonthAgo = DateTime.Now.AddMonths(-1);
+            var logsToDelete = await loggerContext.ApplicationLoggers
+                .Where(x => x.RequestTime < oneMonthAgo)
+                .ToListAsync();
+
+            if (logsToDelete.Any())
+            {
+                loggerContext.ApplicationLoggers.RemoveRange(logsToDelete);
+                await loggerContext.SaveChangesAsync();
+            }
+
+            return new { deletedCount = logsToDelete.Count, message = $"已删除 {logsToDelete.Count} 条一个月前的日志" };
+        });
+
         return app;
     }
 }

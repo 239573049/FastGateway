@@ -12,6 +12,7 @@ const Layout = memo(() => {
         <AppTheme>
             <ConfigProvider
                 // 默认语言
+                
                 locale={{
                     locale: 'zh-cn',
                     Empty: {

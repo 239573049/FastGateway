@@ -1,6 +1,6 @@
-import { getApplicationLogger } from '@/services/ApplicationLoggerService';
+import { getApplicationLogger, deleteOldLogs } from '@/services/ApplicationLoggerService';
 import { Tooltip } from '@lobehub/ui';
-import { Table } from 'antd';
+import { Table, Button, message } from 'antd';
 import { useEffect, useState } from 'react';
 
 export default function ApplicationLoggerPage() {
@@ -11,6 +11,7 @@ export default function ApplicationLoggerPage() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     function loadData() {
         setLoading(true);
@@ -24,12 +25,35 @@ export default function ApplicationLoggerPage() {
             });
     }
 
+    const handleDeleteOldLogs = async () => {
+        setDeleteLoading(true);
+        try {
+            const result = await deleteOldLogs();
+            message.success(result.message || '删除成功');
+            loadData(); // 重新加载数据
+        } catch (error) {
+            message.error('删除失败，请重试');
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
     useEffect(() => {
         loadData();
     }, [input]);
 
     return (
         <>
+            <div style={{ marginBottom: 16 }}>
+                <Button 
+                    type="primary" 
+                    danger 
+                    onClick={handleDeleteOldLogs}
+                    loading={deleteLoading}
+                >
+                    删除一个月前的日志
+                </Button>
+            </div>
             <Table
                 scroll={{ y: 65 * 9 }}
                 loading={loading}
