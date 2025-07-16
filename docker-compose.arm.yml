@@ -1,0 +1,20 @@
+services:
+  fast-gateway.service:
+    image: aidotnet/fast-gateway:arm64
+    container_name: fast-gateway.service
+    restart: always
+    build:
+      context: .
+      dockerfile: src/FastGateway.Service/Dockerfile.arm
+      platforms:
+        - linux/arm64
+    volumes:
+      - ./data:/app/data
+      - ./certs:/app/certs
+    ports:
+        - "8000:8080"
+        - "80:80"
+        - "443:443/udp"
+        - "443:443/tcp"
+    platform: linux/arm64
+
