@@ -36,14 +36,6 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 函数：检查命令是否存在
-check_command() {
-    if ! command -v $1 &> /dev/null; then
-        print_error "$1 未找到，请先安装 $1"
-        exit 1
-    fi
-}
-
 # 函数：检查文件是否存在
 check_file() {
     if [ ! -f "$1" ]; then
@@ -153,9 +145,6 @@ verify_publish() {
 main() {
     print_info "开始构建 FastGateway ARM 版本..."
     
-    # 检查必要的工具
-    check_command "dotnet"
-    
     # 检查项目文件
     check_file "$PROJECT_PATH"
     
@@ -206,20 +195,17 @@ case "${1:-}" in
         exit 0
         ;;
     --restore)
-        check_command "dotnet"
         check_file "$PROJECT_PATH"
         restore_packages
         exit 0
         ;;
     --build)
-        check_command "dotnet"
         check_file "$PROJECT_PATH"
         restore_packages
         build_project
         exit 0
         ;;
     --publish)
-        check_command "dotnet"
         check_file "$PROJECT_PATH"
         publish_project
         verify_publish
