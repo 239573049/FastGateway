@@ -1,7 +1,6 @@
 import { DomainName, ServiceType } from "@/types";
-import { SpotlightCard } from "@lobehub/ui";
 import { memo, useEffect, useState, } from "react";
-import { Button, Dropdown, Empty } from 'antd';
+import { Button, Dropdown, Empty, theme } from 'antd';
 import { Flexbox } from 'react-layout-kit';
 import { useDomainStore, useRouteStore } from "@/store/server";
 import { AlignJustify } from 'lucide-react'
@@ -18,6 +17,10 @@ const DomainNamesList = memo(() => {
     const [loading] = useRouteStore((state) => [state.loading]);
     const [tags, setTags] = useState<string[]>([]);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+    const {
+        token: { colorBgContainer, colorBorder, colorText, colorTextSecondary },
+    } = theme.useToken();
 
     const { id } = useParams<{ id: string }>();
     const {
@@ -48,19 +51,29 @@ const DomainNamesList = memo(() => {
 
 
     const render = (item: DomainName) => {
-        return (
-            <Flexbox
-                key={item.id}
-                style={{
-                    padding: '8px',
-                    borderRadius: '5px',
-                    height: '180px',
-                    marginBottom: '10px',
-                    cursor: 'pointer',
-                }}
-            >
+        return (                <Flexbox
+                    key={item.id}
+                    style={{
+                        padding: '16px',
+                        borderRadius: '8px',
+                        height: '180px',
+                        marginBottom: '10px',
+                        cursor: 'pointer',
+                        backgroundColor: colorBgContainer,
+                        border: `1px solid ${colorBorder}`,
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        transition: 'box-shadow 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                    }}
+                >
                 <div style={{
                     fontSize: '18px',
+                    color: colorText,
                 }}>
                     路由：
                     {item.path}
@@ -123,6 +136,7 @@ const DomainNamesList = memo(() => {
                         flex: 1,
                         userSelect: 'none',
                         overflow: 'auto',
+                        color: colorTextSecondary,
                     }}>
                     {
                         item.serviceType === ServiceType.Service && ('代理服务: ' + item.service)
@@ -185,8 +199,14 @@ const DomainNamesList = memo(() => {
                 }
             </div>
 
-            <SpotlightCard items={domains.filter(x => selectedTags.length === 0 || x.domains.some((y:any) => selectedTags.includes(y)))}
-                renderItem={render} />
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+                gap: '16px',
+                padding: '16px'
+            }}>
+                {domains.filter(x => selectedTags.length === 0 || x.domains.some((y:any) => selectedTags.includes(y))).map((item) => render(item))}
+            </div>
             {
                 domains.length === 0 && <Empty />
             }
