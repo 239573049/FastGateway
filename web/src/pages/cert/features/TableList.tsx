@@ -1,5 +1,4 @@
 import { Table } from 'antd';
-import { CSSProperties } from 'react';
 
 interface TableProps {
     columns: any[];

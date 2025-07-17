@@ -71,7 +71,7 @@ const CreateRateLimitPage: React.FC<CreateRateLimitProps> = ({
     }
 
     return (
-        <Modal onCancel={() => onClose()} onClose={() => onClose()} footer={[]} open={visible} title='新增限流'>
+        <Modal onCancel={() => onClose()}  footer={[]} open={visible} title='新增限流'>
             <Flexbox
                 justify='column'>
                 <FInput value={value.name} onChange={handleChange("name")} label='名称' style={{

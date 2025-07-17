@@ -70,10 +70,7 @@ export default function UpdateDomain({
     }
 
     return (
-        <Modal footer={[]} title="编辑路由" open={visible} onClose={() => {
-            onClose();
-        }}
-            onCancel={() => onClose()}
+        <Modal footer={[]} title="编辑路由" open={visible} onCancel={() => onClose()}
         ><Flexbox
             justify='column'>
                 <div style={{

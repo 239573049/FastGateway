@@ -42,3 +42,4 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 COPY --from=builder /src/dist ./wwwroot
 ENTRYPOINT ["dotnet", "FastGateway.Service.dll"]
+.

@@ -56,7 +56,7 @@ const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = 
     }
 
     return (
-        <Modal onCancel={() => onClose()} onClose={() => onClose()} footer={[]} open={visible} title={isBlacklist ? '新增黑名单' : '新增白名单'}>
+        <Modal onCancel={() => onClose()} footer={[]} open={visible} title={isBlacklist ? '新增黑名单' : '新增白名单'}>
             <Flexbox
                 justify='column'>
                 <FInput value={value.name} onChange={handleChange("name")} label='名称' style={{

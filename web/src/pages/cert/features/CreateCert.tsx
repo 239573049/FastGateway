@@ -61,7 +61,7 @@ export default function CreateCertPage({
 
 
     return (
-        <Modal footer={[]} title='新增证书' open={visible} onCancel={() => onClose()} onClose={() => onClose()}>
+        <Modal footer={[]} title='新增证书' open={visible} onCancel={() => onClose()} >
             <Flexbox
                 justify='column'
                 style={{

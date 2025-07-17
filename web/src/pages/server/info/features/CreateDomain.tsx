@@ -68,10 +68,7 @@ export default function CreateDomain({
     }
 
     return (
-        <Modal footer={[]} title="创建路由" open={visible} onClose={() => {
-            onClose();
-        }}
-            onCancel={() => onClose()}
+        <Modal footer={[]} title="创建路由" open={visible} onCancel={() => onClose()}
         ><Flexbox
             justify='column'>
                 <div style={{
