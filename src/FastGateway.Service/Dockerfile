@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER root
 RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo Asia/Shanghai > /etc/timezone
 RUN  apt update \
@@ -11,7 +11,7 @@ RUN  apt update \
     && apt-get purge -y --auto-remove wget && apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 EXPOSE 8080
-
+EXPOSE 8081
 
 FROM node:alpine AS builder
 WORKDIR /src
@@ -19,24 +19,20 @@ COPY web .
 RUN npm i
 RUN npm run build
 
-# 此阶段用于生成服务项目
-FROM mcr.microsoft.com/dotnet/sdk:10.0-bookworm-slim AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Directory.Build.props", "."]
 COPY ["src/FastGateway.Service/FastGateway.Service.csproj", "src/FastGateway.Service/"]
 COPY ["src/FastGateway.Entities/FastGateway.Entities.csproj", "src/FastGateway.Entities/"]
-RUN dotnet restore "./src/FastGateway.Service/FastGateway.Service.csproj"
+RUN dotnet restore "src/FastGateway.Service/FastGateway.Service.csproj"
 COPY . .
 WORKDIR "/src/src/FastGateway.Service"
 RUN dotnet build "./FastGateway.Service.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# 此阶段用于发布要复制到最终阶段的服务项目
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./FastGateway.Service.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# 此阶段在生产中使用，或在常规模式下从 VS 运行时使用(在不使用调试配置时为默认值)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .

@@ -15,7 +15,7 @@ public class ConfigurationService
 
     public ConfigurationService()
     {
-        _configPath = Path.Combine(AppContext.BaseDirectory, "gateway.config");
+        _configPath = Path.Combine(AppContext.BaseDirectory, "data", "gateway.config");
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -146,7 +146,7 @@ public class ConfigurationService
     {
         if (string.IsNullOrEmpty(cert.Id))
             cert.Id = Guid.NewGuid().ToString();
-            
+
         _config.Certs.Add(cert);
         SaveConfig();
     }
@@ -208,7 +208,7 @@ public class ConfigurationService
     {
         if (string.IsNullOrEmpty(rateLimit.Id))
             rateLimit.Id = Guid.NewGuid().ToString();
-            
+
         _config.RateLimits.Add(rateLimit);
         SaveConfig();
     }
