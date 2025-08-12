@@ -1,85 +1,76 @@
 ﻿using FastGateway.Entities;
-using FastGateway.Service.DataAccess;
-using Microsoft.EntityFrameworkCore;
+using FastGateway.Service.Services;
 
 namespace FastGateway.Service.Infrastructure;
 
-public class SettingProvide(MasterContext context) : IScopeDependency
+public class SettingProvide(ConfigurationService configService) 
 {
-    public async ValueTask<int> GetIntAsync(string key)
+    public ValueTask<int> GetIntAsync(string key)
     {
-        var setting = await context.Settings.FirstOrDefaultAsync(x => x.Key == key);
+        var setting = configService.GetSettings().FirstOrDefault(x => x.Key == key);
         if (setting?.Value != null && int.TryParse(setting.Value, out var result))
         {
-            return result;
+            return ValueTask.FromResult(result);
         }
 
-        return 0;
+        return ValueTask.FromResult(0);
     }
 
-    public async ValueTask<string> GetStringAsync(string key)
+    public ValueTask<string> GetStringAsync(string key)
     {
-        var setting = await context.Settings.FirstOrDefaultAsync(x => x.Key == key);
-        return setting?.Value;
+        var setting = configService.GetSettings().FirstOrDefault(x => x.Key == key);
+        return ValueTask.FromResult(setting?.Value);
     }
 
-    public async ValueTask<bool> GetBoolAsync(string key)
+    public ValueTask<bool> GetBoolAsync(string key)
     {
-        var setting = await context.Settings.FirstOrDefaultAsync(x => x.Key == key);
+        var setting = configService.GetSettings().FirstOrDefault(x => x.Key == key);
         if (setting?.Value != null && bool.TryParse(setting.Value, out var result))
         {
-            return result;
+            return ValueTask.FromResult(result);
         }
 
-        return false;
+        return ValueTask.FromResult(false);
     }
 
-    public async ValueTask<T> GetEnumAsync<T>(string key) where T : struct
+    public ValueTask<T> GetEnumAsync<T>(string key) where T : struct
     {
-        var setting = await context.Settings.FirstOrDefaultAsync(x => x.Key == key);
+        var setting = configService.GetSettings().FirstOrDefault(x => x.Key == key);
         if (setting?.Value != null && Enum.TryParse<T>(setting.Value, out var result))
         {
-            return result;
+            return ValueTask.FromResult(result);
         }
 
-        return default;
+        return ValueTask.FromResult(default(T));
     }
 
-    public async ValueTask<List<Setting>> GetListAsync(string group)
+    public ValueTask<List<Setting>> GetListAsync(string group)
     {
-        return await context.Settings.Where(x => x.Group == group).ToListAsync();
+        var result = configService.GetSettings().Where(x => x.Group == group).ToList();
+        return ValueTask.FromResult(result);
     }
 
-    public async ValueTask<List<Setting>> GetListAsync()
+    public ValueTask<List<Setting>> GetListAsync()
     {
-        return await context.Settings.ToListAsync();
+        var result = configService.GetSettings().ToList();
+        return ValueTask.FromResult(result);
     }
 
-    public async ValueTask SetAsync(string key, Setting setting)
+    public ValueTask SetAsync(string key, Setting setting)
     {
         setting.Key = key;
-
-        if (context.Settings.Any(x => x.Key == key))
-        {
-            await context.Settings.Where(x => x.Key == key)
-                .ExecuteUpdateAsync(x => x.SetProperty(a => a.Value, a => setting.Value));
-        }
-        else
-        {
-            await context.Settings.AddAsync(setting);
-
-            await context.SaveChangesAsync();
-        }
+        configService.AddOrUpdateSetting(setting);
+        return ValueTask.CompletedTask;
     }
 
-    public async ValueTask SetAsync(string key, string value)
+    public ValueTask SetAsync(string key, string value)
     {
-        await SetAsync(key, new Setting
+        return SetAsync(key, new Setting
         {
             Value = value,
             Description = string.Empty,
             IsPublic = false,
             IsSystem = false
-        }).ConfigureAwait(false);
+        });
     }
 }

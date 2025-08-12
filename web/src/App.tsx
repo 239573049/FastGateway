@@ -15,7 +15,6 @@ const CertPage = lazy(() => import('./pages/cert/page'))
 const AboutPage = lazy(() => import('./pages/about/page'))
 const FileStoragePage = lazy(() => import('./pages/filestorage/page'))
 const DashboardPage = lazy(() => import('./pages/dashboard/page'))
-const ApplicationLoggerPage = lazy(() => import('./pages/application-logger/page'))
 
 const router = createBrowserRouter([
   {
@@ -80,12 +79,6 @@ const router = createBrowserRouter([
             path: 'cert',
             element: <Suspense fallback={<Loading></Loading>}>
               <CertPage />
-            </Suspense>
-          },
-          {
-            path: 'log',
-            element: <Suspense fallback={<Loading></Loading>}>
-              <ApplicationLoggerPage />
             </Suspense>
           },
           {

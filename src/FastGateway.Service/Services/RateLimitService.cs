@@ -1,10 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using AspNetCoreRateLimit;
 using FastGateway.Entities;
-using FastGateway.Service.DataAccess;
 using FastGateway.Service.Dto;
 using FastGateway.Service.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using FastGateway.Service.Services;
 
 namespace FastGateway.Service.Services;
 
@@ -69,59 +68,56 @@ public static class RateLimitService
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("限流");
 
-        rateLimit.MapPost(string.Empty, async (MasterContext dbContext, RateLimit limit) =>
+        rateLimit.MapPost(string.Empty, (ConfigurationService configService, RateLimit limit) =>
         {
             if (string.IsNullOrWhiteSpace(limit.Name))
             {
                 throw new ValidationException("限流名称不能为空");
             }
 
-            if (await dbContext.RateLimits.AnyAsync(x => x.Name == limit.Name))
+            if (configService.GetRateLimits().Any(x => x.Name == limit.Name))
             {
                 throw new ValidationException("限流名称已存在");
             }
 
-
-            dbContext.RateLimits.Add(limit);
-
-            await dbContext.SaveChangesAsync();
+            configService.AddRateLimit(limit);
         }).WithDescription("创建限流").WithDisplayName("创建限流").WithTags("限流");
 
-        rateLimit.MapGet(string.Empty, async (MasterContext dbContext, int page, int pageSize) =>
+        rateLimit.MapGet(string.Empty, (ConfigurationService configService, int page, int pageSize) =>
             {
-                var total = await dbContext.RateLimits.CountAsync();
-
-                return new PagingDto<RateLimit>(total,  await dbContext.RateLimits
+                var allLimits = configService.GetRateLimits();
+                var total = allLimits.Count();
+                var result = allLimits
                     .Skip((page - 1) * pageSize)
-                    .ToListAsync());
+                    .Take(pageSize)
+                    .ToList();
+
+                return new PagingDto<RateLimit>(total, result);
             })
             .WithDescription("获取限流列表")
             .WithDisplayName("获取限流列表")
             .WithTags("限流");
 
         rateLimit.MapDelete("{id}",
-            async (MasterContext dbContext, string id) =>
+            (ConfigurationService configService, string id) =>
             {
-                await dbContext.RateLimits.Where(x => x.Id == id).ExecuteDeleteAsync();
+                configService.DeleteRateLimit(id);
             }).WithDescription("删除限流").WithDisplayName("删除限流").WithTags("限流");
 
-        rateLimit.MapPut("{id}", async (MasterContext dbContext, string id, RateLimit rateLimit) =>
+        rateLimit.MapPut("{id}", (ConfigurationService configService, string id, RateLimit rateLimit) =>
         {
             if (string.IsNullOrWhiteSpace(rateLimit.Name))
             {
                 throw new ValidationException("限流名称不能为空");
             }
 
-            if (await dbContext.RateLimits.AnyAsync(x => x.Name == rateLimit.Name && x.Id != id))
+            if (configService.GetRateLimits().Any(x => x.Name == rateLimit.Name && x.Id != id))
             {
                 throw new ValidationException("限流名称已存在");
             }
 
             rateLimit.Id = id;
-
-            dbContext.RateLimits.Update(rateLimit);
-
-            await dbContext.SaveChangesAsync();
+            configService.UpdateRateLimit(rateLimit);
         }).WithDescription("更新限流").WithDisplayName("更新限流").WithTags("限流");
 
         return app;

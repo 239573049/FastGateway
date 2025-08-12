@@ -1,0 +1,170 @@
+name: Release Build & Images
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build_web:
+    name: Build Web Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install and build web
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload web dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+
+  publish_binaries:
+    name: Publish Binaries (${{ matrix.rid }})
+    needs: build_web
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [win-x64, linux-x64, win-arm64, linux-arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Download web dist
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: src/FastGateway.Service/wwwroot
+
+      - name: Ensure zip is available
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Restore
+        run: dotnet restore ./src/FastGateway.Service/FastGateway.Service.csproj
+
+      - name: Publish (${{ matrix.rid }})
+        run: |
+          dotnet publish ./src/FastGateway.Service/FastGateway.Service.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            -o publish/${{ matrix.rid }} \
+            /p:PublishSingleFile=true \
+            /p:SelfContained=true \
+            /p:PublishTrimmed=false
+
+      - name: Package zip (${{ matrix.rid }})
+        run: |
+          cd publish/${{ matrix.rid }}
+          zip -r ../../fast-gateway-${{ matrix.rid }}.zip .
+          cd -
+
+      - name: Upload artifact (${{ matrix.rid }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.rid }}
+          path: fast-gateway-${{ matrix.rid }}.zip
+
+  build_and_push_images:
+    name: Build & Push Multi-Arch Images and Zip
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: aidotnet
+          password: ${{ secrets.DOCKER }}
+
+      - name: Extract version
+        id: vars
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Ensure zip is available
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Build and push (linux/amd64, linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/FastGateway.Service/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            aidotnet/fast-gateway:latest
+            aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Pull and save image (linux/amd64)
+        run: |
+          docker pull --platform linux/amd64 aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
+          docker save -o fast-gateway-image-linux-amd64.tar aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
+          zip -9 fast-gateway-image-linux-amd64.zip fast-gateway-image-linux-amd64.tar
+          rm fast-gateway-image-linux-amd64.tar
+
+      - name: Pull and save image (linux/arm64)
+        run: |
+          docker pull --platform linux/arm64 aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
+          docker save -o fast-gateway-image-linux-arm64.tar aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
+          zip -9 fast-gateway-image-linux-arm64.zip fast-gateway-image-linux-arm64.tar
+          rm fast-gateway-image-linux-arm64.tar
+
+      - name: Upload image zips
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-zips
+          path: |
+            fast-gateway-image-linux-amd64.zip
+            fast-gateway-image-linux-arm64.zip
+
+  release:
+    name: Create GitHub Release
+    needs: [publish_binaries, build_and_push_images]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./dist
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**/fast-gateway-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+

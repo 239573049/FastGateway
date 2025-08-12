@@ -1,9 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using FastGateway.Entities;
-using FastGateway.Service.DataAccess;
 using FastGateway.Service.Dto;
 using FastGateway.Service.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace FastGateway.Service.Services;
 
@@ -18,7 +16,7 @@ public static class DomainNameService
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("域名");
 
-        domain.MapPost(string.Empty, async (MasterContext dbContext, DomainName domainName) =>
+        domain.MapPost(string.Empty, (ConfigurationService configService, DomainName domainName) =>
         {
             if (domainName.Domains.Length == 0 || string.IsNullOrWhiteSpace(domainName.Domains[0]))
             {
@@ -28,15 +26,12 @@ public static class DomainNameService
             domainName.Domains = domainName.Domains.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
             domainName.Domains = domainName.Domains.Distinct().ToArray();
             
-            dbContext.DomainNames.Add(domainName);
-
-            await dbContext.SaveChangesAsync();
+            configService.AddDomainName(domainName);
         }).WithDescription("创建域名").WithDisplayName("创建域名").WithTags("域名");
 
-        domain.MapGet("{serviceId}", async (MasterContext dbContext, string serviceId) =>
+        domain.MapGet("{serviceId}", (ConfigurationService configService, string serviceId) =>
             {
-                var result = await dbContext.DomainNames.Where(x => x.ServerId == serviceId)
-                    .ToListAsync();
+                var result = configService.GetDomainNamesByServerId(serviceId);
                 
                 return result;
             })
@@ -45,12 +40,12 @@ public static class DomainNameService
             .WithTags("域名");
 
         domain.MapDelete("{id}",
-            async (MasterContext dbContext, string id) =>
+            (ConfigurationService configService, string id) =>
             {
-                await dbContext.DomainNames.Where(x => x.Id == id).ExecuteDeleteAsync();
+                configService.DeleteDomainName(id);
             }).WithDescription("删除域名").WithDisplayName("删除域名").WithTags("域名");
 
-        domain.MapPut("{id}", async (MasterContext dbContext, string id, DomainName domainName) =>
+        domain.MapPut("{id}", (ConfigurationService configService, string id, DomainName domainName) =>
         {
             if (domainName.Domains.Length == 0 || string.IsNullOrWhiteSpace(domainName.Domains[0]))
             {
@@ -62,9 +57,7 @@ public static class DomainNameService
 
             domainName.Id = id;
 
-            dbContext.DomainNames.Update(domainName);
-
-            await dbContext.SaveChangesAsync();
+            configService.UpdateDomainName(domainName);
         }).WithDescription("更新域名").WithDisplayName("更新域名").WithTags("域名");
 
         // 检查目录或文件是否存在
@@ -102,11 +95,15 @@ public static class DomainNameService
             }
         }).WithDescription("检查服务是否可用").WithDisplayName("检查服务是否可用").WithTags("域名");
 
-        domain.MapPut("{id}/enable", async (MasterContext dbContext, string id) =>
+        domain.MapPut("{id}/enable", (ConfigurationService configService, string id) =>
         {
-            await dbContext.DomainNames
-                .Where(x => x.Id == id)
-                .ExecuteUpdateAsync(i => i.SetProperty(a => a.Enable, a => !a.Enable));
+            var domainNames = configService.GetDomainNames();
+            var domainName = domainNames.FirstOrDefault(x => x.Id == id);
+            if (domainName != null)
+            {
+                domainName.Enable = !domainName.Enable;
+                configService.UpdateDomainName(domainName);
+            }
         }).WithDescription("启用/禁用域名").WithDisplayName("启用/禁用域名").WithTags("域名");
 
 

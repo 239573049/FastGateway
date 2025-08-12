@@ -7,18 +7,35 @@ on:
     branches: [ "master" ]
 
 jobs:
-
-  build:
-
+  build-and-push:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: 登录Docker Hub
-      run: docker login -u aidotnet -p ${{ secrets.DOCKER }} 
-    - uses: actions/checkout@v4
-    - name: 构建镜像
-      run: docker build . --file src/FastGateway.Service/Dockerfile --tag aidotnet/fast-gateway:latest
-    - uses: actions/checkout@v4
-    - name: 推送镜像
-      run: docker push aidotnet/fast-gateway:latest
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: aidotnet
+          password: ${{ secrets.DOCKER }}
+
+      - name: Extract short sha
+        id: vars
+        run: echo "sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Build and push multi-arch
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/FastGateway.Service/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            aidotnet/fast-gateway:latest
+            aidotnet/fast-gateway:sha-${{ steps.vars.outputs.sha }}

@@ -1,9 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using FastGateway.Entities;
-using FastGateway.Service.DataAccess;
 using FastGateway.Service.Dto;
 using FastGateway.Service.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using FastGateway.Service.Services;
 
 namespace FastGateway.Service.Services;
 
@@ -72,7 +71,7 @@ public static class BlacklistAndWhitelistService
             .WithDisplayName("黑白名单");
 
 
-        domain.MapPost(string.Empty, async (MasterContext dbContext, BlacklistAndWhitelist whitelist) =>
+        domain.MapPost(string.Empty, (ConfigurationService configService, BlacklistAndWhitelist whitelist) =>
         {
             if (string.IsNullOrWhiteSpace(whitelist.Name))
             {
@@ -82,19 +81,19 @@ public static class BlacklistAndWhitelistService
             whitelist.Ips = whitelist.Ips.Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct().ToList();
 
-            dbContext.BlacklistAndWhitelists.Add(whitelist);
-
-            await dbContext.SaveChangesAsync();
+            configService.AddBlacklistAndWhitelist(whitelist);
         }).WithDescription("创建黑白名单").WithDisplayName("创建黑白名单").WithTags("黑白名单");
 
-        domain.MapGet(string.Empty, async (MasterContext dbContext, bool isBlacklist, int page, int pageSize) =>
+        domain.MapGet(string.Empty, (ConfigurationService configService, bool isBlacklist, int page, int pageSize) =>
             {
-                var result = await dbContext.BlacklistAndWhitelists
-                    .Where(x => x.IsBlacklist == isBlacklist)
+                var allItems = configService.GetBlacklistAndWhitelists()
+                    .Where(x => x.IsBlacklist == isBlacklist);
+                
+                var total = allItems.Count();
+                var result = allItems
                     .Skip((page - 1) * pageSize)
-                    .ToListAsync();
-
-                var total = await dbContext.BlacklistAndWhitelists.CountAsync();
+                    .Take(pageSize)
+                    .ToList();
 
                 return new PagingDto<BlacklistAndWhitelist>(total, result);
             })
@@ -103,12 +102,12 @@ public static class BlacklistAndWhitelistService
             .WithTags("黑白名单");
 
         domain.MapDelete("{id}",
-            async (MasterContext dbContext, long id) =>
+            (ConfigurationService configService, long id) =>
             {
-                await dbContext.BlacklistAndWhitelists.Where(x => x.Id == id).ExecuteDeleteAsync();
+                configService.DeleteBlacklistAndWhitelist(id);
             }).WithDescription("删除黑白名单").WithDisplayName("删除黑白名单").WithTags("黑白名单");
 
-        domain.MapPut("{id}", async (MasterContext dbContext, long id, BlacklistAndWhitelist blacklist) =>
+        domain.MapPut("{id}", (ConfigurationService configService, long id, BlacklistAndWhitelist blacklist) =>
         {
             if (string.IsNullOrWhiteSpace(blacklist.Name))
             {
@@ -116,10 +115,7 @@ public static class BlacklistAndWhitelistService
             }
 
             blacklist.Id = id;
-
-            dbContext.BlacklistAndWhitelists.Update(blacklist);
-
-            await dbContext.SaveChangesAsync();
+            configService.UpdateBlacklistAndWhitelist(blacklist);
         }).WithDescription("更新黑白名单").WithDisplayName("更新黑白名单").WithTags("黑白名单");
 
 

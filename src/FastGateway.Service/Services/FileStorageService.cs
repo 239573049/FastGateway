@@ -19,6 +19,63 @@ public static class FileStorageService
         return driveLetter;
     }
 
+    // 递归添加目录到ZIP文件
+    static void AddDirectoryToZip(ZipArchive zip, string directoryPath, string entryName)
+    {
+        var files = Directory.GetFiles(directoryPath);
+        var directories = Directory.GetDirectories(directoryPath);
+
+        // 添加文件
+        foreach (var file in files)
+        {
+            var fileName = Path.GetFileName(file);
+            var entryPath = Path.Combine(entryName, fileName).Replace('\\', '/');
+            zip.CreateEntryFromFile(file, entryPath);
+        }
+
+        // 递归添加子目录
+        foreach (var directory in directories)
+        {
+            var dirName = Path.GetFileName(directory);
+            var subEntryName = Path.Combine(entryName, dirName).Replace('\\', '/');
+            AddDirectoryToZip(zip, directory, subEntryName);
+        }
+
+        // 如果目录为空，创建一个空的目录条目
+        if (files.Length == 0 && directories.Length == 0)
+        {
+            var emptyDirEntry = entryName.Replace('\\', '/') + "/";
+            zip.CreateEntry(emptyDirEntry);
+        }
+    }
+
+    // 递归复制目录
+    static void CopyDirectory(string sourceDir, string targetDir)
+    {
+        var source = new DirectoryInfo(sourceDir);
+        var target = new DirectoryInfo(targetDir);
+
+        // 创建目标目录
+        if (!target.Exists)
+        {
+            target.Create();
+        }
+
+        // 复制所有文件
+        foreach (var file in source.GetFiles())
+        {
+            var targetFile = Path.Combine(target.FullName, file.Name);
+            file.CopyTo(targetFile, true);
+        }
+
+        // 递归复制子目录
+        foreach (var subDir in source.GetDirectories())
+        {
+            var targetSubDir = Path.Combine(target.FullName, subDir.Name);
+            CopyDirectory(subDir.FullName, targetSubDir);
+        }
+    }
+
     public static IEndpointRouteBuilder MapFileStorage(this IEndpointRouteBuilder app)
     {
         var fileStorage = app.MapGroup("/api/v1/filestorage")
@@ -237,44 +294,167 @@ public static class FileStorageService
             }
         }).WithDescription("合并文件").WithDisplayName("合并文件").WithTags("文件存储");
 
-        // 解压zip后缀名的文件
-        fileStorage.MapPost("unzip", (string path, string drives) =>
+        // 解压指定的zip文件
+        fileStorage.MapPost("unzip", (UnzipRequest request) =>
         {
-            if (string.IsNullOrWhiteSpace(path))
+            if (string.IsNullOrWhiteSpace(request.Path))
             {
-                throw new ValidationException("路径不能为空");
+                throw new ValidationException("ZIP文件路径不能为空");
             }
 
-            if (string.IsNullOrWhiteSpace(drives))
+            if (string.IsNullOrWhiteSpace(request.Drives))
             {
                 throw new ValidationException("盘符不能为空");
             }
 
-            path = Path.Combine(drives, path.TrimStart('/'));
+            var zipPath = Path.Combine(request.Drives, request.Path.TrimStart('/'));
 
-            if (!Directory.Exists(path))
+            if (!File.Exists(zipPath))
             {
-                throw new ValidationException("文件夹不存在");
+                throw new ValidationException("ZIP文件不存在");
             }
 
-            var files = Directory.GetFiles(path, "*.zip");
-            if (files.Length == 0)
+            // 检查文件是否为zip文件
+            if (!zipPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ValidationException("文件不存在");
+                throw new ValidationException("文件不是ZIP格式");
             }
 
-            foreach (var file in files)
+            // 解压到同目录下，创建以文件名命名的文件夹
+            var directory = Path.GetDirectoryName(zipPath);
+            var extractDirectory = Path.Combine(directory, Path.GetFileNameWithoutExtension(zipPath));
+            
+            // 如果解压目录已存在，先删除
+            if (Directory.Exists(extractDirectory))
             {
-                var directory = Path.Combine(path, Path.GetFileNameWithoutExtension(file));
-                if (!Directory.Exists(directory))
+                Directory.Delete(extractDirectory, true);
+            }
+
+            Directory.CreateDirectory(extractDirectory);
+            
+            try
+            {
+                ZipFile.ExtractToDirectory(zipPath, extractDirectory);
+            }
+            catch (Exception ex)
+            {
+                // 如果解压失败，清理创建的目录
+                if (Directory.Exists(extractDirectory))
                 {
-                    Directory.CreateDirectory(directory);
+                    Directory.Delete(extractDirectory, true);
                 }
-
-                ZipFile.ExtractToDirectory(file, directory);
-                File.Delete(file);
+                throw new ValidationException($"解压失败: {ex.Message}");
             }
-        }).WithDescription("解压文件").WithDisplayName("解压文件").WithTags("文件存储");
+        }).WithDescription("解压ZIP文件").WithDisplayName("解压ZIP文件").WithTags("文件存储");
+
+        // 批量打包文件为ZIP
+        fileStorage.MapPost("create-zip", (CreateZipRequest request) =>
+        {
+            if (request.SourcePaths == null || request.SourcePaths.Length == 0)
+            {
+                throw new ValidationException("源文件路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ZipName))
+            {
+                throw new ValidationException("ZIP文件名不能为空");
+            }
+
+            // 确保ZIP文件名以.zip结尾
+            if (!request.ZipName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                request.ZipName += ".zip";
+            }
+
+            // 确定ZIP文件的输出路径
+            var firstSourcePath = Path.Combine(request.Drives, request.SourcePaths[0].TrimStart('/'));
+            var outputDirectory = Path.GetDirectoryName(firstSourcePath);
+            var zipPath = Path.Combine(outputDirectory, request.ZipName);
+
+            // 如果ZIP文件已存在，先删除
+            if (File.Exists(zipPath))
+            {
+                File.Delete(zipPath);
+            }
+
+            // 创建ZIP文件
+            using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+            
+            foreach (var sourcePath in request.SourcePaths)
+            {
+                var fullPath = Path.Combine(request.Drives, sourcePath.TrimStart('/'));
+                
+                if (File.Exists(fullPath))
+                {
+                    // 添加文件到ZIP
+                    var fileName = Path.GetFileName(fullPath);
+                    zip.CreateEntryFromFile(fullPath, fileName);
+                }
+                else if (Directory.Exists(fullPath))
+                {
+                    // 添加目录到ZIP
+                    AddDirectoryToZip(zip, fullPath, Path.GetFileName(fullPath));
+                }
+            }
+        }).WithDescription("批量打包文件为ZIP").WithDisplayName("批量打包文件为ZIP").WithTags("文件存储");
+
+        // 打包单个文件或文件夹为ZIP
+        fileStorage.MapPost("create-zip-from-path", (CreateZipFromPathRequest request) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.SourcePath))
+            {
+                throw new ValidationException("源路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ZipName))
+            {
+                throw new ValidationException("ZIP文件名不能为空");
+            }
+
+            // 确保ZIP文件名以.zip结尾
+            if (!request.ZipName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                request.ZipName += ".zip";
+            }
+
+            var sourcePath = Path.Combine(request.Drives, request.SourcePath.TrimStart('/'));
+            var outputDirectory = Path.GetDirectoryName(sourcePath);
+            var zipPath = Path.Combine(outputDirectory, request.ZipName);
+
+            // 如果ZIP文件已存在，先删除
+            if (File.Exists(zipPath))
+            {
+                File.Delete(zipPath);
+            }
+
+            // 创建ZIP文件
+            if (File.Exists(sourcePath))
+            {
+                // 打包单个文件
+                using var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create);
+                var fileName = Path.GetFileName(sourcePath);
+                zip.CreateEntryFromFile(sourcePath, fileName);
+            }
+            else if (Directory.Exists(sourcePath))
+            {
+                // 打包整个目录
+                ZipFile.CreateFromDirectory(sourcePath, zipPath);
+            }
+            else
+            {
+                throw new ValidationException("源路径不存在");
+            }
+        }).WithDescription("打包单个文件或文件夹为ZIP").WithDisplayName("打包单个文件或文件夹为ZIP").WithTags("文件存储");
 
         // 删除文件/文件夹
 
@@ -406,6 +586,212 @@ public static class FileStorageService
                 return ResultDto.CreateFailed("路径不存在");
             }
         }).WithDescription("获取文件或目录属性").WithDisplayName("获取文件或目录属性").WithTags("文件存储");
+
+        // 批量删除文件
+        fileStorage.MapPost("delete-multiple", (DeleteMultipleRequest request) =>
+        {
+            if (request.Items == null || request.Items.Length == 0)
+            {
+                throw new ValidationException("删除项不能为空");
+            }
+
+            var errors = new List<string>();
+            var successCount = 0;
+
+            foreach (var item in request.Items)
+            {
+                try
+                {
+                    var path = Path.Combine(item.Drives, item.Path.TrimStart('/'));
+                    
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                        successCount++;
+                    }
+                    else if (Directory.Exists(path))
+                    {
+                        Directory.Delete(path, true);
+                        successCount++;
+                    }
+                    else
+                    {
+                        errors.Add($"路径不存在: {item.Path}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"删除失败 {item.Path}: {ex.Message}");
+                }
+            }
+
+            if (errors.Any())
+            {
+                throw new ValidationException($"批量删除完成，成功: {successCount}，失败: {errors.Count}。错误: {string.Join("; ", errors)}");
+            }
+        }).WithDescription("批量删除文件").WithDisplayName("批量删除文件").WithTags("文件存储");
+
+        // 移动文件或文件夹
+        fileStorage.MapPost("move", (MoveFileRequest request) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.SourcePath))
+            {
+                throw new ValidationException("源路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.TargetPath))
+            {
+                throw new ValidationException("目标路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            var sourcePath = Path.Combine(request.Drives, request.SourcePath.TrimStart('/'));
+            var targetPath = Path.Combine(request.Drives, request.TargetPath.TrimStart('/'));
+
+            // 确保目标目录存在
+            var targetDirectory = Path.GetDirectoryName(targetPath);
+            if (!Directory.Exists(targetDirectory))
+            {
+                Directory.CreateDirectory(targetDirectory);
+            }
+
+            if (File.Exists(sourcePath))
+            {
+                File.Move(sourcePath, targetPath);
+            }
+            else if (Directory.Exists(sourcePath))
+            {
+                Directory.Move(sourcePath, targetPath);
+            }
+            else
+            {
+                throw new ValidationException("源路径不存在");
+            }
+        }).WithDescription("移动文件或文件夹").WithDisplayName("移动文件或文件夹").WithTags("文件存储");
+
+        // 复制文件或文件夹
+        fileStorage.MapPost("copy", (CopyFileRequest request) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.SourcePath))
+            {
+                throw new ValidationException("源路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.TargetPath))
+            {
+                throw new ValidationException("目标路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            var sourcePath = Path.Combine(request.Drives, request.SourcePath.TrimStart('/'));
+            var targetPath = Path.Combine(request.Drives, request.TargetPath.TrimStart('/'));
+
+            // 确保目标目录存在
+            var targetDirectory = Path.GetDirectoryName(targetPath);
+            if (!Directory.Exists(targetDirectory))
+            {
+                Directory.CreateDirectory(targetDirectory);
+            }
+
+            if (File.Exists(sourcePath))
+            {
+                File.Copy(sourcePath, targetPath, true);
+            }
+            else if (Directory.Exists(sourcePath))
+            {
+                CopyDirectory(sourcePath, targetPath);
+            }
+            else
+            {
+                throw new ValidationException("源路径不存在");
+            }
+        }).WithDescription("复制文件或文件夹").WithDisplayName("复制文件或文件夹").WithTags("文件存储");
+
+        // 创建文件
+        fileStorage.MapPost("create-file", (CreateFileRequest request) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Path))
+            {
+                throw new ValidationException("路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.FileName))
+            {
+                throw new ValidationException("文件名不能为空");
+            }
+
+            var directoryPath = Path.Combine(request.Drives, request.Path.TrimStart('/'));
+            var filePath = Path.Combine(directoryPath, request.FileName);
+
+            // 确保目录存在
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            // 创建文件
+            File.WriteAllText(filePath, request.Content ?? string.Empty);
+        }).WithDescription("创建文件").WithDisplayName("创建文件").WithTags("文件存储");
+
+        // 获取文件内容
+        fileStorage.MapGet("content", (string path, string drives) =>
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ValidationException("路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            var filePath = Path.Combine(drives, path.TrimStart('/'));
+
+            if (!File.Exists(filePath))
+            {
+                throw new ValidationException("文件不存在");
+            }
+
+            var content = File.ReadAllText(filePath);
+            return new { content };
+        }).WithDescription("获取文件内容").WithDisplayName("获取文件内容").WithTags("文件存储");
+
+        // 保存文件内容
+        fileStorage.MapPost("save-content", (SaveContentRequest request) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Path))
+            {
+                throw new ValidationException("路径不能为空");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Drives))
+            {
+                throw new ValidationException("盘符不能为空");
+            }
+
+            var filePath = Path.Combine(request.Drives, request.Path.TrimStart('/'));
+
+            if (!File.Exists(filePath))
+            {
+                throw new ValidationException("文件不存在");
+            }
+
+            File.WriteAllText(filePath, request.Content ?? string.Empty);
+        }).WithDescription("保存文件内容").WithDisplayName("保存文件内容").WithTags("文件存储");
 
         return app;
     }

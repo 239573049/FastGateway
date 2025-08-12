@@ -1,16 +1,11 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using FastGateway.Service.BackgroundTask;
-using FastGateway.Service.DataAccess;
 using FastGateway.Service.Infrastructure;
 using FastGateway.Service.Options;
 using FastGateway.Service.Services;
-using IP2Region.Net.Abstractions;
-using IP2Region.Net.XDB;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Serilog;
 using Watermelon.Service.Infrastructure;
 
 namespace FastGateway.Service;
@@ -21,19 +16,14 @@ public static class Program
     {
         Directory.SetCurrentDirectory(AppContext.BaseDirectory);
 
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
         {
             ContentRootPath = AppContext.BaseDirectory,
             Args = args
         });
 
-        var logger = new LoggerConfiguration()
-            .WriteTo.Console()
-            .CreateLogger();
-
         builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Name));
 
-        builder.Host.UseSerilog(logger);
         builder.Services.AddHttpClient();
 
         // 判断是否window，
@@ -63,64 +53,36 @@ public static class Program
                 };
             }));
 
-        builder.Services.AddAutoGnarly();
+        builder.Services.AddTransient<JwtHelper>();
+        builder.Services.AddScoped<SettingProvide>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
             options.SerializerOptions.Converters.Add(new DateTimeJsonConverter());
         });
         builder.Services.AddSystemUsage();
-        
         builder.Services.AddResponseCompression();
-        builder.Services.AddSingleton<ISearcher>(new Searcher(CachePolicy.File, "ip2region.xdb"));
-        builder.Services.AddHostedService<LoggerBackgroundTask>();
+        
         builder.Services.AddHostedService<RenewSSLBackgroundService>();
-        builder.Services.AddHostedService<ClientRequestBackgroundTask>();
-        builder.Services.AddHostedService<LogCleaningBackgroundService>();
-        builder.Services.AddDbContext<MasterContext>(optionsBuilder =>
-        {
-            // 判断当前目录是否存在data文件夹
-            if (!Directory.Exists("./data"))
-            {
-                Directory.CreateDirectory("./data");
-            }
-
-            optionsBuilder.UseSqlite(builder.Configuration["Master"])
-                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-        });
-
-        builder.Services.AddDbContext<LoggerContext>(optionsBuilder =>
-        {
-            // 判断当前目录是否存在data文件夹
-            if (!Directory.Exists("./data"))
-            {
-                Directory.CreateDirectory("./data");
-            }
-
-            optionsBuilder.UseSqlite(builder.Configuration["Logger"])
-                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-        });
+        builder.Services.AddSingleton<ConfigurationService>();
 
         var app = builder.Build();
 
         using (var scope = app.Services.CreateScope())
         {
-            var loggerContext = scope.ServiceProvider.GetRequiredService<LoggerContext>();
-            var dbContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
-            await dbContext.Database.MigrateAsync();
-			await loggerContext.Database.MigrateAsync();
+            var configService = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
 
-			var certs = await dbContext.Certs.Where(x => x.Expired == false).ToArrayAsync();
-
+            var certs = configService.GetActiveCerts();
             CertService.InitCert(certs);
 
-            var domainNames = await dbContext.DomainNames.ToArrayAsync();
-            var blacklistAndWhitelists = await dbContext.BlacklistAndWhitelists.ToListAsync();
-            var rateLimits = await dbContext.RateLimits.ToListAsync();
-            foreach (var item in  await dbContext.Servers.ToArrayAsync())
+            var domainNames = configService.GetDomainNames();
+            var blacklistAndWhitelists = configService.GetBlacklistAndWhitelists();
+            var rateLimits = configService.GetRateLimits();
+            
+            foreach (var item in configService.GetServers())
             {
                 await Task.Factory.StartNew(async () =>
-                    await Gateway.Gateway.BuilderGateway(item, domainNames.Where(x => x.ServerId == item.Id).ToArray(),
+                    await Gateway.Gateway.BuilderGateway(item, configService.GetDomainNamesByServerId(item.Id),
                         blacklistAndWhitelists, rateLimits));
             }
         }
@@ -151,8 +113,6 @@ public static class Program
             .MapFileStorage()
             .MapRateLimit()
             .MapAuthorizationService()
-            .MapDashboard()
-            .MapApplicationLogger()
             .MapServer();
 
         await app.RunAsync();

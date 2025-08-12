@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace FastGateway.Service.Infrastructure;
 
-public class JwtHelper : ISingletonDependency
+public class JwtHelper
 {
     private readonly JwtOptions _jwtOptions;
 

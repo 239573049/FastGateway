@@ -125,9 +125,6 @@ public static class Gateway
 
             var builder = WebApplication.CreateBuilder();
 
-            builder.Services.AddSingleton<ApplicationLoggerMiddleware>();
-            builder.Services.AddSingleton<ClientRequestLoggerMiddleware>();
-
             builder.WebHost.UseKestrel(options =>
             {
                 if (server.IsHttps)
@@ -156,9 +153,8 @@ public static class Gateway
                 {
                     options.Listen(IPAddress.Any, server.Listen);
                 }
-                
+
                 options.Limits.MaxRequestBodySize = null;
-                
             });
 
             builder.Services.Configure<FormOptions>(options =>
@@ -195,7 +191,7 @@ public static class Gateway
                 {
                     handler.SslOptions.RemoteCertificateValidationCallback =
                         (sender, certificate, chain, errors) => true;
-                    
+
                     // 尽可能保持连接
                     handler.ConnectTimeout = TimeSpan.FromMinutes(10);
                     handler.EnableMultipleHttp2Connections = true;
@@ -227,9 +223,6 @@ public static class Gateway
 
             app.UseInitGatewayMiddleware();
 
-
-            app.UseMiddleware<ApplicationLoggerMiddleware>();
-            app.UseMiddleware<ClientRequestLoggerMiddleware>();
 
             app.UseRateLimitMiddleware(rateLimits);
 
@@ -353,17 +346,18 @@ public static class Gateway
 
         foreach (var domainName in domainNames)
         {
-            if (string.IsNullOrWhiteSpace(domainName.Path))
+            var path = domainName.Path ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(path))
             {
-                domainName.Path = "/{**catch-all}";
+                path = "/{**catch-all}";
             }
-            else if (domainName.Path == "/")
+            else if (path == "/")
             {
-                domainName.Path = $"/{{**catch-all}}";
+                path = "/{**catch-all}";
             }
             else
             {
-                domainName.Path = $"/{domainName.Path.TrimStart('/')}/{{**catch-all}}";
+                path = $"/{path.TrimStart('/')}/{{**catch-all}}";
             }
 
 
@@ -391,7 +385,7 @@ public static class Gateway
                 Match = new RouteMatch
                 {
                     Hosts = domainName.Domains,
-                    Path = domainName.Path,
+                    Path = path,
                 },
                 Metadata = routeMetadata
             };

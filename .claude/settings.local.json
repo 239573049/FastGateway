@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Remove-Item \"D:\\code\\FastGateway\\src\\FastGateway.Service\\DataAccess\\MasterContext.cs\" -Force)",
+      "Bash(Remove-Item \"D:\\code\\FastGateway\\src\\FastGateway.Service\\Migrations\" -Recurse -Force)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}

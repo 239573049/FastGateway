@@ -7,7 +7,6 @@ import {
     Waypoints,
     ShieldCheck,
     ShieldPlus,
-    ScrollText,
     Activity,
     Forward,
     LucideFiles,
@@ -86,13 +85,6 @@ const DestkopLayout = memo(() => {
                     </Icon>,
                 },
             ]
-        },
-        {
-            key: 'log',
-            label: '日志',
-            icon: <Icon>
-                <ScrollText size={15} />
-            </Icon>,
         },
         {
             key: 'filestorage',

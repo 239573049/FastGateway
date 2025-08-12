@@ -5,10 +5,9 @@ using Certes.Acme;
 using Certes.Acme.Resource;
 using FastGateway.Entities;
 using FastGateway.Entities.Core;
-using FastGateway.Service.DataAccess;
 using FastGateway.Service.Dto;
 using FastGateway.Service.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using FastGateway.Service.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Directory = System.IO.Directory;
 
@@ -85,9 +84,9 @@ public static class CertService
         }
     }
 
-    public static async Task<ResultDto> ApplyAsync(MasterContext masterContext, string id)
+    public static async Task<ResultDto> ApplyAsync(ConfigurationService configService, string id)
     {
-        var cert = await masterContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
+        var cert = configService.GetCerts().FirstOrDefault(x => x.Id == id);
 
         if (cert == null)
         {
@@ -103,15 +102,8 @@ public static class CertService
 
         if (await ApplyForCert(context, cert))
         {
-            await masterContext.Certs.Where(x => x.Id == id)
-                .ExecuteUpdateAsync(i => i.SetProperty(x => x.Certs, x => cert.Certs)
-                    .SetProperty(x => x.Expired, x => false)
-                    .SetProperty(x => x.RenewStats, x => RenewStats.Success)
-                    .SetProperty(x => x.NotAfter, x => cert.NotAfter)
-                    .SetProperty(x => x.RenewTime, x => cert.RenewTime)
-                );
-
-            InitCert(await masterContext.Certs.Where(x => !x.Expired).ToArrayAsync());
+            configService.UpdateCert(cert);
+            InitCert(configService.GetCerts().Where(x => !x.Expired).ToArray());
         }
 
         return ResultDto.CreateSuccess();
@@ -215,32 +207,30 @@ public static class CertService
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("证书");
 
-        cert.MapPost(string.Empty, async (MasterContext dbContext, Cert cert) =>
+        cert.MapPost(string.Empty, (ConfigurationService configService, Cert cert) =>
         {
             if (string.IsNullOrWhiteSpace(cert.Domain))
             {
                 throw new ValidationException("域名不能为空");
             }
 
-            if (await dbContext.Certs.AnyAsync(x => x.Domain == cert.Domain))
+            if (configService.GetCerts().Any(x => x.Domain == cert.Domain))
             {
                 throw new ValidationException("域名已存在");
             }
 
             cert.CreateTime = DateTime.Now;
-            dbContext.Certs.Add(cert);
-
-            await dbContext.SaveChangesAsync();
+            configService.AddCert(cert);
         }).WithDescription("创建证书").WithDisplayName("创建证书").WithTags("证书");
 
-        cert.MapGet(string.Empty, async (MasterContext dbContext, int page, int pageSize) =>
+        cert.MapGet(string.Empty, (ConfigurationService configService, int page, int pageSize) =>
             {
-                var result = await dbContext.Certs
-                    .OrderByDescending(x => x.CreateTime)
+                var allCerts = configService.GetCerts().OrderByDescending(x => x.CreateTime);
+                var total = allCerts.Count();
+                var result = allCerts
                     .Skip((page - 1) * pageSize)
-                    .ToListAsync();
-
-                var total = await dbContext.Certs.CountAsync();
+                    .Take(pageSize)
+                    .ToList();
 
                 return new PagingDto<Cert>(total, result);
             })
@@ -249,35 +239,34 @@ public static class CertService
             .WithTags("证书");
 
         cert.MapDelete("{id}",
-            async (MasterContext dbContext, string id) =>
+            (ConfigurationService configService, string id) =>
             {
-                var cert = await dbContext.Certs.FirstOrDefaultAsync(x => x.Id == id);
-
-                await dbContext.Certs.Where(x => x.Id == id).ExecuteDeleteAsync();
-
-                CertWebApplications.TryRemove(cert.Domain, out _);
+                var certItem = configService.GetCerts().FirstOrDefault(x => x.Id == id);
+                if (certItem != null)
+                {
+                    configService.DeleteCert(id);
+                    CertWebApplications.TryRemove(certItem.Domain, out _);
+                }
             }).WithDescription("删除证书").WithDisplayName("删除证书").WithTags("证书");
 
-        cert.MapPut("{id}", async (MasterContext dbContext, string id, Cert cert) =>
+        cert.MapPut("{id}", (ConfigurationService configService, string id, Cert cert) =>
         {
             if (string.IsNullOrWhiteSpace(cert.Domain))
             {
                 throw new ValidationException("域名不能为空");
             }
 
-            if (await dbContext.Certs.AnyAsync(x => x.Domain == cert.Domain && x.Id != id))
+            if (configService.GetCerts().Any(x => x.Domain == cert.Domain && x.Id != id))
             {
                 throw new ValidationException("域名已存在");
             }
 
             cert.Id = id;
-            dbContext.Certs.Update(cert);
-
-            await dbContext.SaveChangesAsync();
+            configService.UpdateCert(cert);
         }).WithDescription("更新证书").WithDisplayName("更新证书").WithTags("证书");
 
 
-        cert.MapPost("{id}/apply", async (MasterContext dbContext, string id) => await ApplyAsync(dbContext, id))
+        cert.MapPost("{id}/apply", async (ConfigurationService configService, string id) => await ApplyAsync(configService, id))
             .WithDescription("申请证书").WithDisplayName("申请证书").WithTags("证书");
 
         return app;

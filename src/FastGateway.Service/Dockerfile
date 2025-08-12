@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim AS base
 USER root
 RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo Asia/Shanghai > /etc/timezone
 RUN  apt update \
@@ -20,7 +20,7 @@ RUN npm i
 RUN npm run build
 
 # 此阶段用于生成服务项目
-FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-bookworm-slim AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Directory.Build.props", "."]
@@ -42,4 +42,3 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 COPY --from=builder /src/dist ./wwwroot
 ENTRYPOINT ["dotnet", "FastGateway.Service.dll"]
-.

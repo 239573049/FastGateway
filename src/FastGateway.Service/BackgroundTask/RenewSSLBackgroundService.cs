@@ -1,6 +1,4 @@
-﻿using FastGateway.Service.DataAccess;
-using FastGateway.Service.Services;
-using Microsoft.EntityFrameworkCore;
+﻿using FastGateway.Service.Services;
 
 namespace FastGateway.Service.BackgroundTask;
 
@@ -20,12 +18,12 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
             {
                 await using var scope = serviceProvider.CreateAsyncScope();
 
-                var dbContext = scope.ServiceProvider.GetRequiredService<MasterContext>();
+                var configService = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
 
                 // 查询所有需要续期的证书
-                var certs = await dbContext.Certs
+                var certs = configService.GetCerts()
                     .Where(x => x.NotAfter == null || x.NotAfter < DateTime.Now.AddDays(15) && x.AutoRenew)
-                    .ToArrayAsync(stoppingToken);
+                    .ToArray();
 
                 var isRenew = false;
 
@@ -37,12 +35,7 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
 
                         await CertService.ApplyForCert(context, cert);
 
-                        await dbContext.Certs.Where(x => x.Id == cert.Id)
-                            .ExecuteUpdateAsync(x => x.SetProperty(y => y.RenewStats, cert.RenewStats)
-                                .SetProperty(y => y.RenewTime, cert.RenewTime)
-                                .SetProperty(y => y.NotAfter, cert.NotAfter)
-                                .SetProperty(y => y.Expired, cert.Expired)
-                                .SetProperty(y => y.Certs, cert.Certs), stoppingToken);
+                        configService.UpdateCert(cert);
 
                         logger.LogInformation($"证书续期成功：{cert.Id} {cert.Domain}");
 
@@ -52,18 +45,13 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
                     {
                         logger.LogError(e, $"证书续期失败：{cert.Id}  {cert.Domain}");
 
-                        await dbContext.Certs.Where(x => x.Id == cert.Id)
-                            .ExecuteUpdateAsync(x => x.SetProperty(y => y.RenewStats, cert.RenewStats)
-                                .SetProperty(y => y.RenewTime, cert.RenewTime)
-                                .SetProperty(y => y.NotAfter, cert.NotAfter)
-                                .SetProperty(y => y.Expired, cert.Expired)
-                                .SetProperty(y => y.Certs, cert.Certs), stoppingToken);
+                        configService.UpdateCert(cert);
                     }
                 }
 
                 if (isRenew)
                 {
-                    CertService.InitCert(await dbContext.Certs.ToArrayAsync(cancellationToken: stoppingToken));
+                    CertService.InitCert(configService.GetCerts().ToArray());
                 }
 
                 // 每24小时检查一次
