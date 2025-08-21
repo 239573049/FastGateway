@@ -5,12 +5,16 @@ using System.Security.Cryptography.X509Certificates;
 using FastGateway.Entities;
 using FastGateway.Entities.Core;
 using FastGateway.Service.BackgroundTask;
+using FastGateway.Service.Extensions;
 using FastGateway.Service.Infrastructure;
+using FastGateway.Service.Options;
 using FastGateway.Service.Services;
+using FastGateway.Service.Tunnels;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
+using Microsoft.AspNetCore.WebSockets;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Transforms;
 
@@ -47,13 +51,43 @@ public static class Gateway
     /// </summary>
     /// <param name="server"></param>
     /// <param name="domainNames"></param>
-    public static void ReloadGateway(Server server, DomainName[] domainNames)
+    public static void ReloadGateway(Server server, List<DomainName> domainNames)
     {
         if (GatewayWebApplications.TryGetValue(server.Id, out var webApplication))
         {
             var inMemoryConfigProvider = webApplication.Services.GetRequiredService<InMemoryConfigProvider>();
+            var tunnelClientProxy = webApplication.Services.GetRequiredService<TunnelClientProxy>();
 
-            var (routes, clusters) = BuildConfig(domainNames);
+            var tunnels = tunnelClientProxy.GetAllClients();
+
+
+            if (tunnels is { Count: > 0 })
+            {
+                foreach (var tunnel in tunnels)
+                {
+                    foreach (var proxy in tunnel.Proxy)
+                    {
+                        var value = new DomainName()
+                        {
+                            Enable = proxy.Enabled,
+                            Id = Guid.NewGuid().ToString(),
+                            Path = proxy.Route,
+                            ServiceType = ServiceType.Service,
+                            Service = "http://node_" + tunnel.Name,
+                        };
+
+                        if (!string.IsNullOrEmpty(proxy.Host))
+                        {
+                            value.Domains = [proxy.Host];
+                        }
+
+                        domainNames.Add(value);
+                    }
+                }
+            }
+
+
+            var (routes, clusters) = BuildConfig(domainNames.ToArray());
 
             inMemoryConfigProvider.Update(routes, clusters);
         }
@@ -164,6 +198,12 @@ public static class Gateway
                 options.MultipartHeadersLengthLimit = int.MaxValue;
             });
 
+            builder.Services.AddWebSockets((options =>
+            {
+                options.KeepAliveTimeout = TimeSpan.FromSeconds(120);
+                options.AllowedOrigins.Add("*");
+            }));
+
             builder.Services
                 .AddCors(options =>
                 {
@@ -179,6 +219,8 @@ public static class Gateway
 
             builder.Services.AddRateLimitService(rateLimits);
 
+            builder.Services.AddTunnel();
+
             if (server.StaticCompress)
                 builder.Services.AddResponseCompression();
 
@@ -186,21 +228,13 @@ public static class Gateway
             builder.Services
                 .AddReverseProxy()
                 .LoadFromMemory(routes, clusters)
-                .AddGateway(server)
-                .ConfigureHttpClient(((context, handler) =>
-                {
-                    handler.SslOptions.RemoteCertificateValidationCallback =
-                        (sender, certificate, chain, errors) => true;
-
-                    // 尽可能保持连接
-                    handler.ConnectTimeout = TimeSpan.FromMinutes(10);
-                    handler.EnableMultipleHttp2Connections = true;
-                    handler.MaxConnectionsPerServer = 1000;
-                }));
+                .AddGateway(server);
 
             var app = builder.Build();
 
             app.UseCors("AllowAll");
+
+            app.UseWebSockets();
 
             if (server.StaticCompress)
                 app.UseResponseCompression();
@@ -232,6 +266,54 @@ public static class Gateway
             }
 
             GatewayWebApplications.TryAdd(server.Id, app);
+
+            app.Use((async (context, next) =>
+            {
+                if (context.Request.Path == "/internal/gateway/Server/register")
+                {
+                    var tunnel = context.RequestServices.GetRequiredService<TunnelClientProxy>();
+                    var token = context.Request.Query["token"].ToString();
+                    if (string.IsNullOrEmpty(token) || FastGatewayOptions.TunnelToken != token)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            Code = 401,
+                            Message = "未授权的请求"
+                        });
+                        return;
+                    }
+
+                    var dto = await context.Request.ReadFromJsonAsync<Tunnel>();
+                    if (dto == null)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            Code = 400,
+                            Message = "请求数据格式错误"
+                        });
+                        return;
+                    }
+
+                    tunnel.CreateClient(dto, server, domainNames);
+                    context.Response.StatusCode = StatusCodes.Status200OK;
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        Code = 200,
+                        Message = "注册成功"
+                    });
+                    return;
+                }
+
+
+                await next(context);
+            }));
+            app.Map("/internal/gateway/Server", (builder) =>
+            {
+                builder.UseMiddleware<AgentManagerMiddleware>();
+                builder.UseMiddleware<AgentManagerTunnelMiddleware>();
+            });
 
             app.MapReverseProxy();
 
@@ -337,12 +419,11 @@ public static class Gateway
         return app;
     }
 
-    private static (IReadOnlyList<RouteConfig> routes,
-        IReadOnlyList<ClusterConfig> clusters) BuildConfig(DomainName[] domainNames)
+    private static (IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) BuildConfig(
+        DomainName[] domainNames)
     {
         var routes = new List<RouteConfig>();
         var clusters = new List<ClusterConfig>();
-
 
         foreach (var domainName in domainNames)
         {
@@ -446,6 +527,7 @@ public static class Gateway
 
             routes.Add(route);
         }
+
 
         return (routes, clusters);
     }

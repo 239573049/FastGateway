@@ -1,0 +1,21 @@
+{
+  "Token": "Aa123456.",
+  "ServerUrl": "ws://192.168.31.30:1080",
+  "Name": "FastGateway1",
+  "Type":"ws",// 支持h2,ws
+  "ServerHttp2Support": true, // 服务端是否支持HTTP/2
+  "ReconnectInterval": 5000,
+  // 重连间隔，单位毫秒
+  "HeartbeatInterval": 30000,
+  // 心跳间隔，单位毫秒
+  "Proxy": [
+    {
+      "Host": null,
+      "Route": "/test",
+      "LocalRemote": "http://localhost:5000",
+      "Name": "Test Proxy",
+      "Description": "This is a test proxy",
+      "Enabled": true
+    }
+  ]
+}

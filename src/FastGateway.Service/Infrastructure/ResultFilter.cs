@@ -10,30 +10,23 @@ public sealed class ResultFilter : IEndpointFilter
 {
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        try
+        var result = await next(context);
+
+        if (result is EmptyResult)
         {
-            var result = await next(context);
+            return null;
+        }
 
-            if (result is EmptyResult)
-            {
-                return null;
-            }
-
-            if (result is ResultDto dto)
-            {
-                return dto;
-            }
+        if (result is ResultDto dto)
+        {
+            return dto;
+        }
             
-            if(result is ResultDto<object> dtoObject)
-            {
-                return dtoObject;
-            }
-
-            return result == null ? ResultDto.CreateSuccess() : ResultDto.CreateSuccess(result);
-        }
-        catch (Exception e)
+        if(result is ResultDto<object> dtoObject)
         {
-            return ResultDto.CreateFailed(e.Message);
+            return dtoObject;
         }
+
+        return result == null ? ResultDto.CreateSuccess() : ResultDto.CreateSuccess(result);
     }
 }

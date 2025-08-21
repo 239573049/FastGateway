@@ -16,6 +16,14 @@ public class ConfigurationService
     public ConfigurationService()
     {
         _configPath = Path.Combine(AppContext.BaseDirectory, "data", "gateway.config");
+        
+        // 判断目录是否存在，如果不存在则创建
+        var directory = Path.GetDirectoryName(_configPath);
+        if (directory != null && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+        
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,

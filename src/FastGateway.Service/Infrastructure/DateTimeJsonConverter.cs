@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Watermelon.Service.Infrastructure;
+namespace FastGateway.Service.Infrastructure;
 
 public sealed class DateTimeJsonConverter : JsonConverter<DateTime>
 {

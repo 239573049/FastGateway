@@ -2,7 +2,8 @@
 
 namespace FastGateway.Service.BackgroundTask;
 
-public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger, IServiceProvider serviceProvider)
+/// <inheritdoc />
+public class RenewSslBackgroundService(ILogger<RenewSslBackgroundService> logger, IServiceProvider serviceProvider)
     : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -16,42 +17,43 @@ public class RenewSSLBackgroundService(ILogger<RenewSSLBackgroundService> logger
         {
             try
             {
-                await using var scope = serviceProvider.CreateAsyncScope();
-
-                var configService = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
-
-                // 查询所有需要续期的证书
-                var certs = configService.GetCerts()
-                    .Where(x => x.NotAfter == null || x.NotAfter < DateTime.Now.AddDays(15) && x.AutoRenew)
-                    .ToArray();
-
-                var isRenew = false;
-
-                foreach (var cert in certs)
+                await using (var scope = serviceProvider.CreateAsyncScope())
                 {
-                    try
+                    var configService = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
+
+                    // 查询所有需要续期的证书
+                    var certs = configService.GetCerts()
+                        .Where(x => x.NotAfter == null || x.NotAfter < DateTime.Now.AddDays(15) && x.AutoRenew)
+                        .ToArray();
+
+                    var isRenew = false;
+
+                    foreach (var cert in certs)
                     {
-                        var context = await CertService.RegisterWithLetsEncrypt(cert.Email);
+                        try
+                        {
+                            var context = await CertService.RegisterWithLetsEncrypt(cert.Email);
 
-                        await CertService.ApplyForCert(context, cert);
+                            await CertService.ApplyForCert(context, cert);
 
-                        configService.UpdateCert(cert);
+                            configService.UpdateCert(cert);
 
-                        logger.LogInformation($"证书续期成功：{cert.Id} {cert.Domain}");
+                            logger.LogInformation($"证书续期成功：{cert.Id} {cert.Domain}");
 
-                        isRenew = true;
+                            isRenew = true;
+                        }
+                        catch (Exception e)
+                        {
+                            logger.LogError(e, $"证书续期失败：{cert.Id}  {cert.Domain}");
+
+                            configService.UpdateCert(cert);
+                        }
                     }
-                    catch (Exception e)
+
+                    if (isRenew)
                     {
-                        logger.LogError(e, $"证书续期失败：{cert.Id}  {cert.Domain}");
-
-                        configService.UpdateCert(cert);
+                        CertService.InitCert(configService.GetCerts().ToArray());
                     }
-                }
-
-                if (isRenew)
-                {
-                    CertService.InitCert(configService.GetCerts().ToArray());
                 }
 
                 // 每24小时检查一次

@@ -6,7 +6,6 @@ using FastGateway.Service.Options;
 using FastGateway.Service.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Watermelon.Service.Infrastructure;
 
 namespace FastGateway.Service;
 
@@ -22,6 +21,8 @@ public static class Program
             Args = args
         });
 
+        FastGatewayOptions.Initialize(builder.Configuration);
+
         builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Name));
 
         builder.Services.AddHttpClient();
@@ -29,10 +30,7 @@ public static class Program
         // 判断是否window，
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            builder.Services.AddWindowsService(option =>
-            {
-                option.ServiceName = "FastGateway";
-            });
+            builder.Services.AddWindowsService(option => { option.ServiceName = "FastGateway"; });
         }
 
         var jwtOptions = builder.Configuration.GetSection(JwtOptions.Name).Get<JwtOptions>();
@@ -62,8 +60,8 @@ public static class Program
         });
         builder.Services.AddSystemUsage();
         builder.Services.AddResponseCompression();
-        
-        builder.Services.AddHostedService<RenewSSLBackgroundService>();
+
+        builder.Services.AddHostedService<RenewSslBackgroundService>();
         builder.Services.AddSingleton<ConfigurationService>();
 
         var app = builder.Build();
@@ -78,7 +76,7 @@ public static class Program
             var domainNames = configService.GetDomainNames();
             var blacklistAndWhitelists = configService.GetBlacklistAndWhitelists();
             var rateLimits = configService.GetRateLimits();
-            
+
             foreach (var item in configService.GetServers())
             {
                 await Task.Factory.StartNew(async () =>

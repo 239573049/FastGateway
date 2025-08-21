@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using FastGateway.Service.Infrastructure;
+using FastGateway.Service.Options;
 
 namespace FastGateway.Service.Services;
 
@@ -15,10 +16,7 @@ public static class AuthorizationServiceExtensions
 
        routeGroupBuilder.MapPost(string.Empty, (JwtHelper jwtHelper,string password) =>
        {
-           // 获取环境变量设置的密码
-           var pwd = Environment.GetEnvironmentVariable("PASSWORD") ?? "Aa123456";
-
-           if (password == pwd)
+           if (password == FastGatewayOptions.Password)
            {
                var token = jwtHelper.CreateToken();
 

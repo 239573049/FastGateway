@@ -119,7 +119,7 @@ public static class ServerService
 
             var domainNames = configService.GetDomainNamesByServerId(id);
 
-            Gateway.Gateway.ReloadGateway(server, domainNames);
+            Gateway.Gateway.ReloadGateway(server, [..domainNames]);
 
             await Task.Delay(1000);
         }).WithDescription("重载服务").WithDisplayName("重载服务").WithTags("服务");
