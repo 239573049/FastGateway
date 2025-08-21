@@ -36,11 +36,11 @@ internal class TunnelClientFactory(AgentClientManager agentClientManager, AgentT
     /// <summary>
     /// yarp的网关客户端工厂，当yarp需要创建一个新的请求时，会调用此方法。
     /// </summary>
-    /// <param name="context"></param>
+    /// <param name="httpClientContext"></param>
     /// <param name="handler"></param>
-    protected override void ConfigureHandler(ForwarderHttpClientContext context, SocketsHttpHandler handler)
+    protected override void ConfigureHandler(ForwarderHttpClientContext httpClientContext, SocketsHttpHandler handler)
     {
-        base.ConfigureHandler(context, handler);
+        base.ConfigureHandler(httpClientContext, handler);
 
         var previous = handler.ConnectCallback ?? DefaultConnectCallback;
 

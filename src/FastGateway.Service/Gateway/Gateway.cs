@@ -73,7 +73,15 @@ public static class Gateway
                             Id = Guid.NewGuid().ToString(),
                             Path = proxy.Route,
                             ServiceType = ServiceType.Service,
-                            Service = "http://node_" + tunnel.Name,
+                            Headers = new List<HeadersView>()
+                            {
+                                new HeadersView()
+                                {
+                                    Key = "Proxy",
+                                    Value = proxy.LocalRemote
+                                }
+                            },
+                            Service = "http://node_" + tunnel.Name + proxy.Route,
                         };
 
                         if (!string.IsNullOrEmpty(proxy.Host))
