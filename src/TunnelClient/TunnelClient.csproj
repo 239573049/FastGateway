@@ -5,8 +5,12 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
-        <PublishAot>true</PublishAot>
         <RootNamespace>TunnelClient</RootNamespace>
+    </PropertyGroup>
+
+    <!-- Enable AOT by default, but allow override via command line -->
+    <PropertyGroup Condition="'$(PublishAot)' == ''">
+        <PublishAot>true</PublishAot>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
