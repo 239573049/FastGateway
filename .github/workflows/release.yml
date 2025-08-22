@@ -46,8 +46,13 @@ jobs:
       - name: Install dependencies
         run: dotnet restore src/TunnelClient/TunnelClient.csproj
 
-      - name: Build TunnelClient (AOT)
+      - name: Build TunnelClient (AOT) - Non ARM64
+        if: matrix.runtime != 'linux-arm64'
         run: dotnet publish src/TunnelClient/TunnelClient.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishAot=true -p:PublishSingleFile=true -o ./artifacts/tunnelclient-${{ matrix.runtime }}
+
+      - name: Build TunnelClient (Standard) - ARM64
+        if: matrix.runtime == 'linux-arm64'
+        run: dotnet publish src/TunnelClient/TunnelClient.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o ./artifacts/tunnelclient-${{ matrix.runtime }}
 
       - name: Upload TunnelClient artifacts
         uses: actions/upload-artifact@v4
