@@ -179,7 +179,7 @@ public class MonitorServer(IServiceProvider serviceProvider)
         try
         {
             await webSocket.ConnectAsync(serverUri, _httpClient, cancellationToken);
-            return new WebSocketStream(webSocket);
+            return new CustomWebSocketStream(webSocket);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
