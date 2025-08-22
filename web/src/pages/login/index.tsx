@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { message } from '@/utils/toast';
-import { LockIcon, ShieldCheckIcon } from 'lucide-react';
+import { LockIcon, ShieldCheckIcon, KeyRoundIcon } from 'lucide-react';
 import { Auth } from '@/services/AuthorizationService';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,93 +38,105 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-6">
-            <div className="w-full max-w-6xl min-h-[600px] bg-white rounded-xl shadow-xl overflow-hidden">
-                <div className="grid md:grid-cols-2 h-full">
+        <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+            <div className="w-full max-w-5xl">
+                <div className="grid lg:grid-cols-2 gap-8 items-center">
                     {/* 左侧品牌区域 */}
-                    <div className="hidden md:flex bg-gradient-to-br from-blue-500 to-purple-600 p-10 items-center justify-center relative overflow-hidden">
-                        {/* 背景图案 */}
-                        <div className="absolute inset-0 opacity-10">
-                            <div className="w-full h-full" style={{
-                                backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.3"%3E%3Cpath d="m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-                                backgroundRepeat: 'repeat'
-                            }} />
-                        </div>
-
-                        <div className="text-center text-white relative z-10">
-                            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
-                                <ShieldCheckIcon className="w-9 h-9 text-white" />
+                    <div className="hidden lg:flex flex-col items-center justify-center space-y-8 p-8">
+                        <div className="relative">
+                            <div className="w-32 h-32 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/20 animate-pulse">
+                                <ShieldCheckIcon className="w-16 h-16 text-white" />
                             </div>
-                            
-                            <h1 className="text-4xl lg:text-5xl font-bold mb-4">
+                            <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-3xl opacity-20 animate-pulse" />
+                        </div>
+                        
+                        <div className="text-center space-y-4">
+                            <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                                 FastGateway
                             </h1>
                             
-                            <h2 className="text-xl text-white/90 mb-6 font-light">
+                            <h2 className="text-xl text-slate-600 dark:text-slate-300 font-light">
                                 网关管理系统
                             </h2>
                             
-                            <p className="text-white/80 max-w-sm mx-auto leading-relaxed">
-                                高效、安全、可靠的API网关管理平台
+                            <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+                                高效、安全、可靠的API网关管理平台，为您的微服务架构提供强大的流量管理和安全防护。
                             </p>
+                        </div>
+
+                        <div className="flex space-x-8 text-sm text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                                <span>高可用</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                <span>高性能</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                                <span>易管理</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* 右侧登录区域 */}
-                    <div className="flex items-center justify-center p-8">
-                        <div className="w-full max-w-sm">
-                            {/* 移动端Logo */}
-                            <div className="md:hidden text-center mb-8">
-                                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <ShieldCheckIcon className="w-8 h-8 text-white" />
+                    <div className="flex items-center justify-center p-4">
+                        <Card className="w-full max-w-md border-0 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50">
+                            <CardHeader className="space-y-2 text-center pb-8 pt-8">
+                                <div className="lg:hidden mb-4">
+                                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-lg">
+                                        <ShieldCheckIcon className="w-8 h-8 text-white" />
+                                    </div>
+                                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">FastGateway</h1>
                                 </div>
-                                <h1 className="text-2xl font-bold text-gray-900">FastGateway</h1>
-                            </div>
-
-                            <div className="text-center mb-8">
-                                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                                
+                                <CardTitle className="text-3xl font-bold">
                                     欢迎回来
-                                </h2>
-                                <p className="text-gray-600">
+                                </CardTitle>
+                                <CardDescription className="text-base">
                                     请输入管理员密码以继续访问系统
-                                </p>
-                            </div>
-
-                            {loading && (
-                                <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50">
-                                    <div className="text-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                                        <p className="text-gray-600">登录中...</p>
+                                </CardDescription>
+                            </CardHeader>
+                            
+                            <CardContent className="pb-8 px-8">
+                                <form onSubmit={handleLogin} className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password" className="text-sm font-medium">
+                                            <div className="flex items-center space-x-2">
+                                                <KeyRoundIcon className="w-4 h-4" />
+                                                <span>管理员密码</span>
+                                            </div>
+                                        </Label>
+                                        <div className="relative">
+                                            <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                            <Input
+                                                id="password"
+                                                type="password"
+                                                placeholder="请输入管理员密码"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                className="pl-10 h-12 bg-muted/50 border-0 focus:ring-2 focus:ring-blue-500"
+                                                disabled={loading}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            )}
 
-                            <form onSubmit={handleLogin} className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="password">管理员密码</Label>
-                                    <div className="relative">
-                                        <LockIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                        <Input
-                                            id="password"
-                                            type="password"
-                                            placeholder="请输入管理员密码"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            className="pl-10 h-12"
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
-
-                                <Button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg"
-                                >
-                                    {loading ? '登录中...' : '登录系统'}
-                                </Button>
-                            </form>
-                        </div>
+                                    <Button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50"
+                                    >
+                                        {loading ? (
+                                            <div className="flex items-center justify-center space-x-2">
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                                                <span>登录中...</span>
+                                            </div>
+                                        ) : '登录系统'}
+                                    </Button>
+                                </form>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>

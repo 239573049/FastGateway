@@ -1,7 +1,7 @@
 
 
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getQpsChart } from '@/services/QpsService';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -142,156 +142,134 @@ const Dashboard = () => {
 
 
     return (
-        <div className="p-5 overflow-auto h-full">
-            <Card className="float-right w-[280px] h-[260px]">
-                <CardContent className="p-4">
-                    <div className="flex justify-end">
-                    <TooltipProvider>
-                        <span className="space-x-2">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Badge variant="secondary">
-                                        {qps}
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>实时QPS</p>
-                                </TooltipContent>
-                            </Tooltip>
-                            <Badge variant="secondary">
-                                {bytesToSize(netWork.upload)}/s
-                            </Badge>
-                            <Badge variant="secondary">
-                                {bytesToSize(netWork.download)}/s
-                            </Badge>
-                        </span>
-                    </TooltipProvider>
-                    </div>
-                    <div className="w-[230px] h-[200px]">
-                        <BarChart
-                            data={qpsChart}
-                            categories={['QPS']}
-                            index="time"
-                            showXAxis={false}
-                            showGrid={false}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-            <div className="grid grid-cols-3 gap-4 w-[calc(100%-280px)]">
-                <Card className="h-[120px] hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">访问总数</CardTitle>
+        <div className="p-4 md:p-6 lg:p-8 h-full overflow-auto">
+            {/* Header Section */}
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold tracking-tight mb-2">系统概览</h1>
+                <p className="text-muted-foreground">实时监控网关性能和流量数据</p>
+            </div>
+
+            {/* Key Metrics Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <Card className="hover:shadow-md transition-all duration-200">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                            总访问量
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{data.total.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            今日: +{data.todayTotal.toLocaleString()}
+                        </p>
                     </CardContent>
                 </Card>
-                <Card className="h-[120px] hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">访问成功总数</CardTitle>
+
+                <Card className="hover:shadow-md transition-all duration-200">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            成功请求
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{data.success.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            今日: +{data.todaySuccess.toLocaleString()}
+                        </p>
                     </CardContent>
                 </Card>
-                <Card className="h-[120px] hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">访问失败总数</CardTitle>
+
+                <Card className="hover:shadow-md transition-all duration-200">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                            <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                            失败请求
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{data.fail.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            今日: +{data.todayFail.toLocaleString()}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card className="hover:shadow-md transition-all duration-200">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                            实时 QPS
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{qps}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            ↑ {bytesToSize(netWork.upload)}/s ↓ {bytesToSize(netWork.download)}/s
+                        </p>
                     </CardContent>
                 </Card>
             </div>
-            <div className="grid grid-cols-3 gap-4 mt-5 w-[calc(100%-280px)]">
-                <Card className="h-[120px] hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">今日总数</CardTitle>
+
+            {/* Performance Dashboard */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Network Traffic */}
+                <Card className="hover:shadow-md transition-all duration-200">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-base font-semibold">网络流量</CardTitle>
+                                <CardDescription className="text-xs">实时上传下载速率</CardDescription>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-sm font-medium">
+                                    ↑ {bytesToSize(netWork.upload)}/s
+                                </div>
+                                <div className="text-sm font-medium">
+                                    ↓ {bytesToSize(netWork.download)}/s
+                                </div>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{data.todayTotal.toLocaleString()}</div>
-                    </CardContent>
-                </Card>
-                <Card className="h-[120px] hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">今日成功总数</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{data.todaySuccess.toLocaleString()}</div>
-                    </CardContent>
-                </Card>
-                <Card className="h-[120px] hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">今日失败总数</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{data.todayFail.toLocaleString()}</div>
-                    </CardContent>
-                </Card>
-            </div>
-            <div className="grid grid-cols-3 gap-4 mt-5">
-                <Card className="h-[420px] hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                        <CardTitle>CPU</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <LineChart
-                            categories={['CPU使用率']}
-                            data={cpuChart}
-                            index="date"
-                            valueFormatter={percentFormatter}
-                        />
-                    </CardContent>
-                </Card>
-                <Card className="h-[420px] hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                        <CardTitle>内存</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <DonutChart
-                            label={"总内存" + bytesToSize(memory.totalMemory, 0)}
-                            data={memoryChart}
-                            noDataText="暂无数据"
-                            onValueChange={(v) => console.log(v)}
-                            valueFormatter={diskFormatter}
-                            variant="donut"
-                        />
-                        <ProgressBar 
-                            className="mt-10"
-                            color={'blue'} 
-                            tooltip={`内存使用率${memory.memoryUsage}%`} 
-                            value={memory.memoryUsage} 
-                        />
-                    </CardContent>
-                </Card>
-                <Card className="h-[420px] hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                        <CardTitle>硬盘读/写</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <LineChart
-                            categories={['read', 'write']}
-                            data={diskChart}
-                            index="date"
-                            valueFormatter={diskFormatter}
-                        />
-                    </CardContent>
-                </Card>
-            </div>
-            <div className="mt-5">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>流量来源</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex justify-between leading-[50px] overflow-hidden select-none h-[500px] overflow-auto p-2.5">
-                            <Map isGlobal={false} data={locationData} />
-                            <MapList isGlobal={false} data={locationData} />
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">上传速率</span>
+                                <span className="font-medium">{bytesToSize(netWork.upload)}/s</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-blue-500 h-2 rounded-full" style={{width: `${Math.min((netWork.upload / 1024 / 1024) * 100, 100)}%`}}></div>
+                            </div>
+                            <div className="flex items-center justify-between text-sm mt-2">
+                                <span className="text-muted-foreground">下载速率</span>
+                                <span className="font-medium">{bytesToSize(netWork.download)}/s</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-green-500 h-2 rounded-full" style={{width: `${Math.min((netWork.download / 1024 / 1024) * 100, 100)}%`}}></div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Geographic Analytics */}
+            <Card className="hover:shadow-md transition-all duration-200">
+                <CardHeader>
+                    <CardTitle className="text-lg font-semibold">流量地理分布</CardTitle>
+                    <CardDescription className="text-sm">按省份统计的访问来源</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        <div className="lg:col-span-3">
+                            <Map isGlobal={false} data={locationData} />
+                        </div>
+                        <div className="lg:col-span-2">
+                            <MapList isGlobal={false} data={locationData} />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };

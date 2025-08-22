@@ -1,24 +1,20 @@
 import { Loader2 } from 'lucide-react';
 import { memo } from 'react';
-import { Center, Flexbox } from 'react-layout-kit';
 
 const Loading = memo(() => {
-    return <Flexbox height={'100%'} style={{ userSelect: 'none' }} width={'100%'}>
-        <Center flex={1} gap={12} width={'100%'}>
-            <span style={{
-                fontSize: '40px',
-                fontWeight: 'bold',
-                fontFamily: 'Arial, sans-serif',
-                userSelect: 'none',
-            }}>
-                Fast Gateway
-            </span>
-            <Center gap={16} horizontal>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                加载中...
-            </Center>
-        </Center>
-    </Flexbox>;
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <div className="flex flex-col items-center space-y-4">
+                <h1 className="text-4xl font-bold tracking-tight">
+                    Fast Gateway
+                </h1>
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">加载中...</span>
+                </div>
+            </div>
+        </div>
+    );
 })
 
 export default Loading;

@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Separator } from '@/components/ui/separator';
-import { Flexbox } from 'react-layout-kit';
 
 interface FHeaderProps {
     title: string;
@@ -14,23 +13,11 @@ function FHeader({
 }: FHeaderProps) {
     return (
         <>
-            <Flexbox
-                horizontal
-                style={{
-                    width: '100%',
-                }}
-            >
-                <h1 style={{
-                    flex: 1,
-                }}>{title}</h1>
-                {/* 将action显示在右侧 */}
-                <Flexbox style={{
-                    marginRight: '20px',
-                }}>
-                    {action}
-                </Flexbox>
-            </Flexbox>
-            <Separator />
+            <div className="flex items-center justify-between w-full">
+                <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+                {action && <div className="flex items-center space-x-2">{action}</div>}
+            </div>
+            <Separator className="my-4" />
         </>
     );
 }

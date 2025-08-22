@@ -9,8 +9,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-const ThemeSwitch = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => {
+type ThemeOption = "light" | "dark" | "auto"
+
+interface ThemeSwitchProps extends React.HTMLAttributes<HTMLDivElement> {
+  onThemeSwitch?: (v: ThemeOption) => void
+  themeMode?: ThemeOption
+}
+
+const ThemeSwitch = React.forwardRef<HTMLDivElement, ThemeSwitchProps>(
+  ({ className, onThemeSwitch, themeMode, ...props }, ref) => {
     const { theme, setTheme } = useTheme()
 
     return (
@@ -24,15 +31,15 @@ const ThemeSwitch = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setTheme("light")}>
+            <DropdownMenuItem onClick={() => { setTheme("light"); onThemeSwitch?.("light") }}>
               <Sun className="mr-2 h-4 w-4" />
               <span>浅色</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")}>
+            <DropdownMenuItem onClick={() => { setTheme("dark"); onThemeSwitch?.("dark") }}>
               <Moon className="mr-2 h-4 w-4" />
               <span>深色</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("system")}>
+            <DropdownMenuItem onClick={() => { setTheme("system"); onThemeSwitch?.("auto") }}>
               <Laptop className="mr-2 h-4 w-4" />
               <span>跟随系统</span>
             </DropdownMenuItem>

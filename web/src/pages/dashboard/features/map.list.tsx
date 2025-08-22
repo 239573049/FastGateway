@@ -170,15 +170,9 @@ export default function MapList({
     ])
 
     return (
-        <div id='map-list' style={{
-            flex: 1,
-            height: '500px',
-            overflowY: 'auto',
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'transparent transparent',
-            padding: '0 10px'
-        }}>
-
-        </div>
+        <div 
+            id="map-list" 
+            className="h-[400px] lg:h-[500px] w-full rounded-lg border bg-card/50"
+        />
     )
 }

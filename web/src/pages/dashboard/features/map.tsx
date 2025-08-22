@@ -112,9 +112,10 @@ export default function Map(
 
     }, [isGlobal, data])
 
-    return (<div style={{
-        height: '500px',
-        flex: 3,
-    }} id='map'>
-    </div>)
+    return (
+        <div 
+            id="map" 
+            className="h-[400px] lg:h-[500px] w-full rounded-lg border bg-card/50"
+        />
+    )
 }

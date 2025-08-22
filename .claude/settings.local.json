@@ -15,11 +15,13 @@
       "Bash(npm install:*)",
       "Bash(grep -n \"Search\" D:codeFastGatewaywebsrcpagesfilestoragepage.tsx)",
       "mcp__ide__getDiagnostics",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(rg -n \"SelectItem\" D:codeFastGatewaywebsrcpagesserverinfofeaturesCreateDomain.tsx)"
     ],
     "deny": [],
     "additionalDirectories": [
-      "D:\\d\\code\\FastGateway"
+      "D:\\d\\code\\FastGateway",
+      "D:\\"
     ]
   }
 }

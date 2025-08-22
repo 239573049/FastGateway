@@ -1,14 +1,14 @@
 import { memo, useEffect, useState } from "react";
-import Header from "../features/Header";
 import { Button } from '@/components/ui/button';
 import { message } from '@/utils/toast';
-import TableList from "../features/Table";
 import CreateBlacklistAndWhitelist from "../features/CreateBlacklistAndWhitelist";
 import { DeleteBlacklist, GetBlacklist } from "@/services/BlacklistAndWhitelistService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { DataTable } from "@/components/ui/data-table";
 import { Trash2, Edit, Plus } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
 
 const BlackListPage = memo(() => {
     const [input, setInput] = useState({
@@ -49,111 +49,137 @@ const BlackListPage = memo(() => {
             });
     };
 
-    return (
-        <div className="space-y-6 p-6">
-            <Card className="border-0 shadow-lg">
-                <CardHeader className="border-b bg-gradient-to-r from-destructive/5 to-background">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="text-2xl font-bold text-destructive">
-                                黑名单管理
-                            </CardTitle>
-                            <CardDescription className="text-muted-foreground">
-                                管理IP黑名单，阻止恶意访问
-                            </CardDescription>
-                        </div>
+    const columns: ColumnDef<any>[] = [
+        {
+            accessorKey: 'name',
+            header: '黑名单名称',
+            cell: ({ row }) => (
+                <div className="font-medium text-foreground">{row.getValue('name')}</div>
+            ),
+        },
+        {
+            accessorKey: 'enable',
+            header: '状态',
+            cell: ({ row }) => {
+                const enabled = row.getValue('enable') as boolean
+                return (
+                    <Badge 
+                        variant={enabled ? "default" : "secondary"}
+                        className={cn(
+                            enabled ? "bg-green-500 hover:bg-green-600" : "",
+                            "font-medium"
+                        )}
+                    >
+                        {enabled ? '已启用' : '已禁用'}
+                    </Badge>
+                )
+            },
+        },
+        {
+            accessorKey: 'description',
+            header: '描述',
+            cell: ({ row }) => (
+                <div className="max-w-xs text-sm text-muted-foreground truncate">
+                    {row.getValue('description') || '-'}
+                </div>
+            ),
+        },
+        {
+            accessorKey: 'ips',
+            header: 'IP数量',
+            cell: ({ row }) => {
+                const ips = row.getValue('ips') as string[]
+                return (
+                    <Badge variant="outline" className="font-mono text-xs">
+                        {ips?.length || 0}
+                    </Badge>
+                )
+            },
+        },
+        {
+            accessorKey: 'createdAt',
+            header: '创建时间',
+            cell: ({ row }) => (
+                <div className="text-sm text-muted-foreground font-mono">
+                    {row.getValue('createdAt')}
+                </div>
+            ),
+        },
+        {
+            id: 'actions',
+            header: '操作',
+            cell: ({ row }) => {
+                const item = row.original
+                return (
+                    <div className="flex items-center gap-1">
                         <Button 
-                            onClick={() => setCreateVisible(true)}
-                            className="bg-destructive hover:bg-destructive/90"
+                            variant="ghost" 
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10"
                         >
-                            <Plus className="h-4 w-4 mr-2" />
-                            新增黑名单
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(item.id)}
+                        >
+                            <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
+                )
+            },
+        }
+    ]
+
+    return (
+        <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-7xl">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">黑名单管理</h1>
+                <p className="text-muted-foreground mt-2">管理IP黑名单，阻止恶意访问</p>
+            </div>
+
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-2">
+                    <div className="h-8 w-1 bg-destructive rounded-full"></div>
+                    <h2 className="text-xl font-semibold text-foreground">黑名单列表</h2>
+                </div>
+                <Button 
+                    onClick={() => setCreateVisible(true)}
+                    className="bg-destructive hover:bg-destructive/90"
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    新增黑名单
+                </Button>
+            </div>
+
+            <Card className="border shadow-sm">
+                <CardHeader className="border-b bg-muted/50">
+                    <CardTitle className="text-lg font-semibold">黑名单规则</CardTitle>
+                    <CardDescription className="text-sm text-muted-foreground">
+                        配置和管理IP黑名单规则，保护系统安全
+                    </CardDescription>
                 </CardHeader>
                 
-                <CardContent className="p-6">
-                    <TableList
-                        columns={[
-                            {
-                                title: '黑名单名称',
-                                dataIndex: 'name',
-                                key: 'name',
-                                className: 'font-medium',
-                            },
-                            {
-                                title: '状态',
-                                dataIndex: 'enable',
-                                key: 'enable',
-                                render: (text: boolean) => (
-                                    <Badge 
-                                        variant={text ? "default" : "secondary"}
-                                        className={text ? "bg-green-500" : ""}
-                                    >
-                                        {text ? '已启用' : '已禁用'}
-                                    </Badge>
-                                )
-                            },
-                            {
-                                title: '描述',
-                                dataIndex: 'description',
-                                key: 'description',
-                                className: 'max-w-xs truncate',
-                            },
-                            {
-                                title: 'IP数量',
-                                dataIndex: 'ips',
-                                key: 'ips',
-                                render: (text: string[]) => (
-                                    <Badge variant="outline">
-                                        {text?.length || 0} 个IP
-                                    </Badge>
-                                )
-                            },
-                            {
-                                title: '创建时间',
-                                dataIndex: 'createdAt',
-                                key: 'createdAt',
-                                className: 'text-sm text-muted-foreground',
-                            },
-                            {
-                                title: '操作',
-                                dataIndex: 'action',
-                                key: 'action',
-                                render: (_: any, item: any) => (
-                                    <div className="flex items-center gap-2">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm"
-                                            className="hover:bg-primary/10"
-                                        >
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm"
-                                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                            onClick={() => handleDelete(item.id)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )
-                            }
-                        ]}
-                        dataSources={data}
-                        total={input.total}
-                        pageSize={input.pageSize}
-                        current={input.page}
-                        loading={loading}
-                        onPaginationChange={(page, pageSize) => {
-                            setInput(prev => ({
-                                ...prev,
-                                page,
-                                pageSize
-                            }));
-                        }}
-                    />
+                <CardContent className="p-0">
+                    <div className="p-4">
+                        <DataTable
+                            columns={columns}
+                            data={data}
+                            loading={loading}
+                            total={input.total}
+                            pageSize={input.pageSize}
+                            current={input.page}
+                            onPaginationChange={(page, pageSize) => {
+                                setInput(prev => ({
+                                    ...prev,
+                                    page,
+                                    pageSize
+                                }));
+                            }}
+                        />
+                    </div>
                 </CardContent>
             </Card>
             

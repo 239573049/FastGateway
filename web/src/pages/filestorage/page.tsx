@@ -14,44 +14,52 @@ import {
     createZipFromPath,
 } from "@/services/FileStorageService";
 
-import "./index.css";
 import { bytesToSize } from "@/utils/byte";
 import {
-    DownOutlined,
-    InboxOutlined,
-    FolderOutlined,
-    DeleteOutlined,
-    DownloadOutlined,
-    CopyOutlined,
-    ScissorOutlined,
-    PlusOutlined,
-    FilterOutlined,
-    ReloadOutlined,
-    EditOutlined,
-    FileZipOutlined,
-    AppstoreAddOutlined,
-    Search,
+    Folder,
+    File,
+    HardDrive,
+    Trash2,
+    Download,
+    Copy,
+    Scissors,
+    Plus,
+    Filter,
+    RefreshCw,
+    Edit3,
+    FileArchive,
     Upload,
+    Search,
+    MoreVertical,
+    ChevronRight,
     ChevronDown,
-    MoreVertical
+    Eye,
+    EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Flexbox } from 'react-layout-kit';
-import "react-contexify/ReactContexify.css";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import Rename from "./features/Rename";
 import CreateDirectory from "./features/CreateDirectory";
 import Property from "./features/Property";
 
 interface TreeNode {
-    title: any;
+    title: string;
     key: string;
     isLeaf?: boolean;
     children?: TreeNode[];
+    drive?: string;
+    isDrive?: boolean;
+    totalSize?: number;
+    isReady?: boolean;
 }
 
 interface FileItem {
@@ -68,28 +76,28 @@ interface FileItem {
 }
 
 const FileStoragePage: React.FC = () => {
-
     // 状态管理
-    const [property, setProperty] = useState<any>()
-    const [expand, setExpand] = useState(true);
+    const [property, setProperty] = useState<any>();
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const [treeData, setTreeData] = useState<TreeNode[]>([]);
     const [currentData, setCurrentData] = useState<FileItem[]>([]);
     const [filteredData, setFilteredData] = useState<FileItem[]>([]);
     const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
-    const [selectedNode, setSelectedNode] = useState<any | null>(null);
+    const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
     const [selectedRows, setSelectedRows] = useState<React.Key[]>([]);
-    const [uploadVisible, setUploadVisible] = useState(false);
-    const [uploadFileList, setUploadFileList] = useState<File[]>([]);
-    const [createDirectoryVisible, setCreateDirectoryVisible] = useState(false);
+    const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+    const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+    const [createDirectoryDialogOpen, setCreateDirectoryDialogOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [fileFilter, setFileFilter] = useState<'all' | 'files' | 'folders'>('all');
     const [isLoading, setIsLoading] = useState(false);
     const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
     const [clipboard, setClipboard] = useState<{ type: 'copy' | 'cut', items: FileItem[] } | null>(null);
     const [loadedDirectories, setLoadedDirectories] = useState<Set<string>>(new Set());
+    const [showHiddenFiles, setShowHiddenFiles] = useState(false);
 
-    const [renameInput, setRenameInput] = useState({
-        visible: false,
+    const [renameDialog, setRenameDialog] = useState({
+        open: false,
         id: "",
         value: "",
         isFile: false,
@@ -588,7 +596,7 @@ const FileStoragePage: React.FC = () => {
                                     <ReloadOutlined className="h-4 w-4 mr-2" />
                                     刷新
                                 </Button>
-                            </Space>
+                            </div>
                         </div>
 
                         {/* 当前路径显示 */}
@@ -694,7 +702,7 @@ const FileStoragePage: React.FC = () => {
 
                                             {/* 操作按钮 */}
                                             <div className="file-actions" onClick={(e) => e.stopPropagation()}>
-                                                <Space size="small">
+                                                <div className="flex space-x-1">
                                                     {item.isLeaf && (
                                                         <Tooltip title="下载">
                                                             <Button
@@ -780,8 +788,8 @@ const FileStoragePage: React.FC = () => {
                                                             icon={<DownOutlined />}
                                                             onClick={(e) => e.stopPropagation()}
                                                         />
-                                                    </Dropdown>
-                                                </Space>
+                                                    </DropdownMenu>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
