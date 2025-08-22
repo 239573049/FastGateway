@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Tree, message, Dropdown, Button, Upload, Input, Space, Tooltip, Card, Row, Col } from "antd";
+import { message } from "@/utils/toast";
 import {
     getDrives,
     getDirectory,
@@ -13,16 +13,7 @@ import {
     createZipFile,
     createZipFromPath,
 } from "@/services/FileStorageService";
-import {
-    DraggablePanel,
-    DraggablePanelBody,
-    DraggablePanelContainer,
-    DraggablePanelFooter,
-    DraggablePanelHeader,
-    MaterialFileTypeIcon,
-    Modal,
-} from "@lobehub/ui";
-import { Flexbox } from "react-layout-kit";
+
 import "./index.css";
 import { bytesToSize } from "@/utils/byte";
 import {
@@ -38,16 +29,23 @@ import {
     ReloadOutlined,
     EditOutlined,
     FileZipOutlined,
-    AppstoreAddOutlined
-} from "@ant-design/icons";
+    AppstoreAddOutlined,
+    Search,
+    Upload,
+    ChevronDown,
+    MoreVertical
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Flexbox } from 'react-layout-kit';
 import "react-contexify/ReactContexify.css";
 import Rename from "./features/Rename";
 import CreateDirectory from "./features/CreateDirectory";
 import Property from "./features/Property";
-
-const { Dragger } = Upload;
-const { DirectoryTree } = Tree;
-const { Search } = Input;
 
 interface TreeNode {
     title: any;
@@ -385,7 +383,7 @@ const FileStoragePage: React.FC = () => {
 
                 directories.forEach((dir: any) => {
                     data.push({
-                        title: <Tooltip title={dir.name}>{dir.name}</Tooltip>,
+                        title: dir.name,
                         key: `${dir.fullName}`,
                         isLeaf: false,
                     });
@@ -393,7 +391,7 @@ const FileStoragePage: React.FC = () => {
 
                 files.forEach((file: any) => {
                     data.push({
-                        title: <Tooltip title={file.name}>{file.name}</Tooltip>,
+                        title: file.name,
                         key: `${file.fullName}`,
                         isLeaf: true,
                     });
@@ -450,20 +448,23 @@ const FileStoragePage: React.FC = () => {
                             title="文件系统目录"
                         />
                         <DraggablePanelBody>
-                            <DirectoryTree
-                                selectedKeys={selectedKeys}
-                                onSelect={(keys, info) => {
-                                    setSelectedKeys(keys);
-                                    setSelectedNode(info.node);
-                                }}
-                                style={{
-                                    overflow: "auto",
-                                }}
-                                selectable
-                                blockNode
-                                loadData={onLoadData}
-                                treeData={treeData}
-                            />
+                            <div className="space-y-1" style={{ overflow: "auto" }}>
+                                {treeData.map((node) => (
+                                    <div
+                                        key={node.key}
+                                        className={`p-2 rounded cursor-pointer hover:bg-accent ${selectedKeys.includes(node.key) ? 'bg-accent' : ''}`}
+                                        onClick={() => {
+                                            setSelectedKeys([node.key]);
+                                            setSelectedNode(node);
+                                        }}
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <FolderOutlined className="h-4 w-4" />
+                                            <span className="text-sm">{node.title}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </DraggablePanelBody>
                         <DraggablePanelFooter>FastGateway文件管理系统</DraggablePanelFooter>
                     </DraggablePanelContainer>
@@ -478,12 +479,11 @@ const FileStoragePage: React.FC = () => {
                             alignItems: 'center',
                             marginBottom: 12
                         }}>
-                            <Space>
-                                <Search
+                            <div className="flex items-center space-x-2">
+                                <Input
                                     placeholder="搜索文件..."
-                                    allowClear
-                                    style={{ width: 300 }}
-                                    onSearch={handleSearch}
+                                    className="w-72"
+                                    value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                                 <Dropdown
@@ -496,18 +496,20 @@ const FileStoragePage: React.FC = () => {
                                         onClick: ({ key }) => setFileFilter(key as any)
                                     }}
                                 >
-                                    <Button icon={<FilterOutlined />}>
+                                    <Button>
+                                        <FilterOutlined className="h-4 w-4 mr-2" />
                                         {fileFilter === 'all' ? '全部' :
                                             fileFilter === 'files' ? '仅文件' : '仅文件夹'}
                                     </Button>
-                                </Dropdown>
-                            </Space>
+                                </DropdownMenu>
+                            </div>
 
-                            <Space>
+                            <div className="flex space-x-2">
                                 {selectedRows.length > 0 && (
                                     <>
                                         <Button
-                                            icon={<CopyOutlined />}
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => {
                                                 const items = filteredData.filter(item =>
                                                     selectedRows.includes(item.key));
@@ -517,7 +519,8 @@ const FileStoragePage: React.FC = () => {
                                             复制 ({selectedRows.length})
                                         </Button>
                                         <Button
-                                            icon={<ScissorOutlined />}
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => {
                                                 const items = filteredData.filter(item =>
                                                     selectedRows.includes(item.key));
@@ -527,8 +530,8 @@ const FileStoragePage: React.FC = () => {
                                             剪切 ({selectedRows.length})
                                         </Button>
                                         <Button
-                                            icon={<FileZipOutlined />}
-                                            className="zip-button"
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => {
                                                 const itemsToZip = filteredData.filter(item =>
                                                     selectedRows.includes(item.key));
@@ -538,8 +541,8 @@ const FileStoragePage: React.FC = () => {
                                             批量打包ZIP ({selectedRows.length})
                                         </Button>
                                         <Button
-                                            danger
-                                            icon={<DeleteOutlined />}
+                                            variant="destructive"
+                                            size="sm"
                                             onClick={() => {
                                                 const itemsToDelete = filteredData.filter(item =>
                                                     selectedRows.includes(item.key));
@@ -563,23 +566,26 @@ const FileStoragePage: React.FC = () => {
                                 )}
 
                                 <Button
-                                    icon={<PlusOutlined />}
                                     onClick={() => setUploadVisible(true)}
                                     disabled={!selectedNode}
+                                    className="bg-primary text-primary-foreground"
                                 >
+                                    <PlusOutlined className="h-4 w-4 mr-2" />
                                     上传文件
                                 </Button>
                                 <Button
-                                    icon={<FolderOutlined />}
                                     onClick={() => setCreateDirectoryVisible(true)}
                                     disabled={!selectedNode}
+                                    className="bg-primary text-primary-foreground"
                                 >
+                                    <FolderOutlined className="h-4 w-4 mr-2" />
                                     新建目录
                                 </Button>
                                 <Button
-                                    icon={<ReloadOutlined />}
                                     onClick={refreshCurrentDirectory}
+                                    variant="outline"
                                 >
+                                    <ReloadOutlined className="h-4 w-4 mr-2" />
                                     刷新
                                 </Button>
                             </Space>
@@ -634,22 +640,14 @@ const FileStoragePage: React.FC = () => {
                                 此文件夹为空
                             </div>
                         ) : (
-                            <Row gutter={[16, 16]} className="file-grid">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {filteredData.map((item: FileItem) => (
-                                    <Col
+                                    <div
                                         key={item.key}
-                                        xs={12}
-                                        sm={8}
-                                        md={6}
-                                        lg={4}
-                                        xl={3}
-                                        xxl={2}
                                     >
-                                        <Card
-                                            hoverable
-                                            className={`file-card ${selectedRows.includes(item.key) ? 'file-card-selected' : ''}`}
-                                            bodyStyle={{
-                                                padding: '12px',
+                                        <div
+                                            className={`border rounded-lg p-3 cursor-pointer transition-all hover:shadow-md ${selectedRows.includes(item.key) ? 'border-primary bg-accent' : 'border-border'}`}
+                                            style={{
                                                 textAlign: 'center',
                                                 height: '160px',
                                                 display: 'flex',
@@ -680,21 +678,9 @@ const FileStoragePage: React.FC = () => {
 
                                             {/* 文件名 */}
                                             <div>
-                                                <Tooltip title={item.title}>
-                                                    <div className="file-name" style={{
-                                                        fontSize: '12px',
-                                                        lineHeight: '16px',
-                                                        marginBottom: '4px',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        wordBreak: 'break-all'
-                                                    }}>
-                                                        {item.title}
-                                                    </div>
-                                                </Tooltip>
+                                                <div className="text-sm font-medium truncate mb-1" title={item.title}>
+                                                    {item.title}
+                                                </div>
 
                                                 {/* 文件信息 */}
                                                 <div style={{
@@ -713,9 +699,8 @@ const FileStoragePage: React.FC = () => {
                                                         <Tooltip title="下载">
                                                             <Button
                                                                 type="text"
-                                                                size="small"
-                                                                icon={<DownloadOutlined />}
-                                                                loading={downloadingFile === item.key}
+                                                                size="sm"
+                                                                disabled={downloadingFile === item.key}
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleFileDownload(item);
@@ -798,10 +783,10 @@ const FileStoragePage: React.FC = () => {
                                                     </Dropdown>
                                                 </Space>
                                             </div>
-                                        </Card>
-                                    </Col>
+                                        </div>
+                                    </div>
                                 ))}
-                            </Row>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -809,69 +794,69 @@ const FileStoragePage: React.FC = () => {
 
             {/* 上传文件对话框 */}
             {uploadVisible && (
-                <Modal
-                    footer={[]}
-                    onCancel={() => {
-                        setUploadVisible(false);
-                        setUploadFileList([]);
+                <Dialog
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setUploadVisible(false);
+                            setUploadFileList([]);
+                        }
                     }}
                     open={uploadVisible}
-                    title="上传文件"
                 >
-                    <Dragger
-                        multiple
-                        maxCount={100}
-                        name="file"
-                        beforeUpload={(_, files) => {
-                            setUploadFileList(files);
-                            return false;
-                        }}
-                    >
-                        <p className="ant-upload-drag-icon">
-                            <InboxOutlined />
-                        </p>
-                        <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-                        <p className="ant-upload-hint">支持单个或批量上传，单文件限制30MB。</p>
-                    </Dragger>
-                    <Button
-                        block
-                        type="primary"
-                        onClick={async () => {
-                            if (uploadFileList.length === 0) {
-                                message.error("请选择文件");
-                                return;
-                            }
-
-                            try {
-                                const uploadPromises = uploadFileList.map(async (file) => {
-                                    const result = await uploadFile(
-                                        file,
-                                        selectedNode.key,
-                                        selectedNode.drive
-                                    );
-                                    if (result.success) {
-                                        return file.name;
-                                    } else {
-                                        throw new Error(result.message);
-                                    }
-                                });
-
-                                await Promise.all(uploadPromises);
-                                message.success('所有文件上传完成');
-                                refreshCurrentDirectory();
-                                setUploadVisible(false);
-                                setUploadFileList([]);
-                            } catch (error: any) {
-                                message.error(`上传失败: ${error.message}`);
-                            }
-                        }}
-                        style={{
-                            marginTop: 20,
-                        }}
-                    >
-                        上传 ({uploadFileList.length} 个文件)
-                    </Button>
-                </Modal>
+                    <DialogHeader>
+                        <DialogTitle>上传文件</DialogTitle>
+                    </DialogHeader>
+                    <DialogContent>
+                        <div className="space-y-4">
+                            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                                <div className="mb-4">
+                                    <InboxOutlined className="h-12 w-12 text-muted-foreground" />
+                                </div>
+                                <p className="text-lg font-medium">点击或拖拽文件到此处上传</p>
+                                <p className="text-sm text-muted-foreground">
+                                    支持单个或批量上传。不支持上传文件夹。
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                {uploadFileList.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 border rounded">
+                                        <span className="text-sm">{file.name}</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setUploadFileList(prev => prev.filter(f => f.name !== file.name))}
+                                        >
+                                            删除
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                            <input
+                                type="file"
+                                multiple
+                                onChange={(e) => {
+                                    const files = Array.from(e.target.files || []);
+                                    setUploadFileList(prev => [...prev, ...files]);
+                                }}
+                                className="hidden"
+                                id="file-upload"
+                            />
+                            <Button
+                                onClick={() => document.getElementById('file-upload')?.click()}
+                                className="w-full"
+                            >
+                                选择文件
+                            </Button>
+                            {uploadFileList.length > 0 && (
+                                <Button
+                                    onClick={handleUpload}
+                                    className="w-full bg-primary text-primary-foreground"
+                                >
+                                    上传 ({uploadFileList.length} 个文件)
+                                </Button>
+                            )}
+                        </div>
+                    </DialogContent>
             )}
 
             {/* 重命名对话框 */}

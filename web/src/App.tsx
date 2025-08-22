@@ -15,6 +15,7 @@ const CertPage = lazy(() => import('./pages/cert/page'))
 const AboutPage = lazy(() => import('./pages/about/page'))
 const FileStoragePage = lazy(() => import('./pages/filestorage/page'))
 const DashboardPage = lazy(() => import('./pages/dashboard/page'))
+const TunnelPage = lazy(() => import('./pages/tunnel/page'))
 
 const router = createBrowserRouter([
   {
@@ -91,6 +92,12 @@ const router = createBrowserRouter([
             path: 'filestorage',
             element: <Suspense fallback={<Loading></Loading>}>
               <FileStoragePage />
+            </Suspense>
+          },
+          {
+            path: 'tunnel',
+            element: <Suspense fallback={<Loading></Loading>}>
+              <TunnelPage />
             </Suspense>
           },
           {

@@ -1,170 +1,216 @@
-name: Release Build & Images
+name: Release Build
 
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
 
-permissions:
-  contents: write
+env:
+  DOTNET_VERSION: '8.0.x'
 
 jobs:
-  build_web:
-    name: Build Web Assets
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install and build web
-        working-directory: web
-        run: |
-          npm ci
-          npm run build
-
-      - name: Upload web dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: web/dist
-
-  publish_binaries:
-    name: Publish Binaries (${{ matrix.rid }})
-    needs: build_web
-    runs-on: ubuntu-latest
+  build-tunnelclient:
+    name: Build TunnelClient
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        rid: [win-x64, linux-x64, win-arm64, linux-arm64]
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+            arch: amd64
+          - os: ubuntu-latest
+            runtime: linux-arm64
+            arch: arm64
+          - os: windows-latest
+            runtime: win-x64
+            arch: amd64
+          - os: windows-latest
+            runtime: win-arm64
+            arch: arm64
+    
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
-          include-prerelease: true
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Download web dist
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: src/FastGateway.Service/wwwroot
+      - name: Install dependencies
+        run: dotnet restore src/TunnelClient/TunnelClient.csproj
 
-      - name: Ensure zip is available
-        run: sudo apt-get update && sudo apt-get install -y zip
-
-      - name: Restore
-        run: dotnet restore ./src/FastGateway.Service/FastGateway.Service.csproj
-
-      - name: Publish (${{ matrix.rid }})
+      - name: Build TunnelClient (AOT)
         run: |
-          dotnet publish ./src/FastGateway.Service/FastGateway.Service.csproj \
+          dotnet publish src/TunnelClient/TunnelClient.csproj \
             -c Release \
-            -r ${{ matrix.rid }} \
-            -o publish/${{ matrix.rid }} \
-            /p:PublishSingleFile=true \
-            /p:SelfContained=true \
-            /p:PublishTrimmed=false
+            -r ${{ matrix.runtime }} \
+            --self-contained true \
+            -p:PublishAot=true \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true \
+            -p:TrimMode=partial \
+            -o ./artifacts/tunnelclient-${{ matrix.runtime }}
 
-      - name: Package zip (${{ matrix.rid }})
-        run: |
-          cd publish/${{ matrix.rid }}
-          zip -r ../../fast-gateway-${{ matrix.rid }}.zip .
-          cd -
-
-      - name: Upload artifact (${{ matrix.rid }})
+      - name: Upload TunnelClient artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: binaries-${{ matrix.rid }}
-          path: fast-gateway-${{ matrix.rid }}.zip
+          name: tunnelclient-${{ matrix.runtime }}
+          path: ./artifacts/tunnelclient-${{ matrix.runtime }}/*
+          retention-days: 1
 
-  build_and_push_images:
-    name: Build & Push Multi-Arch Images and Zip
-    runs-on: ubuntu-latest
+  build-fastgateway:
+    name: Build FastGateway
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+            arch: amd64
+          - os: ubuntu-latest
+            runtime: linux-arm64
+            arch: arm64
+          - os: windows-latest
+            runtime: win-x64
+            arch: amd64
+          - os: windows-latest
+            runtime: win-arm64
+            arch: arm64
+    
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          username: aidotnet
-          password: ${{ secrets.DOCKER }}
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Extract version
-        id: vars
+      - name: Install dependencies
+        run: dotnet restore src/FastGateway/FastGateway.csproj
+
+      - name: Build FastGateway
         run: |
-          VERSION=${GITHUB_REF_NAME}
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          dotnet publish src/FastGateway/FastGateway.csproj \
+            -c Release \
+            -r ${{ matrix.runtime }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -o ./artifacts/fastgateway-${{ matrix.runtime }}
 
-      - name: Ensure zip is available
-        run: sudo apt-get update && sudo apt-get install -y zip
-
-      - name: Build and push (linux/amd64, linux/arm64)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: src/FastGateway.Service/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            aidotnet/fast-gateway:latest
-            aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Pull and save image (linux/amd64)
-        run: |
-          docker pull --platform linux/amd64 aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
-          docker save -o fast-gateway-image-linux-amd64.tar aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
-          zip -9 fast-gateway-image-linux-amd64.zip fast-gateway-image-linux-amd64.tar
-          rm fast-gateway-image-linux-amd64.tar
-
-      - name: Pull and save image (linux/arm64)
-        run: |
-          docker pull --platform linux/arm64 aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
-          docker save -o fast-gateway-image-linux-arm64.tar aidotnet/fast-gateway:${{ steps.vars.outputs.version }}
-          zip -9 fast-gateway-image-linux-arm64.zip fast-gateway-image-linux-arm64.tar
-          rm fast-gateway-image-linux-arm64.tar
-
-      - name: Upload image zips
+      - name: Upload FastGateway artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: image-zips
-          path: |
-            fast-gateway-image-linux-amd64.zip
-            fast-gateway-image-linux-arm64.zip
+          name: fastgateway-${{ matrix.runtime }}
+          path: ./artifacts/fastgateway-${{ matrix.runtime }}/*
+          retention-days: 1
 
-  release:
-    name: Create GitHub Release
-    needs: [publish_binaries, build_and_push_images]
+  create-release:
+    name: Create Release
+    needs: [build-tunnelclient, build-fastgateway]
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Download binary artifacts
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./dist
+          path: ./artifacts
 
-      - name: Create Release and Upload Assets
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          
+          # Create archives for each platform
+          cd artifacts
+          
+          # TunnelClient archives
+          for dir in tunnelclient-*; do
+            if [[ -d "$dir" ]]; then
+              runtime=$(echo $dir | sed 's/tunnelclient-//')
+              if [[ "$runtime" == win-* ]]; then
+                (cd "$dir" && zip -r "../../release-assets/tunnelclient-${runtime}.zip" .)
+              else
+                tar -czf "../release-assets/tunnelclient-${runtime}.tar.gz" -C "$dir" .
+              fi
+            fi
+          done
+          
+          # FastGateway archives
+          for dir in fastgateway-*; do
+            if [[ -d "$dir" ]]; then
+              runtime=$(echo $dir | sed 's/fastgateway-//')
+              if [[ "$runtime" == win-* ]]; then
+                (cd "$dir" && zip -r "../../release-assets/fastgateway-${runtime}.zip" .)
+              else
+                tar -czf "../release-assets/fastgateway-${runtime}.tar.gz" -C "$dir" .
+              fi
+            fi
+          done
+
+      - name: Generate release notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          ## Release ${{ github.ref_name || github.event.inputs.version }}
+          
+          ### Downloads
+          
+          #### TunnelClient (AOT - Native)
+          - **Linux AMD64**: `tunnelclient-linux-x64.tar.gz`
+          - **Linux ARM64**: `tunnelclient-linux-arm64.tar.gz`
+          - **Windows AMD64**: `tunnelclient-win-x64.zip`
+          - **Windows ARM64**: `tunnelclient-win-arm64.zip`
+          
+          #### FastGateway
+          - **Linux AMD64**: `fastgateway-linux-x64.tar.gz`
+          - **Linux ARM64**: `fastgateway-linux-arm64.tar.gz`
+          - **Windows AMD64**: `fastgateway-win-x64.zip`
+          - **Windows ARM64**: `fastgateway-win-arm64.zip`
+          
+          ### Features
+          - Cross-platform support for Linux and Windows
+          - ARM64 and AMD64 architecture support
+          - TunnelClient: Native AOT compilation for optimal performance
+          - FastGateway: Single-file executable with all dependencies included
+          
+          ### Usage
+          
+          #### TunnelClient
+          ```bash
+          # Linux/macOS
+          ./tunnelclient
+          
+          # Windows
+          tunnelclient.exe
+          ```
+          
+          #### FastGateway
+          ```bash
+          # Linux/macOS
+          ./fastgateway
+          
+          # Windows
+          fastgateway.exe
+          ```
+          EOF
+
+      - name: Create Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
-          files: |
-            dist/**/fast-gateway-*.zip
+          name: Release ${{ github.ref_name || github.event.inputs.version }}
+          body_path: release-notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-

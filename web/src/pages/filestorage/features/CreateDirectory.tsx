@@ -1,6 +1,8 @@
 import { createDirectory } from "@/services/FileStorageService";
-import { Input, Modal } from "@lobehub/ui";
-import { Button, message } from "antd";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button as ShadcnButton } from "@/components/ui/button";
+import { message } from "@/utils/toast";
 import { useState } from "react";
 
 interface CreateDirectoryProps {
@@ -22,17 +24,27 @@ export default function CreateDirectory(props: CreateDirectoryProps) {
     }
 
     return (
-        <Modal title='新建目录' open={props.visible} onCancel={() => {
-            props.onClose();
-        }} footer={[]}>
-            <Input name={name} onChange={(e) => {
-                setName(e.target.value)
-            }} placeholder='请输入文件夹名称' />
-            <Button onClick={() => save()} style={{
-                marginTop: '10px',
-            }} block>
-                创建
-            </Button>
-        </Modal>
+        <Dialog open={props.visible} onOpenChange={(open) => !open && props.onClose()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>新建目录</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <Input 
+                        value={name} 
+                        onChange={(e) => setName(e.target.value)} 
+                        placeholder="请输入文件夹名称" 
+                    />
+                </div>
+                <DialogFooter>
+                    <ShadcnButton variant="outline" onClick={props.onClose}>
+                        取消
+                    </ShadcnButton>
+                    <ShadcnButton onClick={() => save()}>
+                        创建
+                    </ShadcnButton>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }

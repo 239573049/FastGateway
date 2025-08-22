@@ -1,0 +1,13 @@
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "TunnelClient": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "commandLineArgs": "-c tunnel.json",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

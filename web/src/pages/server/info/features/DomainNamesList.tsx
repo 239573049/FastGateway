@@ -5,7 +5,7 @@ import { Flexbox } from 'react-layout-kit';
 import { useDomainStore, useRouteStore } from "@/store/server";
 import { AlignJustify } from 'lucide-react'
 import { useParams } from "react-router-dom";
-import Divider from "@lobehub/ui/es/Form/components/FormDivider";
+import { Separator } from "@/components/ui/separator";
 import { deleteDomain, enableService, getDomains } from "@/services/DomainNameService";
 import UpdateDomain from "./UpdateDomain";
 
@@ -53,28 +53,9 @@ const DomainNamesList = memo(() => {
     const render = (item: DomainName) => {
         return (                <Flexbox
                     key={item.id}
-                    style={{
-                        padding: '16px',
-                        borderRadius: '8px',
-                        height: '180px',
-                        marginBottom: '10px',
-                        cursor: 'pointer',
-                        backgroundColor: colorBgContainer,
-                        border: `1px solid ${colorBorder}`,
-                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                        transition: 'box-shadow 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-                    }}
+                    className="p-4 rounded-lg h-44 mb-3 cursor-pointer bg-card border border-border shadow-sm transition-shadow hover:shadow-md"
                 >
-                <div style={{
-                    fontSize: '18px',
-                    color: colorText,
-                }}>
+                <div className="text-lg font-semibold text-foreground mb-2">
                     路由：
                     {item.path}
                     <Dropdown
@@ -119,25 +100,13 @@ const DomainNamesList = memo(() => {
                         <Button
                             loading={loading}
                             type="text"
-                            style={{
-                                float: 'right',
-                                marginTop: '-5px'
-                            }}
+                            className="float-right -mt-1"
                             icon={<AlignJustify size={20} />}
                         />
                     </Dropdown>
                 </div>
-                <Divider />
-                <div
-                    style={{
-                        fontSize: '14px',
-                        width: '100%',
-                        padding: '10px',
-                        flex: 1,
-                        userSelect: 'none',
-                        overflow: 'auto',
-                        color: colorTextSecondary,
-                    }}>
+                <Separator />
+                <div className="text-sm w-full p-2 flex-1 select-none overflow-auto text-muted-foreground">
                     {
                         item.serviceType === ServiceType.Service && ('代理服务: ' + item.service)
                     }
@@ -152,9 +121,11 @@ const DomainNamesList = memo(() => {
                             return (<Tag key={i}>{x.service}</Tag>)
                         })
                     }
-                    <Divider>
-                        域名
-                    </Divider>
+                    <div className="flex items-center gap-2 my-4">
+                        <Separator className="flex-1" />
+                        <span className="text-sm text-muted-foreground px-2">域名</span>
+                        <Separator className="flex-1" />
+                    </div>
                     {
                         item.domains.map((x, i) => {
                             return (<Tag key={i}>{x}</Tag>)
@@ -167,17 +138,8 @@ const DomainNamesList = memo(() => {
 
     return (
         <>
-            <div style={{
-                padding: '10px',
-            }}>
-                <span style={{
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    marginTop: '10px',
-                    marginBottom: '10px',
-                    marginRight: '10px',
-                    flex: 1,
-                }}>
+            <div className="p-4">
+                <span className="text-lg font-semibold text-foreground mr-3">
                     域名过滤
                 </span>
                 {
@@ -190,25 +152,18 @@ const DomainNamesList = memo(() => {
                                     setSelectedTags(selectedTags.filter(y => y !== x));
                                 }
                             }}
-                            style={{
-                                background: selectedTags.includes(x) ? '#1890ff' : 'transparent',
-                            }}
+                            className={selectedTags.includes(x) ? "bg-primary text-primary-foreground" : "bg-transparent'}
                             checked={selectedTags.includes(x)}
                             key={i}>{x}</Tag.CheckableTag>)
                     })
                 }
             </div>
 
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-                gap: '16px',
-                padding: '16px'
-            }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                 {domains.filter(x => selectedTags.length === 0 || x.domains.some((y:any) => selectedTags.includes(y))).map((item) => render(item))}
             </div>
             {
-                domains.length === 0 && <Empty />
+                domains.length === 0 && <div className="flex justify-center items-center h-64"><Empty /></div>
             }
             <UpdateDomain visible={updateVisible} domainName={updateDomain} onClose={() => {
                 setUpdateVisible(false);

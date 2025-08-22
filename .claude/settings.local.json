@@ -3,8 +3,23 @@
     "allow": [
       "Bash(Remove-Item \"D:\\code\\FastGateway\\src\\FastGateway.Service\\DataAccess\\MasterContext.cs\" -Force)",
       "Bash(Remove-Item \"D:\\code\\FastGateway\\src\\FastGateway.Service\\Migrations\" -Recurse -Force)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(bunx:*)",
+      "Bash(bun add:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(bun remove:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(bun run:*)",
+      "Bash(npm install:*)",
+      "Bash(grep -n \"Search\" D:codeFastGatewaywebsrcpagesfilestoragepage.tsx)",
+      "mcp__ide__getDiagnostics",
+      "mcp__ide__getDiagnostics"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "D:\\d\\code\\FastGateway"
+    ]
   }
 }

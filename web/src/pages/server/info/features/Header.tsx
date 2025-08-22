@@ -1,7 +1,7 @@
 
 import { Flexbox } from 'react-layout-kit';
 import { Button, message } from 'antd';
-import Divider from '@lobehub/ui/es/Form/components/FormDivider';
+import { Separator } from '@/components/ui/separator';
 import { useState } from 'react';
 import CreateDomain from './CreateDomain';
 import { reloadServer } from '@/services/ServerService';
@@ -14,23 +14,11 @@ export default function Header() {
     const [loading, setLoading] = useRouteStore((state) => [state.loading, state.setLoading]);
 
     return (<>
-        <Flexbox style={{
-        }} horizontal>
-            <span style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                marginLeft: '10px',
-                marginTop: '10px',
-                marginBottom: '10px',
-                flex: 1,
-
-            }}>
+        <Flexbox className="flex-row items-center justify-between px-6 py-4" horizontal>
+            <span className="text-xl font-semibold text-foreground">
                 网关路由管理
             </span>
-            <div style={{
-                marginRight: '20px',
-                marginBottom: '20px'
-            }}>
+            <div className="flex gap-3">
                 <Button
                     type='primary'
                     loading={loading}
@@ -43,21 +31,21 @@ export default function Header() {
                                 setLoading(false);
                             });
                     }}
-                    style={{
-                        marginRight: '10px',
-                    }}>
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
                     刷新路由
                 </Button>
                 <Button
                     onClick={() => {
                         setCreateVisible(true);
                     }}
+                    className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 >
                     新增路由
                 </Button>
             </div>
         </Flexbox>
-        <Divider />
+        <Separator className="mb-6" />
         <CreateDomain visible={createVisible} onClose={() => {
             setCreateVisible(false);
         }

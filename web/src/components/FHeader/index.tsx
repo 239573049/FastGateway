@@ -1,5 +1,6 @@
 
-import Divider from '@lobehub/ui/es/Form/components/FormDivider';
+import React from 'react';
+import { Separator } from '@/components/ui/separator';
 import { Flexbox } from 'react-layout-kit';
 
 interface FHeaderProps {
@@ -29,7 +30,7 @@ function FHeader({
                     {action}
                 </Flexbox>
             </Flexbox>
-            <Divider />
+            <Separator />
         </>
     );
 }

@@ -1,6 +1,8 @@
-import { Input, Modal } from "@lobehub/ui";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button as ShadcnButton } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { Button, message } from "antd";
+import { message } from "@/utils/toast";
 import { renameFile } from "@/services/FileStorageService";
 
 interface RenameProps {
@@ -49,24 +51,23 @@ export default function Rename(props: RenameProps) {
 
 
     return (
-        <Modal
-            footer={[]}
-            title={`重命名${isFile ? '文件' : '文件夹'}`}
-            open={visible}
-            onCancel={onClose}
-            okButtonProps={{ loading }}
-        >
-            <Input value={inputValue} onChange={onInputChange} />
-            <Button style={{
-                marginTop: 20,
-
-            }}
-            onClick={()=>{
-                onOkClick()
-            }}
-            block>
-                重命名
-            </Button>
-        </Modal>
+        <Dialog open={visible} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{`重命名${isFile ? '文件' : '文件夹'}`}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <Input value={inputValue} onChange={onInputChange} />
+                </div>
+                <DialogFooter>
+                    <ShadcnButton variant="outline" onClick={onClose}>
+                        取消
+                    </ShadcnButton>
+                    <ShadcnButton onClick={onOkClick} disabled={loading}>
+                        {loading ? '重命名中...' : '重命名'}
+                    </ShadcnButton>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }

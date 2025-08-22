@@ -1,0 +1,12 @@
+[Unit]
+Description=Tunnel Client
+After=network.target syslog.target
+Wants=network.target
+[Service]
+Type=simple
+# 请确保修改为实际的 frps 路径和配置文件路径
+ExecStart=/path/to/TunnelClient -c ./tunnel.json
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

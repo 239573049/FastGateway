@@ -1,4 +1,3 @@
-import { Icon, } from '@lobehub/ui';
 import { Loader2 } from 'lucide-react';
 import { memo } from 'react';
 import { Center, Flexbox } from 'react-layout-kit';
@@ -15,8 +14,7 @@ const Loading = memo(() => {
                 Fast Gateway
             </span>
             <Center gap={16} horizontal>
-                <Icon icon={Loader2} spin />
-            
+                <Loader2 className="h-4 w-4 animate-spin" />
                 加载中...
             </Center>
         </Center>

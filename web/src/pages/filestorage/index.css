@@ -1,517 +1,426 @@
-/* 文件管理器整体样式 */
+/* Modern File Storage Theme - Unified with Sidebar */
+
+/* Main container */
 .file-storage-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+  height: 100vh;
+  display: flex;
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Sidebar styles */
+.file-sidebar {
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.file-sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent);
+}
+
+.file-sidebar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--accent-foreground);
+  margin: 0;
+}
+
+.file-sidebar-body {
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+/* Tree styles */
+.ant-tree {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.ant-tree-treenode {
+  padding: 0.25rem 0;
 }
 
 .ant-tree-treenode-selected::before {
-    background: transparent !important;
-    
-}
-
-/* 树形目录样式 */
-.ant-tree-treenode-selected::before {
-    border-radius: 8px;
-    opacity: 0.9;
-}
-
-.ant-tree-treenode-selected:hover {
-    border-radius: 8px;
+  background: var(--accent);
+  border-radius: var(--radius);
+  opacity: 0.1;
 }
 
 .ant-tree-node-content-wrapper {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: all 0.2s ease;
-    border-radius: 6px;
-    padding: 4px 8px;
+  border-radius: var(--radius);
+  padding: 0.375rem 0.75rem;
+  margin: 0.125rem 0;
+  transition: all 0.2s ease;
+  color: var(--foreground);
 }
 
 .ant-tree-node-content-wrapper:hover {
-    background: rgba(102, 126, 234, 0.1);
-    transform: translateX(2px);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
-:where(.css-dev-only-do-not-override-1l6l2ek).ant-tree.ant-tree-directory .ant-tree-treenode-selected .ant-tree-node-content-wrapper:before,
-:where(.css-dev-only-do-not-override-1l6l2ek).ant-tree.ant-tree-directory .ant-tree-treenode-selected .ant-tree-node-content-wrapper:hover:before {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+.ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 500;
 }
 
-/* 文件列表表格样式 */
-.file-list-table .ant-table-thead>tr>th {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    border-bottom: 2px solid #e8f0fe;
-    font-weight: 600;
-    color: #2c3e50;
+/* Main content area */
+.file-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
 }
 
-.file-list-table .ant-table-tbody>tr:hover>td {
-    background: rgba(102, 126, 234, 0.05) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
+/* Header styles */
+.file-header {
+  background: var(--card);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.file-list-table .ant-table-tbody>tr>td {
-    border-bottom: 1px solid #f0f0f0;
-    padding: 8px 12px;
-    transition: all 0.2s ease;
+.file-path-display {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-family: 'Consolas', 'Monaco', monospace;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* 文件图标样式优化 */
-.file-icon-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+/* Toolbar styles */
+.file-toolbar {
+  padding: 1rem 1.5rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.file-icon-wrapper .ant-space-item:first-child {
-    display: flex;
-    align-items: center;
+.file-search-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* 工具栏样式 */
-.toolbar-container {
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.file-search-input {
+  width: 300px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  transition: all 0.2s ease;
 }
 
-.toolbar-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+.file-search-input:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px rgba(var(--ring), 0.1);
 }
 
-.toolbar-actions .ant-btn {
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.file-filter-dropdown .ant-btn {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  transition: all 0.2s ease;
 }
 
-.toolbar-actions .ant-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+.file-filter-dropdown .ant-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
-.toolbar-actions .ant-btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
+/* Action buttons */
+.file-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.toolbar-actions .ant-btn-danger {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-    border: none;
+.file-action-btn {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
 }
 
-/* 搜索框样式 */
-.ant-input-search {
-    border-radius: 24px;
-    overflow: hidden;
+.file-action-btn:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  transform: translateY(-1px);
 }
 
-.ant-input-search .ant-input {
-    border-radius: 24px 0 0 24px;
-    border-right: none;
+.file-action-btn.primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
 }
 
-.ant-input-search .ant-input-search-button {
-    border-radius: 0 24px 24px 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
+.file-action-btn.primary:hover {
+  background: hsl(var(--primary) / 0.9);
 }
 
-/* 路径导航样式 */
-.path-breadcrumb {
-    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: 'Consolas', 'Monaco', monospace;
-    font-size: 12px;
-    color: #1565c0;
-    border-left: 4px solid #2196f3;
+.file-action-btn.danger {
+  background: hsl(0 84.2% 60.2%);
+  color: white;
+  border-color: hsl(0 84.2% 60.2%);
 }
 
-/* 上传区域样式 */
-.ant-upload-drag {
-    border: 2px dashed #d9d9d9 !important;
-    border-radius: 12px !important;
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8f4f8 100%) !important;
-    transition: all 0.3s ease !important;
+.file-action-btn.danger:hover {
+  background: hsl(0 84.2% 50.2%);
 }
 
-.ant-upload-drag:hover {
-    border-color: #667eea !important;
-    background: linear-gradient(135deg, #f0f4ff 0%, #e0f2f8 100%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
-}
-
-.ant-upload-drag-icon {
-    color: #667eea !important;
-    font-size: 48px !important;
-}
-
-.ant-upload-text {
-    color: #2c3e50 !important;
-    font-weight: 600 !important;
-}
-
-.ant-upload-hint {
-    color: #7f8c8d !important;
-}
-
-/* 模态框样式 */
-.ant-modal-content {
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-.ant-modal-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-bottom: none;
-}
-
-.ant-modal-title {
-    color: white;
-    font-weight: 600;
-}
-
-.ant-modal-close {
-    color: white;
-}
-
-.ant-modal-close:hover {
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* 选中行样式 */
-.ant-table-tbody>tr.ant-table-row-selected>td {
-    background: rgba(102, 126, 234, 0.1) !important;
-}
-
-.ant-table-tbody>tr.ant-table-row-selected:hover>td {
-    background: rgba(102, 126, 234, 0.15) !important;
-}
-
-/* 加载状态样式 */
-.ant-table-placeholder {
-    border-radius: 8px;
-    margin: 16px;
-}
-
-/* 分页样式 */
-.ant-pagination {
-    margin-top: 16px;
-}
-
-.ant-pagination .ant-pagination-item-active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: #667eea;
-}
-
-.ant-pagination .ant-pagination-item-active a {
-    color: white;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-    .toolbar-container {
-        padding: 12px;
-    }
-
-    .toolbar-actions {
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .ant-input-search {
-        width: 100% !important;
-        margin-bottom: 8px;
-    }
-
-    .file-list-table .ant-table-tbody>tr>td {
-        padding: 6px 8px;
-        font-size: 12px;
-    }
-}
-
-/* 滚动条样式 */
-.ant-table-body::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-.ant-table-body::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.ant-table-body::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 4px;
-}
-
-.ant-table-body::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-}
-
-/* 动画效果 */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.file-list-table .ant-table-tbody>tr {
-    animation: fadeInUp 0.3s ease;
-}
-
-/* 文件类型标识 */
-.file-type-indicator {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 4px;
-}
-
-.file-type-indicator.file {
-    background: #52c41a;
-}
-
-.file-type-indicator.folder {
-    background: #1890ff;
-}
-
-/* 操作按钮组样式 */
-.operation-buttons {
-    display: flex;
-    gap: 4px;
-}
-
-.operation-buttons .ant-btn {
-    border-radius: 6px;
-    padding: 4px 8px;
-    height: auto;
-    min-width: 32px;
-}
-
-/* 拖拽高亮效果 */
-.drag-over {
-    background: rgba(102, 126, 234, 0.1);
-    border: 2px dashed #667eea;
-    border-radius: 8px;
-}
-
-/* 剪贴板提示 */
-.clipboard-indicator {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    animation: slideInRight 0.3s ease;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-/* ZIP操作按钮样式 */
-.zip-button {
-    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
-    border: none;
-    color: white;
-}
-
-.zip-button:hover {
-    background: linear-gradient(135deg, #ffed4e 0%, #ff9500 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-}
-
-.unzip-button {
-    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-    border: none;
-    color: white;
-}
-
-.unzip-button:hover {
-    background: linear-gradient(135deg, #66bb6a 0%, #5cb85c 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-}
-
-/* ZIP文件标识 */
-.zip-file-indicator {
-    display: inline-block;
-    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: bold;
-    margin-left: 4px;
-}
-
-/* 文件网格布局样式 */
+/* File grid container */
 .file-grid-container {
-    padding: 16px 0;
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: var(--background);
 }
 
-.file-grid {
-    width: 100%;
-}
-
-/* 文件卡片样式 */
+/* File cards */
 .file-card {
-    border-radius: 12px;
-    border: 1px solid #f0f0f0;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    height: 160px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  height: 160px;
+  overflow: hidden;
 }
 
 .file-card:hover {
-    border-color: #667eea;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .file-card-selected {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+  border-color: var(--primary);
+  background: hsl(var(--primary) / 0.05);
+  box-shadow: 0 4px 12px rgba(var(--primary), 0.1);
 }
 
-.file-card .ant-card-body {
-    padding: 12px !important;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 160px;
-    text-align: center;
+.file-card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  text-align: center;
 }
 
-/* 文件名样式 */
+.file-icon-container {
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+
+.file-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  color: var(--muted-foreground);
+}
+
+.file-icon.folder {
+  color: hsl(47.9 95.8% 53.1%);
+}
+
+.file-icon.file {
+  color: var(--muted-foreground);
+}
+
 .file-name {
-    font-size: 12px;
-    line-height: 16px;
-    margin-bottom: 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    word-break: break-all;
-    color: #333;
-    font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-all;
 }
 
-/* 文件操作按钮 */
+.file-info {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+}
+
 .file-actions {
-    opacity: 0;
-    transition: opacity 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
 }
 
 .file-card:hover .file-actions {
-    opacity: 1;
+  opacity: 1;
 }
 
-.file-actions .ant-btn {
-    border-radius: 6px;
-    padding: 4px 6px;
-    height: 24px;
-    min-width: 24px;
+.file-action-icon {
+  width: 20px;
+  height: 20px;
+  padding: 0.25rem;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* ZIP文件徽章 */
-.zip-file-badge {
-    position: absolute;
-    top: -4px;
-    right: -8px;
-    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
-    color: white;
-    padding: 1px 4px;
-    border-radius: 6px;
-    font-size: 8px;
-    font-weight: bold;
-    line-height: 1.2;
+.file-action-icon:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
-/* 响应式调整 */
-@media (max-width: 1200px) {
-    .file-card {
-        height: 140px;
-    }
-    
-    .file-card .ant-card-body {
-        height: 140px;
-    }
+/* Empty state */
+.file-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--muted-foreground);
 }
 
+.file-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+  color: var(--muted-foreground);
+}
+
+.file-empty-text {
+  font-size: 1.125rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.file-empty-subtext {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+/* Loading state */
+.file-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--muted-foreground);
+}
+
+.file-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--border);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Upload modal */
+.file-upload-modal .ant-modal-content {
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.file-upload-modal .ant-modal-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.file-upload-modal .ant-modal-title {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.file-upload-modal .ant-upload-drag {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  transition: all 0.2s ease;
+}
+
+.file-upload-modal .ant-upload-drag:hover {
+  border-color: var(--primary);
+  background: hsl(var(--primary) / 0.05);
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
-    .file-card {
-        height: 120px;
-    }
-    
-    .file-card .ant-card-body {
-        height: 120px;
-        padding: 8px !important;
-    }
-    
-    .file-name {
-        font-size: 11px;
-        line-height: 14px;
-    }
-}
-
-/* 空文件夹状态 */
-.empty-folder {
-    display: flex;
+  .file-toolbar {
     flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .file-search-input {
+    width: 100%;
+  }
+  
+  .file-action-buttons {
     justify-content: center;
-    align-items: center;
-    height: 200px;
-    font-size: 16px;
-    color: #999;
+  }
+  
+  .file-card {
+    height: 140px;
+  }
+  
+  .file-icon {
+    width: 40px;
+    height: 40px;
+  }
 }
 
-.empty-folder .anticon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    color: #d9d9d9;
+/* Scrollbar styling */
+.file-grid-container::-webkit-scrollbar {
+  width: 8px;
 }
 
-/* 加载状态 */
-.loading-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
-    font-size: 16px;
-    color: #999;
+.file-grid-container::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+.file-grid-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.file-grid-container::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
 }

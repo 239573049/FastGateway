@@ -1,0 +1,32 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  },
+  "Port": 1881,
+  "Token": "Aa123456.",
+  "ServerUrl": "ws://127.0.0.1:1080",
+  "Name": "FastGateway1",
+  "Type": "ws",
+  // 支持h2,ws
+  "ServerHttp2Support": true,
+  // 服务端是否支持HTTP/2
+  "ReconnectInterval": 5000,
+  // 重连间隔，单位毫秒
+  "HeartbeatInterval": 30000,
+  // 心跳间隔，单位毫秒
+  "Proxy": [
+    {
+      "Host": "www.cnblogs.com",
+      "Route": "/",
+      // 匹配的域名
+      "Domains": [],
+      "LocalRemote": "https://www.cnblogs.com/",
+      "Name": "Test Proxy",
+      "Description": "This is a test proxy",
+      "Enabled": true
+    }
+  ]
+}

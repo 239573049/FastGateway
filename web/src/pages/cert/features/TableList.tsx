@@ -1,4 +1,13 @@
-import { Table } from 'antd';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 interface TableProps {
     columns: any[];
@@ -18,71 +27,117 @@ function TableList(
         columns,
         dataSources,
         onPaginationChange,
-        total,
-        pageSize,
-        current,
+        total = 0,
+        pageSize = 10,
+        current = 1,
         loading,
-        height = 500,
-        maxHeight,
-        scrollX
+        height = 500
     }: TableProps
 ) {
-    // 计算滚动配置
-    const scrollConfig: any = {};
-    
-    // 设置垂直滚动
-    if (height || maxHeight) {
-        scrollConfig.y = height || maxHeight;
-    }
-    
-    // 设置水平滚动
-    if (scrollX) {
-        scrollConfig.x = scrollX;
-    }
-    
-    // 如果列数较多，自动启用水平滚动
-    if (columns.length > 6 && !scrollX) {
-        scrollConfig.x = 'max-content';
+    const totalPages = Math.ceil(total / pageSize);
+    const startItem = (current - 1) * pageSize + 1;
+    const endItem = Math.min(current * pageSize, total);
+
+    if (loading) {
+        return (
+            <div className="border rounded-lg p-8 bg-card">
+                <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    <span className="ml-2 text-muted-foreground">加载中...</span>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div style={{ 
-            border: '1px solid #f0f0f0', 
-            borderRadius: '6px',
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-        }}>
-            <Table
-                dataSource={dataSources}
-                loading={loading}
-                columns={columns}
-                scroll={Object.keys(scrollConfig).length > 0 ? scrollConfig : undefined}
-                pagination={{
-                    total: total,
-                    pageSize: pageSize,
-                    current: current,
-                    showSizeChanger: true,
-                    showQuickJumper: true,
-                    showTotal: (total, range) => 
-                        `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    onChange: (page, pageSize) => {
-                        if (onPaginationChange) {
-                            onPaginationChange(page, pageSize);
-                        }
-                    },
-                    onShowSizeChange: (current, size) => {
-                        if (onPaginationChange) {
-                            onPaginationChange(current, size);
-                        }
-                    }
-                }}
-                style={{
-                    backgroundColor: '#fff'
-                }}
-                tableLayout="fixed"
-                size="middle"
-            />
+        <div className="border rounded-lg bg-card shadow-sm">
+            <div className="overflow-auto" style={{ maxHeight: height }}>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            {columns.map((column, index) => (
+                                <TableHead key={column.key || index}>
+                                    {column.title}
+                                </TableHead>
+                            ))}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {dataSources.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
+                                    暂无数据
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            dataSources.map((row, rowIndex) => (
+                                <TableRow key={row.id || rowIndex}>
+                                    {columns.map((column, colIndex) => (
+                                        <TableCell key={column.key || colIndex}>
+                                            {column.render ? column.render(row[column.dataIndex], row, rowIndex) : row[column.dataIndex]}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+            
+            {/* 分页 */}
+            {total > 0 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t">
+                    <div className="text-sm text-muted-foreground">
+                        第 {startItem}-{endItem} 条，共 {total} 条
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onPaginationChange?.(current - 1, pageSize)}
+                            disabled={current <= 1}
+                        >
+                            <ChevronLeftIcon className="h-4 w-4" />
+                        </Button>
+                        
+                        <div className="flex items-center space-x-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                    pageNum = i + 1;
+                                } else if (current <= 3) {
+                                    pageNum = i + 1;
+                                } else if (current >= totalPages - 2) {
+                                    pageNum = totalPages - 4 + i;
+                                } else {
+                                    pageNum = current - 2 + i;
+                                }
+                                
+                                return (
+                                    <Button
+                                        key={pageNum}
+                                        variant={current === pageNum ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => onPaginationChange?.(pageNum, pageSize)}
+                                    >
+                                        {pageNum}
+                                    </Button>
+                                );
+                            })}
+                        </div>
+                        
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onPaginationChange?.(current + 1, pageSize)}
+                            disabled={current >= totalPages}
+                        >
+                            <ChevronRightIcon className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

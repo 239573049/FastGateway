@@ -1,6 +1,6 @@
 import { deleteServer, enableServer, getServers, onlineServer, reloadServer } from "@/services/ServerService";
 import { Server } from "@/types";
-import { Tag } from "@lobehub/ui";
+import { Badge } from "@/components/ui/badge";
 import { memo, useEffect, useState, } from "react";
 import { Button, message, Dropdown, Empty, theme } from 'antd';
 import { Flexbox } from 'react-layout-kit';
@@ -31,89 +31,25 @@ const ProxyList = memo(() => {
 
     const render = (item: Server) => {
         return (
-            <div style={{
-                position: 'relative',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                backgroundColor: colorBgContainer,
-                border: `1px solid ${colorBorder}`,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-                transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                cursor: 'pointer',
-                height: '240px',
-            }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.12)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)';
-                e.currentTarget.style.transform = 'translateY(0)';
-            }}
-            >
+            <div className="relative rounded-xl overflow-hidden bg-card border border-border shadow-sm transition-all duration-300 cursor-pointer h-60 hover:shadow-lg hover:-translate-y-1 group">
                 {/* 状态指示器 */}
-                <div style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: '0',
-                    right: '0',
-                    height: '4px',
-                    backgroundColor: item.onLine ? '#52c41a' : '#ff4d4f',
-                    background: item.onLine 
-                        ? 'linear-gradient(90deg, #52c41a 0%, #73d13d 100%)'
-                        : 'linear-gradient(90deg, #ff4d4f 0%, #ff7875 100%)',
-                }} />
+                <div className={`absolute top-0 left-0 right-0 h-1 ${item.onLine ? 'bg-green-500' : 'bg-red-500'}`} />
                 
                 {/* 状态徽章 */}
-                <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}>
-                    <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: item.onLine ? '#52c41a' : '#ff4d4f',
-                        boxShadow: `0 0 0 2px ${item.onLine ? 'rgba(82, 196, 26, 0.2)' : 'rgba(255, 77, 79, 0.2)'}`,
-                    }} />
-                    <span style={{
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        color: item.onLine ? '#52c41a' : '#ff4d4f',
-                    }}>
+                <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${item.onLine ? 'bg-green-500' : 'bg-red-500'} ring-2 ${item.onLine ? 'ring-green-500/20' : 'ring-red-500/20'}`} />
+                    <span className={`text-xs font-medium ${item.onLine ? 'text-green-500' : 'text-red-500'}`}>
                         {item.onLine ? '在线' : '离线'}
                     </span>
                 </div>
 
                 <Flexbox
                     key={item.id}
-                    style={{
-                        padding: '24px',
-                        height: '100%',
-                        position: 'relative',
-                    }}
+                    className="p-6 h-full relative"
                 >
                     {/* 标题和操作按钮 */}
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: '16px',
-                        marginTop: '8px',
-                    }}>
-                        <h3 style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: colorText,
-                            margin: '0',
-                            lineHeight: '1.4',
-                            wordBreak: 'break-word',
-                            maxWidth: '70%',
-                        }}>
+                    <div className="flex justify-between items-start mb-4 mt-2">
+                        <h3 className="text-lg font-semibold text-foreground m-0 leading-tight break-words max-w-[70%]">
                             {item.name}
                         </h3>
                         <Dropdown
@@ -191,116 +127,51 @@ const ProxyList = memo(() => {
                         onClick={() => {
                             navigate(`/server/${item.id}`);
                         }}
-                        style={{
-                            fontSize: '14px',
-                            color: colorTextSecondary,
-                            cursor: 'pointer',
-                            lineHeight: '1.5',
-                            marginBottom: '20px',
-                            minHeight: '42px',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            userSelect: 'none',
-                        }}>
+                        className="text-sm text-muted-foreground cursor-pointer leading-relaxed mb-5 min-h-[42px] line-clamp-2 select-none">
                         {item.description || '暂无描述'}
                     </div>
 
                     {/* 端口信息 */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginBottom: '16px',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: colorBorder.replace('1)', '0.05)'),
-                        border: `1px solid ${colorBorder.replace('1)', '0.1)')}`,
-                    }}>
-                        <span style={{
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            color: colorTextSecondary,
-                            marginRight: '8px',
-                        }}>
+                    <div className="flex items-center mb-4 px-3 py-2 rounded-lg bg-muted/50 border border-border/20">
+                        <span className="text-xs font-medium text-muted-foreground mr-2">
                             端口:
                         </span>
-                        <Tag style={{
-                            margin: '0',
-                            fontWeight: '600',
-                            fontSize: '13px',
-                        }}>
+                        <Badge variant="secondary" className="font-semibold text-sm">
                             {item.listen}
-                        </Tag>
+                        </Badge>
                     </div>
 
                     {/* 功能标签 */}
-                    <div style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '6px',
-                        marginTop: 'auto',
-                    }}>
+                    <div className="flex flex-wrap gap-2 mt-auto">
                         {item.isHttps && (
-                            <Tag color='success' style={{
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                fontWeight: '500',
-                            }}>
+                            <Badge variant="outline" className="text-xs border-green-200 text-green-700 hover:bg-green-50">
                                 HTTPS
-                            </Tag>
+                            </Badge>
                         )}
                         {item.enableBlacklist && (
-                            <Tag color='geekblue' style={{
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                fontWeight: '500',
-                            }}>
+                            <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 hover:bg-blue-50">
                                 黑名单
-                            </Tag>
+                            </Badge>
                         )}
                         {item.enableWhitelist && (
-                            <Tag color='blue' style={{
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                fontWeight: '500',
-                            }}>
+                            <Badge variant="outline" className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">
                                 白名单
-                            </Tag>
+                            </Badge>
                         )}
                         {item.enableTunnel && (
-                            <Tag color='volcano' style={{
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                fontWeight: '500',
-                            }}>
+                            <Badge variant="outline" className="text-xs border-orange-200 text-orange-700 hover:bg-orange-50">
                                 隧道
-                            </Tag>
+                            </Badge>
                         )}
                         {item.redirectHttps && (
-                            <Tag color='magenta' style={{
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                fontWeight: '500',
-                            }}>
+                            <Badge variant="outline" className="text-xs border-purple-200 text-purple-700 hover:bg-purple-50">
                                 重定向HTTPS
-                            </Tag>
+                            </Badge>
                         )}
                         {item.staticCompress && (
-                            <Tag color='cyan' style={{
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                fontWeight: '500',
-                            }}>
+                            <Badge variant="outline" className="text-xs border-cyan-200 text-cyan-700 hover:bg-cyan-50">
                                 静态压缩
-                            </Tag>
+                            </Badge>
                         )}
                     </div>
                 </Flexbox>
@@ -309,26 +180,12 @@ const ProxyList = memo(() => {
     }
 
     return (
-        <div style={{
-            padding: '24px',
-            minHeight: '100vh',
-        }}>
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-                gap: '24px',
-                maxWidth: '1400px',
-                margin: '0 auto',
-            }}>
+        <div className="p-6 min-h-screen">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
                 {servers.map((item) => render(item))}
             </div>
             {servers.length === 0 && (
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '400px',
-                }}>
+                <div className="flex justify-center items-center h-96">
                     <Empty description="暂无服务器数据" />
                 </div>
             )}

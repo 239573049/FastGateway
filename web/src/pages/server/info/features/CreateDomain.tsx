@@ -1,6 +1,6 @@
 
 import FInput from '@/components/FInput';
-import { Modal } from '@lobehub/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Flexbox } from 'react-layout-kit';
 import { Button, Select, message } from 'antd';
 import { useEffect, useState } from 'react';
@@ -68,9 +68,12 @@ export default function CreateDomain({
     }
 
     return (
-        <Modal footer={[]} title="创建路由" open={visible} onCancel={() => onClose()}
-        ><Flexbox
-            justify='column'>
+        <Dialog open={visible} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>创建路由</DialogTitle>
+                </DialogHeader>
+                <Flexbox justify='column'>
                 <div style={{
                     display: 'flex',
 
@@ -322,7 +325,8 @@ export default function CreateDomain({
                 }} onClick={() => save()}>
                     保存
                 </Button>
-            </Flexbox>
-        </Modal>
+                </Flexbox>
+            </DialogContent>
+        </Dialog>
     )
 }
