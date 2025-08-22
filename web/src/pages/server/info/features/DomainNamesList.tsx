@@ -65,14 +65,9 @@ const DomainNamesList = memo(() => {
         
         return (
             <Card key={item.id} className={cn(
-                "group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1",
+                "group relative overflow-hidden",
                 !item.enable && "opacity-75"
             )}>
-                {/* Status indicator */}
-                <div className={cn(
-                    "absolute top-0 left-0 w-1 h-full transition-all duration-300",
-                    item.enable ? "bg-green-500" : "bg-gray-400"
-                )} />
                 
                 {/* Header */}
                 <CardHeader className="pb-3 pt-4 px-4">
@@ -90,7 +85,7 @@ const DomainNamesList = memo(() => {
                                     variant={item.enable ? "default" : "secondary"}
                                     className={cn(
                                         "text-xs",
-                                        item.enable ? "bg-green-500 hover:bg-green-600" : ""
+                                        item.enable ? "bg-green-500" : ""
                                     )}
                                 >
                                     {item.enable ? '运行中' : '已禁用'}
@@ -105,7 +100,7 @@ const DomainNamesList = memo(() => {
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="h-8 w-8 p-0"
                                 >
                                     <MoreVertical className="h-4 w-4" />
                                 </Button>
@@ -213,7 +208,7 @@ const DomainNamesList = memo(() => {
                     </div>
 
                     {/* Quick actions */}
-                    <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="mt-3 flex gap-2">
                         <Button 
                             size="sm" 
                             variant="ghost" 
@@ -276,7 +271,6 @@ const DomainNamesList = memo(() => {
                                     size="sm"
                                     variant={selectedTags.length === 0 ? "default" : "outline"}
                                     onClick={() => setSelectedTags([])}
-                                    className="transition-all"
                                 >
                                     全部
                                 </Button>
@@ -292,7 +286,6 @@ const DomainNamesList = memo(() => {
                                                 setSelectedTags([...selectedTags, x]);
                                             }
                                         }}
-                                        className="transition-all"
                                     >
                                         {x}
                                     </Button>

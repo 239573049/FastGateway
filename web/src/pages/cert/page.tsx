@@ -1,4 +1,3 @@
-import FHeader from "@/components/FHeader";
 import { Button } from "@/components/ui/button";
 import { message } from "@/utils/toast";
 import CreateCertPage from "./features/CreateCert";

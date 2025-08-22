@@ -16,12 +16,17 @@
       "Bash(grep -n \"Search\" D:codeFastGatewaywebsrcpagesfilestoragepage.tsx)",
       "mcp__ide__getDiagnostics",
       "mcp__ide__getDiagnostics",
-      "Bash(rg -n \"SelectItem\" D:codeFastGatewaywebsrcpagesserverinfofeaturesCreateDomain.tsx)"
+      "Bash(rg -n \"SelectItem\" D:codeFastGatewaywebsrcpagesserverinfofeaturesCreateDomain.tsx)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "additionalDirectories": [
       "D:\\d\\code\\FastGateway",
-      "D:\\"
+      "D:\\",
+      "C:\\c\\code\\FastGateway",
+      "C:\\mnt\\c\\code\\FastGateway"
     ]
   }
 }

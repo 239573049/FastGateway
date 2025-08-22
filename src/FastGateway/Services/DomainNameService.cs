@@ -18,9 +18,6 @@ public static class DomainNameService
 
         domain.MapPost(string.Empty, (ConfigurationService configService, DomainName domainName) =>
         {
-            if (domainName.Domains.Length == 0 || string.IsNullOrWhiteSpace(domainName.Domains[0]))
-                throw new ValidationException("域名不能为空");
-
             domainName.Domains = domainName.Domains.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
             domainName.Domains = domainName.Domains.Distinct().ToArray();
 
@@ -43,9 +40,6 @@ public static class DomainNameService
 
         domain.MapPut("{id}", (ConfigurationService configService, string id, DomainName domainName) =>
         {
-            if (domainName.Domains.Length == 0 || string.IsNullOrWhiteSpace(domainName.Domains[0]))
-                throw new ValidationException("域名不能为空");
-
             domainName.Domains = domainName.Domains.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
             domainName.Domains = domainName.Domains.Distinct().ToArray();
 

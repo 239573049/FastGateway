@@ -40,23 +40,23 @@ function TableList(
 
     if (loading) {
         return (
-            <div className="border rounded-lg p-8 bg-card">
-                <div className="flex items-center justify-center">
+            <div className="border rounded-lg p-8 bg-card shadow-sm">
+                <div className="flex items-center justify-center space-x-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                    <span className="ml-2 text-muted-foreground">加载中...</span>
+                    <span className="text-muted-foreground font-medium">加载中...</span>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="border rounded-lg bg-card shadow-sm">
+        <div className="border rounded-lg bg-card shadow-sm overflow-hidden">
             <div className="overflow-auto" style={{ maxHeight: height }}>
                 <Table>
                     <TableHeader>
-                        <TableRow>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
                             {columns.map((column, index) => (
-                                <TableHead key={column.key || index}>
+                                <TableHead key={column.key || index} className="font-semibold text-foreground">
                                     {column.title}
                                 </TableHead>
                             ))}
@@ -64,16 +64,22 @@ function TableList(
                     </TableHeader>
                     <TableBody>
                         {dataSources.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
-                                    暂无数据
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={columns.length} className="text-center py-12 text-muted-foreground">
+                                    <div className="flex flex-col items-center space-y-2">
+                                        <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
+                                            <span className="text-xl">📋</span>
+                                        </div>
+                                        <p className="font-medium">暂无数据</p>
+                                        <p className="text-sm">还没有任何记录</p>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
                             dataSources.map((row, rowIndex) => (
-                                <TableRow key={row.id || rowIndex}>
+                                <TableRow key={row.id || rowIndex} className="hover:bg-muted/50 transition-colors duration-200">
                                     {columns.map((column, colIndex) => (
-                                        <TableCell key={column.key || colIndex}>
+                                        <TableCell key={column.key || colIndex} className="py-3">
                                             {column.render ? column.render(row[column.dataIndex], row, rowIndex) : row[column.dataIndex]}
                                         </TableCell>
                                     ))}
@@ -86,8 +92,8 @@ function TableList(
             
             {/* 分页 */}
             {total > 0 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t">
-                    <div className="text-sm text-muted-foreground">
+                <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/20">
+                    <div className="text-sm text-muted-foreground font-medium">
                         第 {startItem}-{endItem} 条，共 {total} 条
                     </div>
                     
@@ -97,6 +103,7 @@ function TableList(
                             size="sm"
                             onClick={() => onPaginationChange?.(current - 1, pageSize)}
                             disabled={current <= 1}
+                            className="hover:bg-muted/50"
                         >
                             <ChevronLeftIcon className="h-4 w-4" />
                         </Button>
@@ -120,6 +127,7 @@ function TableList(
                                         variant={current === pageNum ? "default" : "outline"}
                                         size="sm"
                                         onClick={() => onPaginationChange?.(pageNum, pageSize)}
+                                        className={current === pageNum ? "shadow-sm" : "hover:bg-muted/50"}
                                     >
                                         {pageNum}
                                     </Button>
@@ -132,6 +140,7 @@ function TableList(
                             size="sm"
                             onClick={() => onPaginationChange?.(current + 1, pageSize)}
                             disabled={current >= totalPages}
+                            className="hover:bg-muted/50"
                         >
                             <ChevronRightIcon className="h-4 w-4" />
                         </Button>

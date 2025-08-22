@@ -22,19 +22,19 @@ RUN npm run build
 FROM mcr.microsoft.com/dotnet/nightly/sdk:10.0-preview AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/FastGateway.Service/FastGateway.Service.csproj", "src/FastGateway.Service/"]
-COPY ["src/FastGateway.Entities/FastGateway.Entities.csproj", "src/FastGateway.Entities/"]
-RUN dotnet restore "src/FastGateway.Service/FastGateway.Service.csproj"
+COPY ["src/FastGateway/FastGateway.csproj", "src/FastGateway/"]
+COPY ["src/Core/Core.csproj", "src/Core/"]
+RUN dotnet restore "src/FastGateway/FastGateway.csproj"
 COPY . .
-WORKDIR "/src/src/FastGateway.Service"
-RUN dotnet build "./FastGateway.Service.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/src/FastGateway"
+RUN dotnet build "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./FastGateway.Service.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 COPY --from=builder /src/dist ./wwwroot
-ENTRYPOINT ["dotnet", "FastGateway.Service.dll"]
+ENTRYPOINT ["dotnet", "FastGateway.dll"]

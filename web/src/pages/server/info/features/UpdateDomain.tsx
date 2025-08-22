@@ -1,6 +1,6 @@
 
 import FInput from '@/components/FInput';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useEffect, useState } from 'react';
 import { DomainName, ServiceType } from '@/types';
 import {
@@ -263,10 +263,16 @@ export default function UpdateDomain({
                     }}>
                         添加新的Header
                     </Button>
-                    <Button className="mt-5" onClick={() => save()}>
+                </div>
+                
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>
+                        取消
+                    </Button>
+                    <Button onClick={save}>
                         保存
                     </Button>
-                </div>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )

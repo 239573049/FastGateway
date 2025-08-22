@@ -27,7 +27,6 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/components/theme-provider";
 import type { ThemeMode } from "antd-style";
 
@@ -119,14 +118,6 @@ const DesktopLayout = memo(() => {
             category: '系统'
         },
     ]
-
-    const menuGroups = menus.reduce((acc, menu) => {
-        if (!acc[menu.category]) {
-            acc[menu.category] = [];
-        }
-        acc[menu.category].push(menu);
-        return acc;
-    }, {} as Record<string, typeof menus>);
 
     function updateMenu(key: string) {
         setMenuKey(key);

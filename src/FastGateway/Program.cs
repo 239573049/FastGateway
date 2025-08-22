@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using FastGateway.BackgroundTask;
 using FastGateway.Infrastructure;
+using FastGateway.Middleware;
 using FastGateway.Options;
 using FastGateway.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -71,7 +72,6 @@ public static class Program
             var certs = configService.GetActiveCerts();
             CertService.InitCert(certs);
 
-            var domainNames = configService.GetDomainNames();
             var blacklistAndWhitelists = configService.GetBlacklistAndWhitelists();
             var rateLimits = configService.GetRateLimits();
 
@@ -93,6 +93,8 @@ public static class Program
         });
 
         app.UseResponseCompression();
+        
+        app.UsePerformanceMonitoring();
 
         app.UseStaticFiles();
 

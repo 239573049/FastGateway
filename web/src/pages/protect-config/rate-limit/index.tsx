@@ -1,6 +1,5 @@
 import { memo, useEffect, useState } from "react";
 import { Button } from '@/components/ui/button';
-import { message } from '@/utils/toast';
 import { GetRateLimit } from "@/services/RateLimitService";
 import CreateRateLimitPage from "./feautres/CreateRateLimit";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Clock, Plus, Edit, Trash2, Activity } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
+import { RateLimit } from "@/types";
 
 const RateLimitPage = memo(() => {
     const [input, setInput] = useState({
@@ -16,7 +16,7 @@ const RateLimitPage = memo(() => {
         pageSize: 10,
         total: 0,
     });
-    const [data, setData] = useState([]);
+    const [data, setData] = useState<RateLimit[]>([]);
     const [createVisible, setCreateVisible] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -115,7 +115,7 @@ const RateLimitPage = memo(() => {
         {
             id: 'actions',
             header: '操作',
-            cell: ({ row }) => (
+            cell: () => (
                 <div className="flex items-center gap-2">
                     <Button 
                         variant="ghost" 

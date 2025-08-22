@@ -18,7 +18,7 @@ interface ThemeSwitchProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const ThemeSwitch = React.forwardRef<HTMLDivElement, ThemeSwitchProps>(
   ({ className, onThemeSwitch, themeMode, ...props }, ref) => {
-    const { theme, setTheme } = useTheme()
+    const {  setTheme } = useTheme()
 
     return (
       <div ref={ref} className={className} {...props}>

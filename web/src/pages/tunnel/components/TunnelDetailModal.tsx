@@ -5,15 +5,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { TunnelNode } from '@/types';
 import { Server, Globe, Clock, Network, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 interface TunnelDetailModalProps {
-  tunnel: TunnelNode | null;
+  tunnel: any | null;
   open: boolean;
   onClose: () => void;
 }
@@ -112,7 +110,7 @@ export const TunnelDetailModal = ({ tunnel, open, onClose }: TunnelDetailModalPr
             <div className="space-y-3">
               <h3 className="text-base font-medium">代理配置 ({tunnel.proxies.length})</h3>
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {tunnel.proxies.map((proxy) => (
+                {tunnel.proxies.map((proxy:any) => (
                   <div key={proxy.id} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm">{proxy.route}</span>
@@ -145,7 +143,7 @@ export const TunnelDetailModal = ({ tunnel, open, onClose }: TunnelDetailModalPr
                         <div>
                           <span>域名:</span>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {proxy.domains.map((domain, index) => (
+                            {proxy.domains.map((domain:any, index:any) => (
                               <Badge key={index} variant="outline" className="text-xs">
                                 {domain}
                               </Badge>

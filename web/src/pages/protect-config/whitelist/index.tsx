@@ -6,9 +6,8 @@ import { DeleteBlacklist, GetBlacklist } from "@/services/BlacklistAndWhitelistS
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { Trash2, Edit, Plus, ShieldCheck } from "lucide-react";
+import { Trash2, Edit, Plus } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 const WhiteListPage = memo(() => {

@@ -1,11 +1,11 @@
 ﻿services:
   fast-gateway.service:
     image: aidotnet/fast-gateway
-    container_name: fast-gateway.service
+    container_name: fast-gateway
     restart: always
     build:
       context: .
-      dockerfile: src/FastGateway.Service/Dockerfile
+      dockerfile: src/FastGateway/Dockerfile
     volumes:
       - ./data:/app/data
       - ./certs:/app/certs

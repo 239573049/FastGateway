@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 interface CreateRateLimitProps {
     visible: boolean;
@@ -32,12 +31,6 @@ const CreateRateLimitPage: React.FC<CreateRateLimitProps> = ({
         ipWhitelist: [],
         id: null,
     });
-
-    const handleChange = (field: string) => (e: { target: any; }) => {
-        const { target } = e;
-        const newValue = target.type === 'checkbox' ? target.checked : target.value;
-        setValue({ ...value, [field]: newValue });
-    };
 
     function save() {
         if (!value.name) {
@@ -146,7 +139,7 @@ const CreateRateLimitPage: React.FC<CreateRateLimitProps> = ({
                                     id="endpoint"
                                     value={value.endpoint} 
                                     onChange={(e) => setValue({ ...value, endpoint: e.target.value })} 
-                                    placeholder="如: /api/*"
+                                    placeholder="如: /api"
                                 />
                             </div>
                             
@@ -172,7 +165,7 @@ const CreateRateLimitPage: React.FC<CreateRateLimitProps> = ({
                                 </Label>
                                 <Select
                                     value={value.period}
-                                    onValueChange={(value) => setValue({ ...value, period: value })}
+                                    onValueChange={(newPeriod) => setValue(prev => ({ ...prev, period: newPeriod }))}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="选择周期" />

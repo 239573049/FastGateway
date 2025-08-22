@@ -42,6 +42,15 @@ internal class TunnelClientFactory(
     /// <param name="handler"></param>
     protected override void ConfigureHandler(ForwarderHttpClientContext httpClientContext, SocketsHttpHandler handler)
     {
+        handler.SslOptions.RemoteCertificateValidationCallback =
+            (sender, certificate, chain, errors) => true;
+        handler.MaxConnectionsPerServer = 100;
+        handler.PooledConnectionLifetime = TimeSpan.FromMinutes(5);
+        handler.PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1);
+        handler.KeepAlivePingDelay = TimeSpan.FromSeconds(30);
+        handler.KeepAlivePingTimeout = TimeSpan.FromSeconds(10);
+        handler.KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always;
+        
         base.ConfigureHandler(httpClientContext, handler);
 
         var previous = handler.ConnectCallback ?? DefaultConnectCallback;
