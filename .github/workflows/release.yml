@@ -47,7 +47,7 @@ jobs:
         run: dotnet restore src/TunnelClient/TunnelClient.csproj
 
       - name: Build TunnelClient (AOT)
-        run: dotnet publish src/TunnelClient/TunnelClient.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishAot=true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial -o ./artifacts/tunnelclient-${{ matrix.runtime }}
+        run: dotnet publish src/TunnelClient/TunnelClient.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishAot=true -p:PublishSingleFile=true -o ./artifacts/tunnelclient-${{ matrix.runtime }}
 
       - name: Upload TunnelClient artifacts
         uses: actions/upload-artifact@v4
