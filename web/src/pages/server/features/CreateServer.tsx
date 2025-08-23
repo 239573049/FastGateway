@@ -38,8 +38,11 @@ export default function CreateServer({
 
     const handleChange = (field: string) => (e: { target: any; }) => {
         const { target } = e;
-        const newValue = target.type === 'checkbox' ? target.checked : target.value;
-        setValue({ ...value, [field]: newValue });
+        if(target.value === undefined){
+            setValue({ ...value, [field]: target.checked });
+        }else{
+            setValue({ ...value, [field]: target.value });
+        }
     };
 
     function save() {
@@ -59,6 +62,8 @@ export default function CreateServer({
             toast.error('端口范围为0-65535');
             return;
         }
+
+        debugger;
 
         createServer(value)
             .then(() => {
