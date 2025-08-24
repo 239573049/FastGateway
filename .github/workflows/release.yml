@@ -11,6 +11,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 env:
   DOTNET_VERSION: '10.0.x'
 
@@ -137,7 +140,7 @@ jobs:
           
           ### Downloads
           
-          #### TunnelClient (AOT - Native)
+          #### TunnelClient
           - **Linux AMD64**: `tunnelclient-linux-x64.tar.gz`
           - **Windows AMD64**: `tunnelclient-win-x64.zip`
           
@@ -148,7 +151,7 @@ jobs:
           ### Features
           - Cross-platform support for Linux and Windows
           - AMD64 architecture support
-          - TunnelClient: Native AOT compilation for optimal performance
+          - TunnelClient: Single-file executable for optimal portability
           - FastGateway: Single-file executable with all dependencies included
           
           ### Usage
@@ -179,6 +182,8 @@ jobs:
           name: Release ${{ github.ref_name || github.event.inputs.version }}
           body_path: release-notes.md
           files: release-assets/*
+          tag_name: ${{ github.ref_name || github.event.inputs.version }}
+          target_commitish: ${{ github.sha }}
           draft: false
           prerelease: false
         env:
