@@ -24,15 +24,9 @@ jobs:
           - os: ubuntu-latest
             runtime: linux-x64
             arch: amd64
-          - os: ubuntu-latest
-            runtime: linux-arm64
-            arch: arm64
           - os: windows-latest
             runtime: win-x64
             arch: amd64
-          - os: windows-latest
-            runtime: win-arm64
-            arch: arm64
     
     steps:
       - name: Checkout code
@@ -46,12 +40,7 @@ jobs:
       - name: Install dependencies
         run: dotnet restore src/TunnelClient/TunnelClient.csproj
 
-      - name: Build TunnelClient (AOT) - Non ARM64
-        if: matrix.runtime != 'linux-arm64'
-        run: dotnet publish src/TunnelClient/TunnelClient.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishAot=true -p:PublishSingleFile=true -o ./artifacts/tunnelclient-${{ matrix.runtime }}
-
-      - name: Build TunnelClient (Standard) - ARM64
-        if: matrix.runtime == 'linux-arm64'
+      - name: Build TunnelClient
         run: dotnet publish src/TunnelClient/TunnelClient.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishAot=false -p:PublishSingleFile=true -o ./artifacts/tunnelclient-${{ matrix.runtime }}
 
       - name: Upload TunnelClient artifacts
@@ -70,15 +59,9 @@ jobs:
           - os: ubuntu-latest
             runtime: linux-x64
             arch: amd64
-          - os: ubuntu-latest
-            runtime: linux-arm64
-            arch: arm64
           - os: windows-latest
             runtime: win-x64
             arch: amd64
-          - os: windows-latest
-            runtime: win-arm64
-            arch: arm64
     
     steps:
       - name: Checkout code
@@ -156,19 +139,15 @@ jobs:
           
           #### TunnelClient (AOT - Native)
           - **Linux AMD64**: `tunnelclient-linux-x64.tar.gz`
-          - **Linux ARM64**: `tunnelclient-linux-arm64.tar.gz`
           - **Windows AMD64**: `tunnelclient-win-x64.zip`
-          - **Windows ARM64**: `tunnelclient-win-arm64.zip`
           
           #### FastGateway
           - **Linux AMD64**: `fastgateway-linux-x64.tar.gz`
-          - **Linux ARM64**: `fastgateway-linux-arm64.tar.gz`
           - **Windows AMD64**: `fastgateway-win-x64.zip`
-          - **Windows ARM64**: `fastgateway-win-arm64.zip`
           
           ### Features
           - Cross-platform support for Linux and Windows
-          - ARM64 and AMD64 architecture support
+          - AMD64 architecture support
           - TunnelClient: Native AOT compilation for optimal performance
           - FastGateway: Single-file executable with all dependencies included
           
