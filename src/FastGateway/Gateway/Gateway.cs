@@ -176,7 +176,12 @@ public static class Gateway
                 options.KeepAliveTimeout = TimeSpan.FromSeconds(120);
                 options.AllowedOrigins.Add("*");
             });
-
+            
+            builder.Services.AddRequestTimeouts(options =>
+            {
+              
+            });
+            
             builder.Services
                 .AddCors(options =>
                 {
@@ -208,7 +213,8 @@ public static class Gateway
             app.UseCors("AllowAll");
 
             app.UseWebSockets();
-
+            app.UseRequestTimeouts();
+            
             if (server.StaticCompress)
                 app.UseResponseCompression();
 
