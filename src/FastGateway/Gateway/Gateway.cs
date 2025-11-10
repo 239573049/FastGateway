@@ -292,7 +292,11 @@ public static class Gateway
             app.Lifetime.ApplicationStopping.Register(() => { GatewayWebApplications.Remove(server.Id, out _); });
 
             await app.RunAsync();
-        }
+        }catch (Exception e)
+        {
+            LogError(e, "Shape processing failed.");
+            throw;
+       }
         finally
         {
             GatewayWebApplications.Remove(server.Id, out _);
