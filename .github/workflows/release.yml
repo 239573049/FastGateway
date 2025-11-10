@@ -16,8 +16,37 @@ permissions:
 
 env:
   DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '18.x'
 
 jobs:
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm install
+
+      - name: Build web
+        working-directory: web
+        run: npm run build
+
+      - name: Upload web artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist/
+          retention-days: 1
+
   build-tunnelclient:
     name: Build TunnelClient
     runs-on: ${{ matrix.os }}
@@ -55,6 +84,7 @@ jobs:
 
   build-fastgateway:
     name: Build FastGateway
+    needs: build-web
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -69,6 +99,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Download web artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: src/FastGateway/wwwroot
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
