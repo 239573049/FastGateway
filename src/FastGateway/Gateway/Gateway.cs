@@ -181,10 +181,7 @@ public static class Gateway
 
             builder.Services.AddRequestTimeouts(options =>
             {
-                options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy()
-                {
-                    Timeout = TimeSpan.FromSeconds(server.Timeout)
-                };
+            
             });
 
             builder.Services
