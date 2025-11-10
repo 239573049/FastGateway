@@ -294,7 +294,7 @@ public static class Gateway
             await app.RunAsync();
         }catch (Exception e)
         {
-            LogError(e, "Shape processing failed.");
+            Console.WriteLine("网关启动错误："+e);
             throw;
        }
         finally
