@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using Core.Entities;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.WebSockets;
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
 
 namespace FastGateway.Gateway;
@@ -64,21 +66,21 @@ public static class Gateway
 
             if (tunnels is { Count: > 0 })
                 foreach (var tunnel in tunnels)
-                foreach (var proxy in tunnel.Proxy)
-                {
-                    var value = new DomainName
+                    foreach (var proxy in tunnel.Proxy)
                     {
-                        Enable = proxy.Enabled,
-                        Id = Guid.NewGuid().ToString(),
-                        Path = proxy.Route,
-                        Domains = proxy.Domains,
-                        ServiceType = ServiceType.Service,
-                        Service = $"http://node_{tunnel.Name}{proxy.Route}"
-                    };
+                        var value = new DomainName
+                        {
+                            Enable = proxy.Enabled,
+                            Id = Guid.NewGuid().ToString(),
+                            Path = proxy.Route,
+                            Domains = proxy.Domains,
+                            ServiceType = ServiceType.Service,
+                            Service = $"http://node_{tunnel.Name}{proxy.Route}"
+                        };
 
-                    if (!string.IsNullOrEmpty(proxy.Host)) value.Host = proxy.Host;
-                    domainNames.Add(value);
-                }
+                        if (!string.IsNullOrEmpty(proxy.Host)) value.Host = proxy.Host;
+                        domainNames.Add(value);
+                    }
 
             var (routes, clusters) = BuildConfig(domainNames.ToArray(), server);
 
@@ -176,12 +178,15 @@ public static class Gateway
                 options.KeepAliveTimeout = TimeSpan.FromSeconds(120);
                 options.AllowedOrigins.Add("*");
             });
-            
+
             builder.Services.AddRequestTimeouts(options =>
             {
-              
+                options.DefaultPolicy = new Microsoft.AspNetCore.Http.Timeouts.RequestTimeoutPolicy()
+                {
+                    Timeout = TimeSpan.FromSeconds(server.Timeout)
+                };
             });
-            
+
             builder.Services
                 .AddCors(options =>
                 {
@@ -214,7 +219,7 @@ public static class Gateway
 
             app.UseWebSockets();
             app.UseRequestTimeouts();
-            
+
             if (server.StaticCompress)
                 app.UseResponseCompression();
 
@@ -351,6 +356,16 @@ public static class Gateway
             }
 
             #endregion
+        });
+
+        builder.ConfigureHttpClient((client, socket) =>
+        {
+            socket.ConnectTimeout = TimeSpan.FromSeconds(server.Timeout);
+            socket.Expect100ContinueTimeout = TimeSpan.FromSeconds(server.Timeout);
+            socket.ResponseDrainTimeout = TimeSpan.FromSeconds(server.Timeout);
+            socket.ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current);
+            socket.AutomaticDecompression = DecompressionMethods.Brotli | DecompressionMethods.GZip | DecompressionMethods.Deflate;
+            socket.EnableMultipleHttp2Connections = true;
         });
 
         return builder;
