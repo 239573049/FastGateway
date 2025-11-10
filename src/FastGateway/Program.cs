@@ -110,7 +110,8 @@ public static class Program
             .MapRateLimit()
             .MapAuthorizationService()
             .MapServer()
-            .MapTunnel();
+            .MapTunnel()
+            .MapSystem();
 
         await app.RunAsync();
     }

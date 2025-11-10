@@ -1,4 +1,25 @@
+import { useEffect, useState } from 'react';
+import { getVersion, type VersionInfo } from '@/services/SystemService';
+
 export default function AboutPage() {
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const { data } = await getVersion() as any;
+        setVersionInfo(data);
+      } catch (error) {
+        console.error('获取版本信息失败:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVersion();
+  }, []);
+
   return (
     <div className="p-6 flex justify-center">
       <div className="w-full max-w-5xl space-y-6">
@@ -35,7 +56,17 @@ export default function AboutPage() {
             </ul>
             <div className="mt-4 text-sm">
               <div className="text-muted-foreground">版本信息</div>
-              <div className="font-medium mt-1">当前版本：2.0.0-dev</div>
+              {loading ? (
+                <div className="font-medium mt-1">加载中...</div>
+              ) : versionInfo ? (
+                <>
+                  <div className="font-medium mt-1">当前版本：{versionInfo.version}</div>
+                  <div className="text-muted-foreground text-xs mt-1">框架：{versionInfo.framework}</div>
+                  <div className="text-muted-foreground text-xs">系统：{versionInfo.os}</div>
+                </>
+              ) : (
+                <div className="font-medium mt-1 text-destructive">版本信息获取失败</div>
+              )}
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@
         <Company>Token</Company>
         <Product>Token FastGateway</Product>
         <Description>Token FastGateway 一个更方便的代理网关，监控流量，动态配置证书，支持h3,支持隧道等功能。</Description>
-        <Version>1.0.3</Version>
+        <Version>2.13.0</Version>
         <YarpVersion>2.3.0</YarpVersion>
     </PropertyGroup>
 </Project>

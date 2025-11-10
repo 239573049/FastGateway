@@ -60,4 +60,14 @@ public class ServerDto
     ///     是否复制请求域名
     /// </summary>
     public bool CopyRequestHost { get; set; }
+
+    /// <summary>
+    ///     最大请求体大小限制（单位：字节）。为null时不限制
+    /// </summary>
+    public long? MaxRequestBodySize { get; set; }
+
+    /// <summary>
+    ///     请求超时时间（单位：秒）。默认900秒（15分钟）
+    /// </summary>
+    public int Timeout { get; set; } = 900;
 }

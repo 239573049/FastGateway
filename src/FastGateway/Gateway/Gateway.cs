@@ -80,7 +80,7 @@ public static class Gateway
                     domainNames.Add(value);
                 }
 
-            var (routes, clusters) = BuildConfig(domainNames.ToArray());
+            var (routes, clusters) = BuildConfig(domainNames.ToArray(), server);
 
             inMemoryConfigProvider.Update(routes, clusters);
         }
@@ -158,10 +158,10 @@ public static class Gateway
                 }
                 else
                 {
-                    options.Listen(IPAddress.Any, server.Listen);
+                    options.ListenAnyIP(server.Listen);
                 }
 
-                options.Limits.MaxRequestBodySize = null;
+                options.Limits.MaxRequestBodySize = server.MaxRequestBodySize;
             });
 
             builder.Services.Configure<FormOptions>(options =>
@@ -188,7 +188,7 @@ public static class Gateway
                             .AllowCredentials());
                 });
 
-            var (routes, clusters) = BuildConfig(domainNames);
+            var (routes, clusters) = BuildConfig(domainNames, server);
 
             builder.Services.AddRateLimitService(rateLimits);
 
@@ -372,7 +372,7 @@ public static class Gateway
     }
 
     private static (IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) BuildConfig(
-        DomainName[] domainNames)
+        DomainName[] domainNames, Server server)
     {
         var routes = new List<RouteConfig>();
         var clusters = new List<ClusterConfig>();
@@ -406,6 +406,7 @@ public static class Gateway
             {
                 RouteId = domainName.Id,
                 ClusterId = domainName.Id,
+                Timeout = TimeSpan.FromSeconds(server.Timeout),
                 Match = new RouteMatch
                 {
                     Hosts = domainName.Domains,

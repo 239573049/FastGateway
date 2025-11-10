@@ -12,6 +12,8 @@ export interface Server {
     enableWhitelist: boolean;
     onLine: boolean;
     copyRequestHost: boolean;
+    maxRequestBodySize: number | null;
+    timeout: number;
 }
 
 

@@ -35,7 +35,9 @@ export default function UpdateServer({
         id: null,
         isHttps: false,
         onLine: false,
-        copyRequestHost: true
+        copyRequestHost: true,
+        maxRequestBodySize: null,
+        timeout: 900
     });
 
     useEffect(() => {
@@ -106,12 +108,28 @@ export default function UpdateServer({
                         label='服务名称' 
                         placeholder='请输入服务名称' 
                     />
-                    <FInput 
-                        value={value.description ?? ''} 
-                        tooltip="服务描述，用于描述服务" 
-                        onChange={handleChange('description')} 
-                        label='服务描述' 
-                        placeholder='请输入服务描述' 
+                    <FInput
+                        value={value.description ?? ''}
+                        tooltip="服务描述，用于描述服务"
+                        onChange={handleChange('description')}
+                        label='服务描述'
+                        placeholder='请输入服务描述'
+                    />
+                    <FInput
+                        type="number"
+                        value={value.maxRequestBodySize ?? ''}
+                        tooltip="最大请求体大小限制，单位字节。留空表示不限制"
+                        onChange={handleChange('maxRequestBodySize')}
+                        label='最大请求体大小(字节)'
+                        placeholder='留空则不限制'
+                    />
+                    <FInput
+                        type="number"
+                        value={value.timeout}
+                        tooltip="请求超时时间，单位秒。默认900秒（15分钟）"
+                        onChange={handleChange('timeout')}
+                        label='超时时间(秒)'
+                        placeholder='请输入超时时间'
                     />
                     <div className="space-y-3">
                         <FCheckbox 
