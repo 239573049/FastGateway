@@ -247,6 +247,7 @@ public static class Gateway
             if (server.StaticCompress)
                 builder.Services.AddResponseCompression();
 
+            builder.Services.AddRequestTimeouts();
 
             builder.Services
                 .AddReverseProxy()
@@ -326,6 +327,7 @@ public static class Gateway
 
             app.UseInitGatewayMiddleware();
 
+            app.UseRequestTimeouts();
 
             app.UseRateLimitMiddleware(rateLimits);
 
