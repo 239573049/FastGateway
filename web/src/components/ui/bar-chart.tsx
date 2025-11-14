@@ -15,6 +15,8 @@ interface BarChartProps {
   showXAxis?: boolean
   showYAxis?: boolean
   barRadius?: number
+  barSize?: number
+  barGap?: number | string
 }
 
 const defaultColors = [
@@ -36,6 +38,8 @@ export function BarChart({
   showXAxis = false,
   showYAxis = true,
   barRadius = 3,
+  barSize,
+  barGap = 4,
 }: BarChartProps) {
   if (!data || data.length === 0) {
     return (
@@ -47,15 +51,17 @@ export function BarChart({
 
   return (
     <div className={cn("w-full", className)}>
-      <ChartContainer config={chartConfig} className="h-[200px]">
+      <ChartContainer config={chartConfig} className="h-full w-full">
         <RechartsBarChart
           data={data}
           margin={{
-            top: 0,
-            right: 0,
-            left: 0,
-            bottom: 0,
+            top: 5,
+            right: 5,
+            left: showYAxis ? 0 : 5,
+            bottom: 5,
           }}
+          barGap={barGap}
+          barCategoryGap="10%"
         >
           {showGrid && (
             <CartesianGrid 
@@ -98,6 +104,7 @@ export function BarChart({
               fill={colors[index % colors.length]}
               radius={[barRadius, barRadius, barRadius, barRadius]}
               minPointSize={5}
+              maxBarSize={barSize}
             />
           ))}
         </RechartsBarChart>

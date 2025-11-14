@@ -2,7 +2,6 @@ import  { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { LineChart } from '@/components/ui/line-chart';
 import { BarChart } from '@/components/ui/bar-chart';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { bytesToSize } from '@/utils/byte';
@@ -30,7 +29,18 @@ const Dashboard = () => {
   const [network, setNetwork] = useState({ upload: 0, download: 0 });
   const [networkHistory, setNetworkHistory] = useState<
     Array<{ time: string; upload: number; download: number; total: number }>
-  >([]);
+  >(() => {
+    const now = new Date();
+    return Array.from({ length: 50 }, (_, i) => {
+      const time = new Date(now.getTime() - (49 - i) * 3000);
+      return {
+        time: time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        upload: 0,
+        download: 0,
+        total: 0,
+      };
+    });
+  });
   const [data, setData] = useState({
     total: 0,
     success: 0,
@@ -57,13 +67,27 @@ const Dashboard = () => {
     cores: 0,
     temperature: 0,
   });
-  const [diskChart, setDiskChart] = useState<Array<{ date: string; read: number; write: number }>>([]);
-  const [qpsChart, setQpsChart] = useState<Array<{ time: string; QPS: number }>>(() =>
-    Array.from({ length: 30 }, () => ({
-      time: '00:00',
-      QPS: 0,
-    }))
-  );
+  const [diskChart, setDiskChart] = useState<Array<{ date: string; read: number; write: number }>>(() => {
+    const now = new Date();
+    return Array.from({ length: 25 }, (_, i) => {
+      const time = new Date(now.getTime() - (24 - i) * 3000);
+      return {
+        date: time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        read: 0,
+        write: 0,
+      };
+    });
+  });
+  const [qpsChart, setQpsChart] = useState<Array<{ time: string; QPS: number }>>(() => {
+    const now = new Date();
+    return Array.from({ length: 50 }, (_, i) => {
+      const time = new Date(now.getTime() - (49 - i) * 3000);
+      return {
+        time: time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        QPS: 0,
+      };
+    });
+  });
   const [isOnline, setIsOnline] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
@@ -96,15 +120,24 @@ const Dashboard = () => {
         const currentTime = fetchedData.now;
         const currentQps = fetchedData.qps;
 
-        setQpsChart(prev => {
-          const newData = [...prev];
-          newData.shift();
-          newData.push({
-            time: currentTime,
-            QPS: currentQps,
+        // 如果后端返回了历史数据（首次加载），使用历史数据初始化
+        if (fetchedData.qpsHistory && fetchedData.qpsHistory.length > 0) {
+          setQpsChart(fetchedData.qpsHistory.map((item: any) => ({
+            time: item.time,
+            QPS: item.qps
+          })));
+        } else {
+          // 后续更新，添加新数据点
+          setQpsChart(prev => {
+            const newData = [...prev];
+            newData.shift();
+            newData.push({
+              time: currentTime,
+              QPS: currentQps,
+            });
+            return newData;
           });
-          return newData;
-        });
+        }
 
         setQps(currentQps);
         calculateQpsMetrics(currentQps);
@@ -124,7 +157,7 @@ const Dashboard = () => {
               download: newNetwork.download,
               total: newNetwork.upload + newNetwork.download,
             },
-          ].slice(-30);
+          ].slice(-50);
           return newData;
         });
 
@@ -169,7 +202,7 @@ const Dashboard = () => {
                   read: fetchedData.system.disk.readBytesPerSec,
                   write: fetchedData.system.disk.writeBytesPerSec,
                 },
-              ].slice(-80);
+              ].slice(-25);
               return newData;
             });
           }
@@ -286,7 +319,7 @@ const Dashboard = () => {
                 </span>
                 <Badge variant={qpsBadgeVariant}>{qpsBadgeLabel}</Badge>
               </CardTitle>
-              <CardDescription className="text-[0.85rem] text-muted-foreground">最近 30s 滑动窗口</CardDescription>
+              <CardDescription className="text-[0.85rem] text-muted-foreground">最近 3s 滑动窗口</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-3xl font-semibold text-yellow-600">{qps.toLocaleString()}</p>
@@ -321,23 +354,28 @@ const Dashboard = () => {
           </Card>
 
           <Card className="space-y-3 border border-border">
-            <CardHeader className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <CheckCircle className="h-4 w-4 text-blue-500" />
-                成功率
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Server className="h-4 w-4 text-blue-500" />
+                请求概况
               </CardTitle>
-              <CardDescription className="text-[0.85rem] text-muted-foreground">请求成功/失败的比例</CardDescription>
+              <CardDescription>全量请求与今日增量</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-semibold text-blue-600">{successRate.toFixed(1)}%</p>
-                <p className="text-xs text-muted-foreground">成功 {data.success.toLocaleString()} / 失败 {data.fail.toLocaleString()}</p>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {requestStats.map(stat => (
+                  <div key={stat.label} className="space-y-1 text-center">
+                    <div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground`}>
+                      <stat.icon className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                    <p className={`text-lg font-semibold ${stat.tone}`}>{stat.label === '成功率' ? `${stat.value}%` : stat.value.toLocaleString()}</p>
+                    {stat.change !== undefined && stat.label !== '成功率' && (
+                      <p className="text-xs text-muted-foreground">+{stat.change.toLocaleString()} 今日</p>
+                    )}
+                  </div>
+                ))}
               </div>
-              <ProgressBar
-                value={successRate}
-                className="h-3"
-                color={successRate > 90 ? 'green' : successRate > 70 ? 'yellow' : 'red'}
-              />
             </CardContent>
           </Card>
 
@@ -374,10 +412,10 @@ const Dashboard = () => {
                 <Activity className="h-5 w-5 text-yellow-500" />
                 QPS 趋势
               </CardTitle>
-              <CardDescription>滚动的 30 次请求曲线</CardDescription>
+              <CardDescription>滚动的 50 次请求曲线</CardDescription>
             </CardHeader>
             <CardContent className="h-[280px]">
-              <LineChart
+              <BarChart
                 key={`qps-chart-${windowWidth}`}
                 data={qpsChart}
                 categories={['QPS']}
@@ -385,6 +423,7 @@ const Dashboard = () => {
                 valueFormatter={(value: number) => `${value} req/s`}
                 index="time"
                 showXAxis={false}
+                showYAxis={false}
                 className="h-full w-full"
               />
             </CardContent>
@@ -399,21 +438,17 @@ const Dashboard = () => {
               <CardDescription>上/下行速度</CardDescription>
             </CardHeader>
             <CardContent className="h-[280px]">
-              {networkHistory.length ? (
-                <LineChart
-                  key={`network-chart-${windowWidth}`}
-                  data={networkHistory}
-                  categories={['upload', 'download']}
-                  colors={['blue', 'green']}
-                  valueFormatter={(value: number) => `${bytesToSize(value)}/s`}
-                  index="time"
-                  className="h-full w-full"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  等待网络数据…
-                </div>
-              )}
+              <BarChart
+                key={`network-chart-${windowWidth}`}
+                data={networkHistory}
+                categories={['upload', 'download']}
+                colors={['blue', 'green']}
+                valueFormatter={(value: number) => `${bytesToSize(value)}/s`}
+                index="time"
+                showXAxis={false}
+                showYAxis={false}
+                className="h-full w-full"
+              />
             </CardContent>
           </Card>
         </section>
@@ -471,47 +506,38 @@ const Dashboard = () => {
               <CardDescription>读取 / 写入 每秒</CardDescription>
             </CardHeader>
             <CardContent className="h-[260px]">
-              {diskChart.length ? (
-                <BarChart
-                  data={diskChart}
-                  categories={['read', 'write']}
-                  colors={['cyan', 'indigo']}
-                  index="date"
-                  valueFormatter={(value: number) => bytesToSize(value)}
-                  className="h-full"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  等待磁盘指标…
-                </div>
-              )}
+              <BarChart
+                data={diskChart}
+                categories={['read', 'write']}
+                colors={['#10b981', '#f59e0b']}
+                index="date"
+                valueFormatter={(value: number) => bytesToSize(value)}
+                showXAxis={false}
+                showYAxis={false}
+                barRadius={4}
+                className="h-full"
+              />
             </CardContent>
           </Card>
 
           <Card className="space-y-3 border border-border">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Server className="h-4 w-4 text-blue-500" />
-                请求概况
+            <CardHeader className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle className="h-4 w-4 text-blue-500" />
+                成功率
               </CardTitle>
-              <CardDescription>全量请求与今日增量</CardDescription>
+              <CardDescription className="text-[0.85rem] text-muted-foreground">请求成功/失败的比例</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {requestStats.map(stat => (
-                  <div key={stat.label} className="space-y-1 text-center">
-                    <div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground`}>
-                      <stat.icon className="h-4 w-4" />
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-                    <p className={`text-lg font-semibold ${stat.tone}`}>{stat.label === '成功率' ? `${stat.value}%` : stat.value.toLocaleString()}</p>
-                    {stat.change !== undefined && stat.label !== '成功率' && (
-                      <p className="text-xs text-muted-foreground">+{stat.change.toLocaleString()} 今日</p>
-                    )}
-                  </div>
-                ))}
+            <CardContent className="space-y-3">
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-semibold text-blue-600">{successRate.toFixed(1)}%</p>
+                <p className="text-xs text-muted-foreground">成功 {data.success.toLocaleString()} / 失败 {data.fail.toLocaleString()}</p>
               </div>
-
+              <ProgressBar
+                value={successRate}
+                className="h-3"
+                color={successRate > 90 ? 'green' : successRate > 70 ? 'yellow' : 'red'}
+              />
               <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
                 {latencyMetrics.map(metric => (
                   <div key={metric.label} className="rounded-lg border border-border p-3">

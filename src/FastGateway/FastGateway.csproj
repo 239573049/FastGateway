@@ -11,16 +11,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0"/>
-        <PackageReference Include="Certes" Version="3.0.4"/>
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0-rc.2.25502.107" />
-        <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0-rc.2.25502.107" />
-        <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0-rc.2.25502.107" />
-        <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0"/>
+        <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
+        <PackageReference Include="Certes" Version="3.0.4" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+        <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0" />
+        <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Core\Core.csproj"/>
+        <ProjectReference Include="..\Core\Core.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -33,13 +34,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="wwwroot\"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Include="..\..\.dockerignore">
-            <Link>.dockerignore</Link>
-        </Content>
+        <Folder Include="wwwroot\" />
     </ItemGroup>
 
 </Project>

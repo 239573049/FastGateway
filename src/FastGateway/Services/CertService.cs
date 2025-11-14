@@ -91,6 +91,8 @@ public static class CertService
         {
             configService.UpdateCert(cert);
             InitCert(configService.GetCerts().Where(x => !x.Expired).ToArray());
+            // 清除网关证书缓存以便新证书生效
+            Gateway.Gateway.InvalidateCertificate(cert.Domain);
         }
 
         return ResultDto.CreateSuccess();
@@ -219,6 +221,8 @@ public static class CertService
                 {
                     configService.DeleteCert(id);
                     CertWebApplications.TryRemove(certItem.Domain, out _);
+                    // 删除证书后移除网关缓存
+                    Gateway.Gateway.InvalidateCertificate(certItem.Domain);
                 }
             }).WithDescription("删除证书").WithDisplayName("删除证书").WithTags("证书");
 
@@ -231,6 +235,8 @@ public static class CertService
 
             cert.Id = id;
             configService.UpdateCert(cert);
+            // 更新证书后移除网关缓存
+            Gateway.Gateway.InvalidateCertificate(cert.Domain);
         }).WithDescription("更新证书").WithDisplayName("更新证书").WithTags("证书");
 
 

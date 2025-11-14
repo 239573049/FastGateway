@@ -14,7 +14,6 @@ import {
     Square, 
     MoreVertical,
     Trash2,
-    BookOpen
 } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import UpdateServer from "./UpdateServer";
@@ -219,16 +218,6 @@ const ProxyList = memo(() => {
                     <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                         开始创建您的第一个代理服务器配置
                     </p>
-                    <div className="flex gap-2">
-                        <Button>
-                            <ServerIcon className="mr-2 h-4 w-4" />
-                            创建服务器
-                        </Button>
-                        <Button variant="outline">
-                            <BookOpen className="mr-2 h-4 w-4" />
-                            查看文档
-                        </Button>
-                    </div>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

@@ -36,6 +36,25 @@ public static class Gateway
     private static readonly DefaultContentTypeProvider DefaultContentTypeProvider = new();
 
     /// <summary>
+    ///     证书缓存（按 SNI 名称及默认证书缓存 X509Certificate2 实例）
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, X509Certificate2> CertificateCache = new();
+
+    /// <summary>
+    ///     证书缓存失效（根据域名）
+    /// </summary>
+    /// <param name="domain">SNI 域名</param>
+    public static void InvalidateCertificate(string domain)
+    {
+        if (string.IsNullOrWhiteSpace(domain)) return;
+        var key = $"sni:{domain.Trim().ToLowerInvariant()}";
+        if (CertificateCache.TryRemove(key, out var cert))
+        {
+            try { cert.Dispose(); } catch { /* ignore */ }
+        }
+    }
+
+    /// <summary>
     ///     是否存在80端口服务
     /// </summary>
     public static bool Has80Service { get; private set; }
@@ -98,6 +117,9 @@ public static class Gateway
         if (GatewayWebApplications.TryRemove(serverId, out var webApplication))
         {
             await webApplication.StopAsync();
+
+            await webApplication.DisposeAsync();
+
             return true;
         }
 
@@ -105,24 +127,50 @@ public static class Gateway
     }
 
     /// <summary>
-    ///     找到证书
+    ///     找到证书（带缓存，避免每次握手都创建新实例）
     /// </summary>
     /// <param name="context"></param>
-    /// <param name="name"></param>
+    /// <param name="name">SNI 主机名</param>
     /// <returns></returns>
     private static X509Certificate2 ServerCertificateSelector(ConnectionContext? context, string name)
     {
+        // 规范化缓存键（可能为空）
+        var sni = string.IsNullOrWhiteSpace(name) ? "__default__" : name.Trim().ToLowerInvariant();
+
         try
         {
-            var cert = CertService.GetCert(name);
-            if (cert != null) return new X509Certificate2(cert.Certs.File, cert.Certs.Password);
+            // 优先按 SNI 查找业务证书
+            var certInfo = CertService.GetCert(name);
+            if (certInfo != null)
+            {
+                return CertificateCache.GetOrAdd($"sni:{sni}", _ =>
+                    new X509Certificate2(
+                        certInfo.Certs.File,
+                        certInfo.Certs.Password,
+                        X509KeyStorageFlags.EphemeralKeySet));
+            }
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
         }
 
-        return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
+        // 回退到默认证书
+        var defaultKey = "default";
+        try
+        {
+            return CertificateCache.GetOrAdd(defaultKey, _ =>
+                new X509Certificate2(
+                    Path.Combine(AppContext.BaseDirectory, "gateway.pfx"),
+                    "010426",
+                    X509KeyStorageFlags.EphemeralKeySet));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            // 发生异常时，尽量最后再尝试无 flags 的构造，保持与旧实现兼容
+            return new X509Certificate2(Path.Combine(AppContext.BaseDirectory, "gateway.pfx"), "010426");
+        }
     }
 
     /// <summary>
@@ -179,11 +227,6 @@ public static class Gateway
                 options.AllowedOrigins.Add("*");
             });
 
-            builder.Services.AddRequestTimeouts(options =>
-            {
-            
-            });
-
             builder.Services
                 .AddCors(options =>
                 {
@@ -208,14 +251,65 @@ public static class Gateway
             builder.Services
                 .AddReverseProxy()
                 .LoadFromMemory(routes, clusters)
-                .AddGateway(server);
+                .AddTransforms(context =>
+                {
+                    var prefix = context.Route.Match.Path?
+                        .Replace("/{**catch-all}", "")
+                        .Replace("{**catch-all}", "");
+
+                    // 如果存在泛域名则需要保留原始Host
+                    if (context.Route.Match.Hosts?.Any(x => x.Contains('*')) == true)
+                        context.AddOriginalHost();
+                    else if (server.CopyRequestHost) context.AddOriginalHost();
+
+                    if (!string.IsNullOrEmpty(prefix)) context.AddPathRemovePrefix(prefix);
+
+                    #region 静态站点
+
+                    if (context.Route.Metadata!.TryGetValue(Root, out var root))
+                    {
+                        var tryFiles = context.Cluster!.Metadata!.Select(p => p.Key).ToArray();
+                        context.AddRequestTransform(async transformContext =>
+                        {
+                            var response = transformContext.HttpContext.Response;
+                            var path = Path.Combine(root, transformContext.Path.Value![1..]);
+
+                            if (File.Exists(path))
+                            {
+                                DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
+                                response.Headers.ContentType = contentType;
+
+                                await response.SendFileAsync(path);
+                                return;
+                            }
+
+                            // 搜索 try_files
+                            foreach (var tryFile in tryFiles)
+                            {
+                                var tryPath = Path.Combine(root, tryFile);
+
+                                if (!File.Exists(tryPath)) continue;
+
+                                DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
+                                response.Headers.ContentType = contentType;
+
+                                await response.SendFileAsync(tryPath);
+
+                                return;
+                            }
+
+                            response.StatusCode = 404;
+                        });
+                    }
+
+                    #endregion
+                }); // 删除 ConfigureHttpClient 避免与自定义工厂冲突
 
             var app = builder.Build();
 
             app.UseCors("AllowAll");
 
             app.UseWebSockets();
-            app.UseRequestTimeouts();
 
             if (server.StaticCompress)
                 app.UseResponseCompression();
@@ -292,84 +386,16 @@ public static class Gateway
             app.Lifetime.ApplicationStopping.Register(() => { GatewayWebApplications.Remove(server.Id, out _); });
 
             await app.RunAsync();
-        }catch (Exception e)
+        }
+        catch (Exception e)
         {
-            Console.WriteLine("网关启动错误："+e);
+            Console.WriteLine("网关启动错误：" + e);
             throw;
-       }
+        }
         finally
         {
             GatewayWebApplications.Remove(server.Id, out _);
         }
-    }
-
-    private static IReverseProxyBuilder AddGateway(this IReverseProxyBuilder builder, Server server)
-    {
-        builder.AddTransforms(context =>
-        {
-            var prefix = context.Route.Match.Path?
-                .Replace("/{**catch-all}", "")
-                .Replace("{**catch-all}", "");
-
-            // 如果存在泛域名则需要保留原始Host
-            if (context.Route.Match.Hosts?.Any(x => x.Contains('*')) == true)
-                context.AddOriginalHost();
-            else if (server.CopyRequestHost) context.AddOriginalHost();
-
-            if (!string.IsNullOrEmpty(prefix)) context.AddPathRemovePrefix(prefix);
-
-            #region 静态站点
-
-            if (context.Route.Metadata!.TryGetValue(Root, out var root))
-            {
-                var tryFiles = context.Cluster!.Metadata!.Select(p => p.Key).ToArray();
-                context.AddRequestTransform(async transformContext =>
-                {
-                    var response = transformContext.HttpContext.Response;
-                    var path = Path.Combine(root, transformContext.Path.Value![1..]);
-
-                    if (File.Exists(path))
-                    {
-                        DefaultContentTypeProvider.TryGetContentType(path, out var contentType);
-                        response.Headers.ContentType = contentType;
-
-                        await response.SendFileAsync(path);
-                        return;
-                    }
-
-                    // 搜索 try_files
-                    foreach (var tryFile in tryFiles)
-                    {
-                        var tryPath = Path.Combine(root, tryFile);
-
-                        if (!File.Exists(tryPath)) continue;
-
-                        DefaultContentTypeProvider.TryGetContentType(tryPath, out var contentType);
-                        response.Headers.ContentType = contentType;
-
-                        await response.SendFileAsync(tryPath);
-
-                        return;
-                    }
-
-                    response.StatusCode = 404;
-                });
-            }
-
-            #endregion
-        });
-
-        builder.ConfigureHttpClient((client, socket) =>
-        {
-            socket.ConnectTimeout = TimeSpan.FromSeconds(server.Timeout);
-            socket.Expect100ContinueTimeout = TimeSpan.FromSeconds(server.Timeout);
-            socket.ResponseDrainTimeout = TimeSpan.FromSeconds(server.Timeout);
-            socket.ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current);
-            socket.AutomaticDecompression = DecompressionMethods.Brotli | DecompressionMethods.GZip | DecompressionMethods.Deflate;
-            socket.EnableMultipleHttp2Connections = true;
-        });
-
-        return builder;
     }
 
     private static WebApplication UseInitGatewayMiddleware(this WebApplication app)
@@ -402,9 +428,7 @@ public static class Gateway
         foreach (var domainName in domainNames)
         {
             var path = domainName.Path ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(path))
-                path = "/{**catch-all}";
-            else if (path == "/")
+            if (string.IsNullOrWhiteSpace(path) || path == "/")
                 path = "/{**catch-all}";
             else
                 path = $"/{path.TrimStart('/')}/{{**catch-all}}";

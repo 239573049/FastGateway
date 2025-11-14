@@ -44,13 +44,20 @@ internal class TunnelClientFactory(
     {
         handler.SslOptions.RemoteCertificateValidationCallback =
             (sender, certificate, chain, errors) => true;
+
         handler.MaxConnectionsPerServer = 100;
         handler.PooledConnectionLifetime = TimeSpan.FromMinutes(5);
         handler.PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1);
-        handler.KeepAlivePingDelay = TimeSpan.FromSeconds(30);
-        handler.KeepAlivePingTimeout = TimeSpan.FromSeconds(10);
+        handler.KeepAlivePingDelay = TimeSpan.FromMinutes(5);
+        handler.KeepAlivePingTimeout = TimeSpan.FromMinutes(5);
         handler.KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always;
-        
+        // 新增：从 Gateway.ConfigureHttpClient 移植的参数
+        handler.ConnectTimeout = TimeSpan.FromMinutes(5);
+        handler.ResponseDrainTimeout = TimeSpan.FromMinutes(5);
+        handler.EnableMultipleHttp2Connections = true;
+        handler.EnableMultipleHttp3Connections = true;
+
+
         base.ConfigureHandler(httpClientContext, handler);
 
         var previous = handler.ConnectCallback ?? DefaultConnectCallback;

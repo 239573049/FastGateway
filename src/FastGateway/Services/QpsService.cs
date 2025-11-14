@@ -8,18 +8,61 @@ namespace FastGateway.Services;
 
 public sealed class QpsItem
 {
-    private int _lastQps;
+    private int _lastQps; // last calculated 3s average QPS
     private long _totalRequests;
     private long _successRequests;
     private long _failedRequests;
     private readonly ConcurrentQueue<long> _responseTimes = new();
-    private readonly object _lockObject = new();
+
+    // 3s window tracking (lock-free)
+    private long _windowRequestCount; // requests accumulated in current window
+    private long _windowStartTicks = Stopwatch.GetTimestamp();
+    
+    // 缓存最近 50 次 QPS 数据
+    private readonly ConcurrentQueue<QpsHistoryItem> _qpsHistory = new();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void IncrementRequests()
     {
-        Interlocked.Increment(ref _lastQps);
         Interlocked.Increment(ref _totalRequests);
+        Interlocked.Increment(ref _windowRequestCount);
+        TryCalculateWindowQps();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void TryCalculateWindowQps()
+    {
+        // Read start ticks
+        var start = Volatile.Read(ref _windowStartTicks);
+        double elapsedSeconds = (Stopwatch.GetTimestamp() - start) / (double)Stopwatch.Frequency;
+        if (elapsedSeconds < 3.0) return;
+
+        // Re-evaluate with fresh timestamp
+        long nowTicks = Stopwatch.GetTimestamp();
+        start = Volatile.Read(ref _windowStartTicks);
+        elapsedSeconds = (nowTicks - start) / (double)Stopwatch.Frequency;
+        if (elapsedSeconds < 3.0) return;
+
+        // Attempt to rotate window atomically
+        if (Interlocked.CompareExchange(ref _windowStartTicks, nowTicks, start) == start)
+        {
+            long windowCount = Interlocked.Exchange(ref _windowRequestCount, 0);
+            var calculatedQps = elapsedSeconds > 0 ? (int)(windowCount / elapsedSeconds) : 0;
+            _lastQps = calculatedQps;
+            
+            // 添加到历史记录
+            _qpsHistory.Enqueue(new QpsHistoryItem
+            {
+                Time = DateTime.Now.ToString("HH:mm:ss"),
+                Qps = calculatedQps
+            });
+            
+            // 保持最近 50 条记录
+            while (_qpsHistory.Count > 50)
+            {
+                _qpsHistory.TryDequeue(out _);
+            }
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -38,23 +81,25 @@ public sealed class QpsItem
     public void RecordResponseTime(long milliseconds)
     {
         _responseTimes.Enqueue(milliseconds);
-        
-        // 保持队列大小不超过1000
+        // Keep queue size <= 1000
         while (_responseTimes.Count > 1000)
         {
             _responseTimes.TryDequeue(out _);
         }
     }
 
+    // Manual trigger (e.g., timer) to ensure QPS updates even during idle periods
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void CalculateQps()
     {
-        Interlocked.Exchange(ref _lastQps, 0);
+        TryCalculateWindowQps();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int GetQps()
     {
+        // Ensure we refresh if window elapsed without new requests
+        TryCalculateWindowQps();
         return _lastQps;
     }
 
@@ -72,7 +117,6 @@ public sealed class QpsItem
         }
 
         Array.Sort(times);
-        
         var avg = (long)times.Average();
         var min = times[0];
         var max = times[^1];
@@ -83,27 +127,37 @@ public sealed class QpsItem
 
         return new ResponseTimeStats(avg, p95, p99, min, max);
     }
+    
+    public QpsHistoryItem[] GetQpsHistory()
+    {
+        return _qpsHistory.ToArray();
+    }
+}
+
+public record QpsHistoryItem
+{
+    public string Time { get; init; } = string.Empty;
+    public int Qps { get; init; }
 }
 
 public record ResponseTimeStats(long Avg, long P95, long P99, long Min, long Max);
 
 public static class SystemMonitorService
 {
-    private static readonly Lazy<PerformanceCounter> _cpuCounter = new(() => 
+    private static readonly Lazy<PerformanceCounter> _cpuCounter = new(() =>
         new PerformanceCounter("Processor", "% Processor Time", "_Total"));
-    private static readonly Lazy<PerformanceCounter> _memoryCounter = new(() => 
+    private static readonly Lazy<PerformanceCounter> _memoryCounter = new(() =>
         new PerformanceCounter("Memory", "Available MBytes"));
-    private static readonly Lazy<PerformanceCounter> _diskReadCounter = new(() => 
+    private static readonly Lazy<PerformanceCounter> _diskReadCounter = new(() =>
         new PerformanceCounter("PhysicalDisk", "Disk Read Bytes/sec", "_Total"));
-    private static readonly Lazy<PerformanceCounter> _diskWriteCounter = new(() => 
+    private static readonly Lazy<PerformanceCounter> _diskWriteCounter = new(() =>
         new PerformanceCounter("PhysicalDisk", "Disk Write Bytes/sec", "_Total"));
-    
+
     private static bool _performanceCountersAvailable = true;
     private static bool _diskCountersAvailable = true;
-    
+
     static SystemMonitorService()
     {
-        // 初始化时读取一次以确保计数器准备就绪
         try
         {
             if (_performanceCountersAvailable)
@@ -116,7 +170,7 @@ public static class SystemMonitorService
         {
             _performanceCountersAvailable = false;
         }
-        
+
         try
         {
             if (_diskCountersAvailable)
@@ -139,7 +193,7 @@ public static class SystemMonitorService
             float availableMemoryMB = 0;
             long diskReadBytesPerSec = 0;
             long diskWriteBytesPerSec = 0;
-            
+
             if (_performanceCountersAvailable)
             {
                 try
@@ -152,7 +206,7 @@ public static class SystemMonitorService
                     _performanceCountersAvailable = false;
                 }
             }
-            
+
             if (_diskCountersAvailable)
             {
                 try
@@ -165,20 +219,18 @@ public static class SystemMonitorService
                     _diskCountersAvailable = false;
                 }
             }
-            
+
             var totalMemoryBytes = GC.GetTotalMemory(false);
             var workingSetBytes = Environment.WorkingSet;
-            
-            // 如果性能计数器不可用，使用近似计算
+
             if (!_performanceCountersAvailable)
             {
-                // 使用进程工作集作为已用内存的粗略估计
-                var totalSystemMemoryBytes = workingSetBytes * 4; // 粗略估计系统总内存
+                var totalSystemMemoryBytes = workingSetBytes * 4;
                 var usedMemoryBytes = workingSetBytes;
                 var memoryUsagePercent = (double)usedMemoryBytes / totalSystemMemoryBytes * 100;
-                
+
                 return new SystemStats(
-                    CpuUsage: 0, // 无法获取CPU使用率
+                    CpuUsage: 0,
                     MemoryUsagePercent: Math.Min(memoryUsagePercent, 100),
                     TotalMemoryBytes: totalSystemMemoryBytes,
                     UsedMemoryBytes: usedMemoryBytes,
@@ -190,8 +242,7 @@ public static class SystemMonitorService
                     DiskWriteBytesPerSec: diskWriteBytesPerSec
                 );
             }
-            
-            // 使用性能计数器的准确数据
+
             var totalSystemMemoryBytesAccurate = (long)(availableMemoryMB * 1024 * 1024) + workingSetBytes;
             var usedMemoryBytesAccurate = totalSystemMemoryBytesAccurate - (long)(availableMemoryMB * 1024 * 1024);
             var memoryUsagePercentAccurate = (double)usedMemoryBytesAccurate / totalSystemMemoryBytesAccurate * 100;
@@ -211,10 +262,9 @@ public static class SystemMonitorService
         }
         catch
         {
-            // 如果获取系统信息失败，返回基本信息
             var workingSetBytes = Environment.WorkingSet;
             var gcMemoryBytes = GC.GetTotalMemory(false);
-            
+
             return new SystemStats(
                 CpuUsage: 0,
                 MemoryUsagePercent: 0,
@@ -233,7 +283,7 @@ public static class SystemMonitorService
 
 public record SystemStats(
     float CpuUsage,
-    double MemoryUsagePercent, 
+    double MemoryUsagePercent,
     long TotalMemoryBytes,
     long UsedMemoryBytes,
     long AvailableMemoryBytes,
@@ -247,20 +297,17 @@ public record SystemStats(
 public static class QpsService
 {
     private static readonly QpsItem QpsItem = new();
-    private static bool _enable;
     private static readonly DateTime _startTime = DateTime.UtcNow;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void IncrementServiceRequests()
     {
-        if (!_enable) return;
         QpsItem.IncrementRequests();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void RecordSuccessRequest(long responseTimeMs)
     {
-        if (!_enable) return;
         QpsItem.IncrementSuccessRequests();
         QpsItem.RecordResponseTime(responseTimeMs);
     }
@@ -268,7 +315,6 @@ public static class QpsService
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void RecordFailedRequest(long responseTimeMs = 0)
     {
-        if (!_enable) return;
         QpsItem.IncrementFailedRequests();
         if (responseTimeMs > 0)
         {
@@ -278,15 +324,12 @@ public static class QpsService
 
     public static void CalculateServiceQps()
     {
-        if (!_enable) return;
         QpsItem.CalculateQps();
     }
 
     public static int GetServiceQps()
     {
-        var qps = QpsItem.GetQps();
-        QpsItem.CalculateQps();
-        return qps;
+        return QpsItem.GetQps();
     }
 
     public static (long total, long success, long failed) GetRequestCounts()
@@ -299,18 +342,15 @@ public static class QpsService
         return QpsItem.GetResponseTimeStats();
     }
 
+    public static QpsHistoryItem[] GetQpsHistory()
+    {
+        return QpsItem.GetQpsHistory();
+    }
+
     public static TimeSpan GetUptime()
     {
         return DateTime.UtcNow - _startTime;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void EnableQps(bool enable)
-    {
-        _enable = enable;
-    }
-
-    public static bool IsEnabled => _enable;
 }
 
 public static class ApiQpsService
@@ -333,18 +373,12 @@ public static class ApiQpsService
 
     public static async Task GetAsync(HttpContext context)
     {
-        QpsService.EnableQps(true);
-
         try
         {
-            // 获取所有网络接口
             var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-
-            // 存储每个接口的初始值
             long initialBytesSent = 0;
             long initialBytesReceived = 0;
 
-            // 只考虑活动的和支持IPv4的网络接口
             foreach (var ni in networkInterfaces)
             {
                 if (ni.OperationalStatus != OperationalStatus.Up ||
@@ -355,19 +389,14 @@ public static class ApiQpsService
                     initialBytesSent += interfaceStats.BytesSent;
                     initialBytesReceived += interfaceStats.BytesReceived;
                 }
-                catch
-                {
-                    // 忽略获取统计信息失败的接口
-                }
+                catch { }
             }
 
             await Task.Delay(1000);
 
-            // 存储每个接口1秒后的值
             long bytesSentAfter1Sec = 0;
             long bytesReceivedAfter1Sec = 0;
 
-            // 再次遍历网络接口
             foreach (var ni in networkInterfaces)
             {
                 if (ni.OperationalStatus != OperationalStatus.Up ||
@@ -378,31 +407,25 @@ public static class ApiQpsService
                     bytesSentAfter1Sec += interfaceStats.BytesSent;
                     bytesReceivedAfter1Sec += interfaceStats.BytesReceived;
                 }
-                catch
-                {
-                    // 忽略获取统计信息失败的接口
-                }
+                catch { }
             }
 
-            // 计算1秒内发送和接收的总字节
             var upload = Math.Max(0, bytesSentAfter1Sec - initialBytesSent);
             var download = Math.Max(0, bytesReceivedAfter1Sec - initialBytesReceived);
 
-            // 获取系统统计信息
             var systemStats = SystemMonitorService.GetSystemStats();
             var requestCounts = QpsService.GetRequestCounts();
             var responseTimeStats = QpsService.GetResponseTimeStats();
+            var qpsHistory = QpsService.GetQpsHistory();
             var uptime = QpsService.GetUptime();
 
             var data = new
             {
-                // 基础QPS数据
-                qps = QpsService.GetServiceQps(),
+                qps = QpsService.GetServiceQps(), // 3s average QPS
+                qpsHistory = qpsHistory.Select(h => new { time = h.Time, qps = h.Qps }).ToArray(),
                 now = DateTime.Now.ToString("HH:mm:ss"),
                 upload,
                 download,
-                
-                // 请求统计
                 requests = new
                 {
                     total = requestCounts.total,
@@ -410,8 +433,6 @@ public static class ApiQpsService
                     failed = requestCounts.failed,
                     successRate = requestCounts.total > 0 ? Math.Round((double)requestCounts.success / requestCounts.total * 100, 2) : 0.0
                 },
-                
-                // 响应时间统计
                 responseTime = new
                 {
                     avg = responseTimeStats.Avg,
@@ -420,8 +441,6 @@ public static class ApiQpsService
                     min = responseTimeStats.Min,
                     max = responseTimeStats.Max
                 },
-                
-                // 系统资源
                 system = new
                 {
                     cpu = new
@@ -444,8 +463,6 @@ public static class ApiQpsService
                         writeBytesPerSec = systemStats.DiskWriteBytesPerSec
                     }
                 },
-                
-                // 服务状态
                 service = new
                 {
                     isOnline = true,
@@ -463,9 +480,6 @@ public static class ApiQpsService
 
             await context.Response.WriteAsJsonAsync(data);
         }
-        finally
-        {
-            QpsService.EnableQps(false);
-        }
+        finally { }
     }
 }
