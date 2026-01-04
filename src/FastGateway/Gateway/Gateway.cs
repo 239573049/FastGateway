@@ -37,8 +37,29 @@ public static class Gateway
 
     private static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
 
-    private static HealthCheckConfig CreateDefaultHealthCheckConfig()
+    private static HealthCheckConfig? CreateHealthCheckConfig(DomainName domainName)
     {
+        if (!domainName.EnableHealthCheck) return null;
+
+        var healthCheckPath = domainName.HealthCheckPath?.Trim();
+        if (string.IsNullOrWhiteSpace(healthCheckPath)) return null;
+
+        if (!healthCheckPath.StartsWith('/'))
+            healthCheckPath = "/" + healthCheckPath;
+
+        string? path = healthCheckPath;
+        string? query = null;
+
+        var queryIndex = healthCheckPath.IndexOf('?');
+        if (queryIndex >= 0)
+        {
+            path = healthCheckPath[..queryIndex];
+            query = healthCheckPath[queryIndex..];
+            if (string.IsNullOrWhiteSpace(query) || query == "?") query = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(path)) path = "/";
+
         return new HealthCheckConfig
         {
             Active = new ActiveHealthCheckConfig
@@ -47,7 +68,8 @@ public static class Gateway
                 Interval = TimeSpan.FromSeconds(10),
                 Timeout = TimeSpan.FromSeconds(3),
                 Policy = "ConsecutiveFailures",
-                Path = "/"
+                Path = path,
+                Query = query
             },
             Passive = new PassiveHealthCheckConfig
             {
@@ -112,22 +134,37 @@ public static class Gateway
 
         var clusters = stateLookup
             .GetClusters()
-            .Select(cluster => new
+            .Select(cluster =>
             {
-                ClusterId = cluster.ClusterId,
-                Destinations = cluster.Destinations
-                    .Select(kvp => new
+                var healthCheck = cluster.Model.Config.HealthCheck;
+                var active = healthCheck?.Active;
+                var passive = healthCheck?.Passive;
+
+                var enabled = active?.Enabled == true || passive?.Enabled == true;
+                var path = active?.Path == null ? null : active.Path + (active.Query ?? string.Empty);
+
+                return new
+                {
+                    ClusterId = cluster.ClusterId,
+                    HealthCheck = new
                     {
-                        DestinationId = kvp.Value.DestinationId,
-                        Address = kvp.Value.Model.Config.Address,
-                        Health = new
+                        Enabled = enabled,
+                        Path = path
+                    },
+                    Destinations = cluster.Destinations
+                        .Select(kvp => new
                         {
-                            Active = kvp.Value.Health.Active,
-                            Passive = kvp.Value.Health.Passive,
-                            Effective = GetEffectiveHealth(kvp.Value.Health)
-                        }
-                    })
-                    .ToArray()
+                            DestinationId = kvp.Value.DestinationId,
+                            Address = kvp.Value.Model.Config.Address,
+                            Health = new
+                            {
+                                Active = kvp.Value.Health.Active,
+                                Passive = kvp.Value.Health.Passive,
+                                Effective = GetEffectiveHealth(kvp.Value.Health)
+                            }
+                        })
+                        .ToArray()
+                };
             })
             .ToArray();
 
@@ -598,7 +635,8 @@ public static class Gateway
                             Guid.NewGuid().ToString("N"),
                             config
                         }
-                    }
+                    },
+                    HealthCheck = CreateHealthCheckConfig(domainName)
                 };
 
                 clusters.Add(cluster);
@@ -615,7 +653,7 @@ public static class Gateway
                 {
                     ClusterId = domainName.Id,
                     Destinations = destinations,
-                    HealthCheck = CreateDefaultHealthCheckConfig()
+                    HealthCheck = CreateHealthCheckConfig(domainName)
                 };
 
                 clusters.Add(cluster);

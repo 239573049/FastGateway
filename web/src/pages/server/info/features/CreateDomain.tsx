@@ -27,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CreateDomainProps {
@@ -163,6 +164,26 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
             }
         }
 
+        const enableHealthCheck =
+            value.enableHealthCheck &&
+            (value.serviceType === ServiceType.Service ||
+                value.serviceType === ServiceType.ServiceCluster);
+
+        const healthCheckPath = value.healthCheckPath?.trim() ?? "";
+
+        if (enableHealthCheck) {
+            if (!healthCheckPath) {
+                toast.error("健康检查地址不能为空");
+                setTab("target");
+                return;
+            }
+            if (!healthCheckPath.startsWith("/")) {
+                toast.error("健康检查地址需要以 / 开头");
+                setTab("target");
+                return;
+            }
+        }
+
         const domains = Array.from(
             new Set(value.domains.map((x) => x.trim()).filter(Boolean))
         );
@@ -189,6 +210,8 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
                 upStreams,
                 service: value.service?.trim() ?? "",
                 root: value.root?.trim() ?? "",
+                enableHealthCheck,
+                healthCheckPath: enableHealthCheck ? healthCheckPath : null,
             });
             toast.success("路由创建成功");
             onOk();
@@ -477,6 +500,68 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
                                         <Plus className="mr-2 h-4 w-4" />
                                         添加代理节点
                                     </Button>
+                                </CardContent>
+                            </Card>
+                        ) : null}
+
+                        {value.serviceType === ServiceType.Service ||
+                        value.serviceType === ServiceType.ServiceCluster ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">
+                                        健康检查
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-3 py-2">
+                                        <div className="space-y-0.5">
+                                            <Label
+                                                htmlFor="create-domain-health-enabled"
+                                                className="text-sm font-medium"
+                                            >
+                                                启用健康检查
+                                            </Label>
+                                            <div className="text-xs text-muted-foreground">
+                                                自动探测上游节点健康并屏蔽异常节点
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            id="create-domain-health-enabled"
+                                            checked={value.enableHealthCheck}
+                                            onCheckedChange={(checked) =>
+                                                setValue((prev) => ({
+                                                    ...prev,
+                                                    enableHealthCheck: checked,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label
+                                            htmlFor="create-domain-health-path"
+                                            className="text-sm font-medium"
+                                        >
+                                            健康检查地址
+                                        </Label>
+                                        <Input
+                                            id="create-domain-health-path"
+                                            value={value.healthCheckPath ?? ""}
+                                            onChange={(e) =>
+                                                setValue((prev) => ({
+                                                    ...prev,
+                                                    healthCheckPath:
+                                                        e.target.value,
+                                                }))
+                                            }
+                                            disabled={!value.enableHealthCheck}
+                                            placeholder="例如：/health"
+                                            className="font-mono"
+                                        />
+                                        <div className="text-xs text-muted-foreground">
+                                            示例：/health 或 /api/health?ready=1
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ) : null}

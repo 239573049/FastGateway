@@ -19,6 +19,10 @@ type ServerHealthSnapshot = {
     checkedAtUtc?: string;
     clusters?: Array<{
         clusterId: string;
+        healthCheck?: {
+            enabled: boolean;
+            path: string | null;
+        };
         destinations: Array<{
             destinationId: string;
             address: string;
@@ -64,7 +68,15 @@ const ServerInfoPage = memo(() => {
     }, [loadHealth]);
 
     const summary = useMemo(() => {
-        const destinations = (health?.clusters ?? []).flatMap((cluster) => cluster.destinations ?? []);
+        const clusters = health?.clusters ?? [];
+        const enabledClusters = clusters.filter((cluster) => cluster.healthCheck?.enabled);
+        const enabledClusterCount = enabledClusters.length;
+        const clusterCount = clusters.length;
+        const enabledPaths = Array.from(
+            new Set(enabledClusters.map((cluster) => cluster.healthCheck?.path).filter(Boolean))
+        );
+
+        const destinations = clusters.flatMap((cluster) => cluster.destinations ?? []);
         const total = destinations.length;
 
         let healthy = 0;
@@ -82,7 +94,16 @@ const ServerInfoPage = memo(() => {
             .filter((destination) => (destination.health?.effective ?? "Unknown") === "Unhealthy")
             .slice(0, 6);
 
-        return { total, healthy, unhealthy, unknown, unhealthyTargets };
+        return {
+            total,
+            healthy,
+            unhealthy,
+            unknown,
+            unhealthyTargets,
+            enabledClusterCount,
+            clusterCount,
+            enabledPaths,
+        };
     }, [health]);
 
     return (
@@ -116,7 +137,7 @@ const ServerInfoPage = memo(() => {
                     </div>
 
                     <CardDescription>
-                        网关会定期探测集群节点健康，自动屏蔽非健康节点（无可用节点时返回 503）。
+                        当路由启用健康检查时，网关会定期探测上游节点健康并自动屏蔽非健康节点（无可用节点时返回 503）。
                     </CardDescription>
                 </CardHeader>
 
@@ -152,6 +173,14 @@ const ServerInfoPage = memo(() => {
                                 <Badge variant="secondary" className="font-normal">
                                     总节点 {summary.total}
                                 </Badge>
+                                <Badge variant="secondary" className="font-normal">
+                                    健康检查 {summary.enabledClusterCount}/{summary.clusterCount}
+                                </Badge>
+                                {summary.enabledPaths.length === 1 ? (
+                                    <Badge variant="outline" className="font-normal">
+                                        {summary.enabledPaths[0]}
+                                    </Badge>
+                                ) : null}
                                 <Badge variant="secondary" className="font-normal">
                                     Healthy {summary.healthy}
                                 </Badge>

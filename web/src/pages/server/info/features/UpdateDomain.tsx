@@ -27,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface UpdateDomainProps {
@@ -175,9 +176,34 @@ export default function UpdateDomain({
             }
         }
 
+        const enableHealthCheck =
+            value.enableHealthCheck &&
+            (value.serviceType === ServiceType.Service ||
+                value.serviceType === ServiceType.ServiceCluster);
+
+        const healthCheckPath = value.healthCheckPath?.trim() ?? "";
+
+        if (enableHealthCheck) {
+            if (!healthCheckPath) {
+                toast.error("健康检查地址不能为空");
+                setTab("target");
+                return;
+            }
+            if (!healthCheckPath.startsWith("/")) {
+                toast.error("健康检查地址需要以 / 开头");
+                setTab("target");
+                return;
+            }
+        }
+
         setIsSaving(true);
         try {
-            await updateDomain(value.id, { ...value, path });
+            await updateDomain(value.id, {
+                ...value,
+                path,
+                enableHealthCheck,
+                healthCheckPath: enableHealthCheck ? healthCheckPath : null,
+            });
             toast.success("保存成功");
             onOk();
             setLoadingDomains(!loadingDomains);
@@ -466,6 +492,68 @@ export default function UpdateDomain({
                                 </CardContent>
                             </Card>
                         )}
+
+                        {value.serviceType === ServiceType.Service ||
+                        value.serviceType === ServiceType.ServiceCluster ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">
+                                        健康检查
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-3 py-2">
+                                        <div className="space-y-0.5">
+                                            <Label
+                                                htmlFor="update-domain-health-enabled"
+                                                className="text-sm font-medium"
+                                            >
+                                                启用健康检查
+                                            </Label>
+                                            <div className="text-xs text-muted-foreground">
+                                                自动探测上游节点健康并屏蔽异常节点
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            id="update-domain-health-enabled"
+                                            checked={value.enableHealthCheck}
+                                            onCheckedChange={(checked) =>
+                                                setValue((prev) => ({
+                                                    ...prev,
+                                                    enableHealthCheck: checked,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label
+                                            htmlFor="update-domain-health-path"
+                                            className="text-sm font-medium"
+                                        >
+                                            健康检查地址
+                                        </Label>
+                                        <Input
+                                            id="update-domain-health-path"
+                                            value={value.healthCheckPath ?? ""}
+                                            onChange={(e) =>
+                                                setValue((prev) => ({
+                                                    ...prev,
+                                                    healthCheckPath:
+                                                        e.target.value,
+                                                }))
+                                            }
+                                            disabled={!value.enableHealthCheck}
+                                            placeholder="例如：/health"
+                                            className="font-mono"
+                                        />
+                                        <div className="text-xs text-muted-foreground">
+                                            示例：/health 或 /api/health?ready=1
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : null}
                     </TabsContent>
 
                     <TabsContent value="headers" className="space-y-4">
