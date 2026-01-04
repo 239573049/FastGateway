@@ -1,20 +1,33 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 
-import { useEffect, useState } from 'react';
-import { DomainName, ServiceType } from '@/types';
-import { CircleX, Plus, Trash2, Globe, Server, FileText, Link2} from 'lucide-react';
-import { check, checkSrvcie, createDomain } from '@/services/DomainNameService';
-import { useParams } from 'react-router-dom';
-import { useDomainStore } from '@/store/server';
-import { toast } from 'sonner';
+import { check, checkSrvcie, createDomain } from "@/services/DomainNameService";
+import { useDomainStore } from "@/store/server";
+import { DomainName, ServiceType } from "@/types";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CreateDomainProps {
     visible: boolean;
@@ -22,477 +35,536 @@ interface CreateDomainProps {
     onOk: () => void;
 }
 
-export default function CreateDomain({
-    visible,
-    onClose,
-    onOk,
-}: CreateDomainProps) {
-
+export default function CreateDomain({ visible, onClose, onOk }: CreateDomainProps) {
     const { id } = useParams<{ id: string }>();
-    const [value, setValue] = useState<DomainName>({
-        domains: [],
-        serverId: '',
-        serviceType: ServiceType.Service,
-        headers: [],
-        enable: true,
-        service: '',
-        upStreams: [],
-        root: '',
-        path: '',
-        tryFiles: []
-    });
+    const { setLoadingDomains, loadingDomains } = useDomainStore();
 
-    const {
-        setLoadingDomains,
-        loadingDomains
-    } = useDomainStore();
+    const fallbackValue = useMemo<DomainName>(
+        () => ({
+            domains: [],
+            serverId: id ?? "",
+            serviceType: ServiceType.Service,
+            headers: [],
+            tryFiles: [],
+            enable: true,
+            service: "",
+            upStreams: [],
+            root: "",
+            path: "/",
+        }),
+        [id]
+    );
+
+    const [tab, setTab] = useState<"basic" | "target" | "headers">("basic");
+    const [isSaving, setIsSaving] = useState(false);
+    const [value, setValue] = useState<DomainName>(fallbackValue);
 
     useEffect(() => {
-        if (id) {
-            setValue({
-                ...value,
-                serverId: id
-            });
-        }
+        if (!visible) return;
+        setTab("basic");
+        setIsSaving(false);
+        setValue(fallbackValue);
+    }, [fallbackValue, visible]);
+
+    useEffect(() => {
+        if (!id) return;
+        setValue((prev) => ({ ...prev, serverId: id }));
     }, [id]);
 
-    function save() {
-        // 路由需要/开头
-        if (!value.path.startsWith('/')) {
-            toast.error('路由需要以/开头');
+    const addUpstream = () => {
+        setValue((prev) => ({
+            ...prev,
+            upStreams: [...prev.upStreams, { service: "", weight: 1 }],
+        }));
+    };
+
+    const removeUpstream = (index: number) => {
+        setValue((prev) => ({
+            ...prev,
+            upStreams: prev.upStreams.filter((_, i) => i !== index),
+        }));
+    };
+
+    const updateUpstreamService = (index: number, service: string) => {
+        setValue((prev) => ({
+            ...prev,
+            upStreams: prev.upStreams.map((item, i) =>
+                i === index ? { ...item, service } : item
+            ),
+        }));
+    };
+
+    const addHeader = () => {
+        setValue((prev) => ({
+            ...prev,
+            headers: [...prev.headers, { key: "", value: "" }],
+        }));
+    };
+
+    const removeHeader = (index: number) => {
+        setValue((prev) => ({
+            ...prev,
+            headers: prev.headers.filter((_, i) => i !== index),
+        }));
+    };
+
+    const updateHeader = (index: number, patch: { key?: string; value?: string }) => {
+        setValue((prev) => ({
+            ...prev,
+            headers: prev.headers.map((item, i) =>
+                i === index ? { ...item, ...patch } : item
+            ),
+        }));
+    };
+
+    const save = async () => {
+        if (!id) {
+            toast.error("服务 ID 无效");
             return;
         }
 
-        createDomain(value)
-            .then(() => {
-                toast.success('路由创建成功');
-                onOk();
-                setLoadingDomains(!loadingDomains);
+        const path = value.path.trim();
+        if (!path) {
+            toast.error("匹配路由不能为空");
+            setTab("basic");
+            return;
+        }
+
+        if (!path.startsWith("/")) {
+            toast.error("匹配路由需要以 / 开头");
+            setTab("basic");
+            return;
+        }
+
+        if (value.serviceType === ServiceType.Service && !value.service?.trim()) {
+            toast.error("服务地址不能为空");
+            setTab("target");
+            return;
+        }
+
+        if (value.serviceType === ServiceType.StaticFile && !value.root?.trim()) {
+            toast.error("根目录不能为空");
+            setTab("target");
+            return;
+        }
+
+        if (value.serviceType === ServiceType.ServiceCluster) {
+            if (value.upStreams.length === 0) {
+                toast.error("请至少添加一个代理节点");
+                setTab("target");
+                return;
+            }
+            if (value.upStreams.some((x) => !x.service?.trim())) {
+                toast.error("代理节点服务地址不能为空");
+                setTab("target");
+                return;
+            }
+        }
+
+        const domains = Array.from(
+            new Set(value.domains.map((x) => x.trim()).filter(Boolean))
+        );
+        const tryFiles = Array.from(
+            new Set(value.tryFiles.map((x) => x.trim()).filter(Boolean))
+        );
+        const headers = value.headers
+            .map((x) => ({ key: x.key.trim(), value: x.value.trim() }))
+            .filter((x) => x.key);
+        const upStreams = value.upStreams.map((x) => ({
+            ...x,
+            service: x.service.trim(),
+        }));
+
+        setIsSaving(true);
+        try {
+            await createDomain({
+                ...value,
+                serverId: id,
+                path,
+                domains,
+                tryFiles,
+                headers,
+                upStreams,
+                service: value.service?.trim() ?? "",
+                root: value.root?.trim() ?? "",
             });
-    }
-
-    const [domainInput, setDomainInput] = useState('');
-    const [tryFilesInput, setTryFilesInput] = useState('');
-
-    const handleAddDomain = () => {
-        if (domainInput.trim()) {
-            setValue({ ...value, domains: [...value.domains, domainInput.trim()] });
-            setDomainInput('');
+            toast.success("路由创建成功");
+            onOk();
+            setLoadingDomains(!loadingDomains);
+        } catch {
+            toast.error("创建失败");
+        } finally {
+            setIsSaving(false);
         }
-    };
-
-    const handleRemoveDomain = (index: number) => {
-        const newDomains = value.domains.filter((_, i) => i !== index);
-        setValue({ ...value, domains: newDomains });
-    };
-
-    const handleAddTryFile = () => {
-        if (tryFilesInput.trim()) {
-            setValue({ ...value, tryFiles: [...value.tryFiles, tryFilesInput.trim()] });
-            setTryFilesInput('');
-        }
-    };
-
-    const handleRemoveTryFile = (index: number) => {
-        const newTryFiles = value.tryFiles.filter((_, i) => i !== index);
-        setValue({ ...value, tryFiles: newTryFiles });
     };
 
     return (
         <Dialog open={visible} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
                 <DialogHeader>
-                    <DialogTitle className="text-lg font-semibold flex items-center gap-2">
-                        <Globe className="w-5 h-5 text-primary" />
-                        创建路由策略
-                    </DialogTitle>
-                    <p className="text-sm text-muted-foreground">配置域名路由和代理设置以管理流量</p>
+                    <DialogTitle>新增路由</DialogTitle>
+                    <DialogDescription>为该节点配置域名、路径与转发目标。</DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6">
-                    {/* 基本设置 */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                            <Globe className="w-5 h-5 text-blue-500" />
-                            基本设置
-                        </h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Tabs
+                    value={tab}
+                    onValueChange={(next) => setTab(next as typeof tab)}
+                    className="w-full"
+                >
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="basic">基本</TabsTrigger>
+                        <TabsTrigger value="target">目标</TabsTrigger>
+                        <TabsTrigger value="headers">Headers</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="basic" className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium">域名</Label>
+                            <MultiSelect
+                                value={value.domains}
+                                onChange={(domains) =>
+                                    setValue((prev) => ({ ...prev, domains }))
+                                }
+                                placeholder="请输入域名（回车添加）"
+                                className="w-full"
+                            />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <Label htmlFor="path" className="text-sm font-medium flex items-center gap-1">
+                                <Label
+                                    htmlFor="create-domain-path"
+                                    className="text-sm font-medium"
+                                >
                                     匹配路由
-                                    <span className="text-red-500">*</span>
                                 </Label>
-                                <div className="relative">
-                                    <Input
-                                        id="path"
-                                        value={value.path}
-                                        onChange={(e) => setValue({ ...value, path: e.target.value })}
-                                        placeholder="例如: /api"
-                                        className="font-mono text-sm"
-                                    />
-                                </div>
+                                <Input
+                                    id="create-domain-path"
+                                    value={value.path}
+                                    onChange={(e) =>
+                                        setValue((prev) => ({
+                                            ...prev,
+                                            path: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="例如：/api"
+                                    className="font-mono"
+                                />
                             </div>
-                            
+
                             <div className="space-y-2">
-                                <Label className="text-sm font-medium flex items-center gap-1">
-                                    服务类型
-                                    <span className="text-red-500">*</span>
-                                </Label>
+                                <Label className="text-sm font-medium">服务类型</Label>
                                 <Select
                                     value={value.serviceType.toString()}
-                                    onValueChange={(e) => setValue({ ...value, serviceType: parseInt(e) as ServiceType })}
+                                    onValueChange={(e) =>
+                                        setValue((prev) => ({
+                                            ...prev,
+                                            serviceType: Number(e) as ServiceType,
+                                        }))
+                                    }
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="选择服务类型" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value={ServiceType.Service.toString()}>
-                                            <div className="flex items-center gap-2">
-                                                <Server className="w-4 h-4" />
-                                                代理单个网络服务
-                                            </div>
+                                            代理单个网络服务
                                         </SelectItem>
-                                        <SelectItem value={ServiceType.ServiceCluster.toString()}>
-                                            <div className="flex items-center gap-2">
-                                                <Link2 className="w-4 h-4" />
-                                                代理多个网络服务集群
-                                            </div>
+                                        <SelectItem
+                                            value={ServiceType.ServiceCluster.toString()}
+                                        >
+                                            代理多个网络服务集群
                                         </SelectItem>
                                         <SelectItem value={ServiceType.StaticFile.toString()}>
-                                            <div className="flex items-center gap-2">
-                                                <FileText className="w-4 h-4" />
-                                                静态文件服务代理
-                                            </div>
+                                            静态文件服务代理
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
+                    </TabsContent>
 
-                        {/* 域名管理 */}
-                        <div className="space-y-2">
-                            <Label className="text-sm font-medium flex items-center gap-1">
-                                域名列表
-                            </Label>
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        value={domainInput}
-                                        onChange={(e) => setDomainInput(e.target.value)}
-                                        placeholder="输入域名 (例如: example.com)"
-                                        className="flex-1 h-10"
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                handleAddDomain();
-                                            }
-                                        }}
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="default"
-                                        className="h-10 px-3"
-                                        onClick={handleAddDomain}
+                    <TabsContent value="target" className="space-y-4">
+                        {value.serviceType === ServiceType.Service ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">
+                                        代理单个服务
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <Label
+                                        htmlFor="create-domain-service"
+                                        className="text-sm font-medium"
                                     >
-                                        添加
-                                    </Button>
-                                </div>
-                                
-                                <div className="flex flex-wrap gap-2">
-                                    {value.domains.map((domain, index) => (
-                                        <Badge key={index} variant="secondary" className="px-2 py-1">
-                                            {domain}
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-4 w-4 p-0 ml-1"
-                                                onClick={() => handleRemoveDomain(index)}
-                                            >
-                                                <CircleX className="h-3 w-3" />
-                                            </Button>
-                                        </Badge>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {value.serviceType === ServiceType.Service && (
-                        <div className="space-y-2">
-                            <Label htmlFor="service" className="text-sm font-medium">
-                                请求服务地址
-                                <span className="text-red-500">*</span>
-                            </Label>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    id="service"
-                                    value={value.service ?? ""}
-                                    onChange={(e) => setValue({ ...value, service: e.target.value })}
-                                    placeholder="请输入请求服务地址 (示例：http://127.0.0.1:8080)"
-                                    className="flex-1 h-10"
-                                />
-                                <Button 
-                                    variant="outline" 
-                                    size="default"
-                                    className="h-10 px-3"
-                                    onClick={() => {
-                                        checkSrvcie({
-                                            path: value.service
-                                        }).then((res) => {
-                                            if (res.success) {
-                                                toast.success('服务访问正常');
-                                            } else {
-                                                toast.error(res.message);
-                                            }
-                                        });
-                                    }}
-                                >
-                                    检测
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                    
-                    {value.serviceType === ServiceType.StaticFile && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="root" className="text-sm font-medium">
-                                    根目录
-                                    <span className="text-red-500">*</span>
-                                </Label>
-                                <div className="flex items-center gap-2">
-                                    <Input
-                                        id="root"
-                                        value={value.root ?? ""}
-                                        onChange={(e) => setValue({ ...value, root: e.target.value })}
-                                        placeholder="请输入根目录"
-                                        className="flex-1 h-10"
-                                    />
-                                    <Button 
-                                        variant="outline" 
-                                        size="default"
-                                        className="h-10 px-3"
-                                        onClick={() => {
-                                            check({
-                                                path: value.root
-                                            }).then((res) => {
-                                                if (res.data) {
-                                                    toast.success('文件或目录存在');
-                                                } else {
-                                                    toast.error('文件或目录不存在');
-                                                }
-                                            });
-                                        }}
-                                    >
-                                        检测
-                                    </Button>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">TryFile</Label>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
+                                        服务地址
+                                    </Label>
+                                    <div className="flex flex-col gap-2 sm:flex-row">
                                         <Input
-                                            value={tryFilesInput}
-                                            onChange={(e) => setTryFilesInput(e.target.value)}
-                                            placeholder="输入异常时的文件路径 (例如: /index.html)"
-                                            className="flex-1 h-10"
-                                            onKeyPress={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    handleAddTryFile();
-                                                }
-                                            }}
+                                            id="create-domain-service"
+                                            value={value.service ?? ""}
+                                            onChange={(e) =>
+                                                setValue((prev) => ({
+                                                    ...prev,
+                                                    service: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="例如：http://127.0.0.1:8080"
+                                            className="font-mono"
                                         />
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="default"
-                                            className="h-10 px-3"
-                                            onClick={handleAddTryFile}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={!value.service?.trim()}
+                                            onClick={() => {
+                                                checkSrvcie({ path: value.service }).then(
+                                                    (res) => {
+                                                        if (res.success) {
+                                                            toast.success("服务访问正常");
+                                                        } else {
+                                                            toast.error(res.message);
+                                                        }
+                                                    }
+                                                );
+                                            }}
                                         >
-                                            添加
+                                            检测
                                         </Button>
                                     </div>
-                                    
-                                    <div className="flex flex-wrap gap-2">
-                                        {value.tryFiles.map((file, index) => (
-                                            <Badge key={index} variant="secondary" className="px-2 py-1">
-                                                {file}
+                                </CardContent>
+                            </Card>
+                        ) : null}
+
+                        {value.serviceType === ServiceType.StaticFile ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">
+                                        静态文件服务
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label
+                                            htmlFor="create-domain-root"
+                                            className="text-sm font-medium"
+                                        >
+                                            根目录
+                                        </Label>
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                            <Input
+                                                id="create-domain-root"
+                                                value={value.root ?? ""}
+                                                onChange={(e) =>
+                                                    setValue((prev) => ({
+                                                        ...prev,
+                                                        root: e.target.value,
+                                                    }))
+                                                }
+                                                placeholder="例如：/var/www/html"
+                                                className="font-mono"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                disabled={!value.root?.trim()}
+                                                onClick={() => {
+                                                    check({ path: value.root }).then((res) => {
+                                                        if (res.data) {
+                                                            toast.success("文件或目录存在");
+                                                        } else {
+                                                            toast.error("文件或目录不存在");
+                                                        }
+                                                    });
+                                                }}
+                                            >
+                                                检测
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">TryFiles</Label>
+                                        <MultiSelect
+                                            value={value.tryFiles}
+                                            onChange={(tryFiles) =>
+                                                setValue((prev) => ({ ...prev, tryFiles }))
+                                            }
+                                            placeholder="请输入异常时的文件列表"
+                                            className="w-full"
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : null}
+
+                        {value.serviceType === ServiceType.ServiceCluster ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">
+                                        服务集群节点
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {value.upStreams.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            暂无代理节点，请添加至少一个服务地址。
+                                        </p>
+                                    ) : null}
+
+                                    {value.upStreams.map((item, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex flex-col gap-2 sm:flex-row sm:items-end"
+                                        >
+                                            <div className="flex-1 space-y-2">
+                                                <Label
+                                                    htmlFor={`create-domain-upstream-${index}`}
+                                                    className="text-sm font-medium"
+                                                >
+                                                    服务地址
+                                                </Label>
+                                                <Input
+                                                    id={`create-domain-upstream-${index}`}
+                                                    value={item.service}
+                                                    onChange={(e) =>
+                                                        updateUpstreamService(
+                                                            index,
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    placeholder="例如：http://127.0.0.1:8080"
+                                                    className="font-mono"
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
                                                 <Button
                                                     type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-4 w-4 p-0 ml-1"
-                                                    onClick={() => handleRemoveTryFile(index)}
-                                                >
-                                                    <CircleX className="h-3 w-3" />
-                                                </Button>
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {value.serviceType === ServiceType.ServiceCluster && (
-                        <Card>
-                            <CardContent className="pt-6 space-y-4">
-                                <Label className="text-sm font-medium">代理节点配置</Label>
-                                {value.upStreams.map((item, index) => (
-                                    <div key={index} className="flex items-end gap-3">
-                                        <div className="flex-1 space-y-2">
-                                            <Label className="text-sm font-medium">
-                                                服务名称
-                                                <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="flex items-center gap-2">
-                                                <Input
-                                                    value={item.service}
-                                                    onChange={(e) => {
-                                                        const newValue = [...value.upStreams];
-                                                        newValue[index] = { ...newValue[index], service: e.target.value };
-                                                        setValue({ ...value, upStreams: newValue });
-                                                    }}
-                                                    placeholder="请输入服务名称"
-                                                    className="flex-1 h-10"
-                                                />
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="default"
-                                                    className="h-10 px-3"
+                                                    variant="outline"
+                                                    disabled={!item.service.trim()}
                                                     onClick={() => {
-                                                        checkSrvcie({
-                                                            path: item.service
-                                                        }).then((res) => {
-                                                            if (res.success) {
-                                                                toast.success('服务访问正常');
-                                                            } else {
-                                                                toast.error(res.message);
+                                                        checkSrvcie({ path: item.service }).then(
+                                                            (res) => {
+                                                                if (res.success) {
+                                                                    toast.success(
+                                                                        "服务访问正常"
+                                                                    );
+                                                                } else {
+                                                                    toast.error(res.message);
+                                                                }
                                                             }
-                                                        });
+                                                        );
                                                     }}
                                                 >
                                                     检测
                                                 </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    aria-label="移除节点"
+                                                    onClick={() => removeUpstream(index)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </div>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon"
-                                            onClick={() => {
-                                                const newValue = [...value.upStreams];
-                                                newValue.splice(index, 1);
-                                                setValue({ ...value, upStreams: newValue });
-                                            }}
-                                            className="text-destructive"
+                                    ))}
+
+                                    <Button type="button" variant="outline" onClick={addUpstream}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        添加代理节点
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : null}
+                    </TabsContent>
+
+                    <TabsContent value="headers" className="space-y-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">自定义 Headers</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {value.headers.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        暂无自定义 Header。
+                                    </p>
+                                ) : (
+                                    value.headers.map((item, index) => (
+                                        <div
+                                            key={index}
+                                            className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
                                         >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full"
-                                    onClick={() => {
-                                        setValue({
-                                            ...value,
-                                            upStreams: [
-                                                ...value.upStreams,
-                                                {
-                                                    service: '',
-                                                    weight: 1
-                                                }
-                                            ]
-                                        })
-                                    }}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    添加代理节点
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor={`create-domain-header-key-${index}`}
+                                                    className="text-sm font-medium"
+                                                >
+                                                    Key
+                                                </Label>
+                                                <Input
+                                                    id={`create-domain-header-key-${index}`}
+                                                    value={item.key}
+                                                    onChange={(e) =>
+                                                        updateHeader(index, {
+                                                            key: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="例如：X-Request-ID"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor={`create-domain-header-value-${index}`}
+                                                    className="text-sm font-medium"
+                                                >
+                                                    Value
+                                                </Label>
+                                                <Input
+                                                    id={`create-domain-header-value-${index}`}
+                                                    value={item.value}
+                                                    onChange={(e) =>
+                                                        updateHeader(index, {
+                                                            value: e.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="例如：123"
+                                                />
+                                            </div>
+                                            <div className="flex items-end">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    aria-label="移除 Header"
+                                                    onClick={() => removeHeader(index)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+
+                                <Button type="button" variant="outline" onClick={addHeader}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    添加 Header
                                 </Button>
                             </CardContent>
                         </Card>
-                    )}
-                    <Separator className="my-4" />
-                    
-                    <Card>
-                        <CardContent className="pt-6 space-y-4">
-                            <Label className="text-sm font-medium">自定义Headers</Label>
-                            {value.headers.map((item, index) => (
-                                <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-medium">Key</Label>
-                                        <Input
-                                            value={item.key}
-                                            onChange={(e) => {
-                                                const newValue = [...value.headers];
-                                                newValue[index] = { ...newValue[index], key: e.target.value };
-                                                setValue({ ...value, headers: newValue });
-                                            }}
-                                            placeholder="请输入Key"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-medium">Value</Label>
-                                        <Input
-                                            value={item.value}
-                                            onChange={(e) => {
-                                                const newValue = [...value.headers];
-                                                newValue[index] = { ...newValue[index], value: e.target.value };
-                                                setValue({ ...value, headers: newValue });
-                                            }}
-                                            placeholder="请输入Value"
-                                        />
-                                    </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        onClick={() => {
-                                            const newValue = [...value.headers];
-                                            newValue.splice(index, 1);
-                                            setValue({ ...value, headers: newValue });
-                                        }}
-                                        className="text-destructive"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                            <Button 
-                                variant="outline" 
-                                className="w-full"
-                                onClick={() => {
-                                    setValue({
-                                        ...value,
-                                        headers: [
-                                            ...value.headers,
-                                            {
-                                                key: '',
-                                                value: ''
-                                            }
-                                        ]
-                                    })
-                                }}
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                添加Header
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-                
+                    </TabsContent>
+                </Tabs>
+
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
+                    <Button variant="outline" onClick={onClose} disabled={isSaving}>
                         取消
                     </Button>
-                    <Button onClick={save}>
-                        保存
+                    <Button onClick={save} disabled={isSaving || !id}>
+                        {isSaving ? "保存中…" : "保存"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    )
+    );
 }

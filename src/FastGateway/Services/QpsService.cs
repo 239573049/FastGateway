@@ -1,5 +1,6 @@
 ﻿using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Diagnostics;
 using System.Collections.Concurrent;
@@ -223,36 +224,34 @@ public static class SystemMonitorService
             var totalMemoryBytes = GC.GetTotalMemory(false);
             var workingSetBytes = Environment.WorkingSet;
 
-            if (!_performanceCountersAvailable)
-            {
-                var totalSystemMemoryBytes = workingSetBytes * 4;
-                var usedMemoryBytes = workingSetBytes;
-                var memoryUsagePercent = (double)usedMemoryBytes / totalSystemMemoryBytes * 100;
+            long totalSystemMemoryBytes;
+            long availableSystemMemoryBytes;
 
-                return new SystemStats(
-                    CpuUsage: 0,
-                    MemoryUsagePercent: Math.Min(memoryUsagePercent, 100),
-                    TotalMemoryBytes: totalSystemMemoryBytes,
-                    UsedMemoryBytes: usedMemoryBytes,
-                    AvailableMemoryBytes: totalSystemMemoryBytes - usedMemoryBytes,
-                    ProcessorCount: Environment.ProcessorCount,
-                    WorkingSetBytes: workingSetBytes,
-                    GCMemoryBytes: totalMemoryBytes,
-                    DiskReadBytesPerSec: diskReadBytesPerSec,
-                    DiskWriteBytesPerSec: diskWriteBytesPerSec
-                );
+            if (!TryGetSystemMemoryBytes(out totalSystemMemoryBytes, out availableSystemMemoryBytes))
+            {
+                if (_performanceCountersAvailable && availableMemoryMB > 0)
+                {
+                    availableSystemMemoryBytes = (long)(availableMemoryMB * 1024 * 1024);
+                    totalSystemMemoryBytes = availableSystemMemoryBytes + workingSetBytes;
+                }
+                else
+                {
+                    totalSystemMemoryBytes = Math.Max(workingSetBytes * 4, workingSetBytes);
+                    availableSystemMemoryBytes = Math.Max(0, totalSystemMemoryBytes - workingSetBytes);
+                }
             }
 
-            var totalSystemMemoryBytesAccurate = (long)(availableMemoryMB * 1024 * 1024) + workingSetBytes;
-            var usedMemoryBytesAccurate = totalSystemMemoryBytesAccurate - (long)(availableMemoryMB * 1024 * 1024);
-            var memoryUsagePercentAccurate = (double)usedMemoryBytesAccurate / totalSystemMemoryBytesAccurate * 100;
+            var usedSystemMemoryBytes = Math.Max(0, totalSystemMemoryBytes - availableSystemMemoryBytes);
+            var memoryUsagePercent = totalSystemMemoryBytes > 0
+                ? Math.Min((double)usedSystemMemoryBytes / totalSystemMemoryBytes * 100, 100)
+                : 0;
 
             return new SystemStats(
                 CpuUsage: cpuUsage,
-                MemoryUsagePercent: memoryUsagePercentAccurate,
-                TotalMemoryBytes: totalSystemMemoryBytesAccurate,
-                UsedMemoryBytes: usedMemoryBytesAccurate,
-                AvailableMemoryBytes: (long)(availableMemoryMB * 1024 * 1024),
+                MemoryUsagePercent: memoryUsagePercent,
+                TotalMemoryBytes: totalSystemMemoryBytes,
+                UsedMemoryBytes: usedSystemMemoryBytes,
+                AvailableMemoryBytes: availableSystemMemoryBytes,
                 ProcessorCount: Environment.ProcessorCount,
                 WorkingSetBytes: workingSetBytes,
                 GCMemoryBytes: totalMemoryBytes,
@@ -278,6 +277,114 @@ public static class SystemMonitorService
                 DiskWriteBytesPerSec: 0
             );
         }
+    }
+
+    private static bool TryGetSystemMemoryBytes(out long totalBytes, out long availableBytes)
+    {
+        totalBytes = 0;
+        availableBytes = 0;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return TryGetWindowsMemoryBytes(out totalBytes, out availableBytes);
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return TryGetLinuxMemoryBytes(out totalBytes, out availableBytes);
+        }
+
+        return false;
+    }
+
+    private static bool TryGetWindowsMemoryBytes(out long totalBytes, out long availableBytes)
+    {
+        totalBytes = 0;
+        availableBytes = 0;
+
+        try
+        {
+            var memoryInfo = new MEMORY_INFO();
+            memoryInfo.DWLength = (uint)Marshal.SizeOf(memoryInfo);
+            if (!GlobalMemoryStatusEx(ref memoryInfo))
+            {
+                return false;
+            }
+
+            totalBytes = (long)memoryInfo.ullTotalPhys;
+            availableBytes = (long)memoryInfo.ullAvailPhys;
+            return totalBytes > 0 && availableBytes >= 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool TryGetLinuxMemoryBytes(out long totalBytes, out long availableBytes)
+    {
+        totalBytes = 0;
+        availableBytes = 0;
+
+        try
+        {
+            if (!File.Exists("/proc/meminfo"))
+            {
+                return false;
+            }
+
+            foreach (var line in File.ReadLines("/proc/meminfo"))
+            {
+                if (line.StartsWith("MemTotal:", StringComparison.Ordinal))
+                {
+                    totalBytes = ParseMeminfoLineToBytes(line);
+                }
+                else if (line.StartsWith("MemAvailable:", StringComparison.Ordinal))
+                {
+                    availableBytes = ParseMeminfoLineToBytes(line);
+                }
+
+                if (totalBytes > 0 && availableBytes > 0)
+                {
+                    break;
+                }
+            }
+
+            return totalBytes > 0 && availableBytes > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static long ParseMeminfoLineToBytes(string line)
+    {
+        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2)
+        {
+            return 0;
+        }
+
+        return long.TryParse(parts[1], out var kb) ? kb * 1024 : 0;
+    }
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GlobalMemoryStatusEx(ref MEMORY_INFO mi);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MEMORY_INFO
+    {
+        public uint DWLength;
+        public uint DWMemoryLoad;
+        public ulong ullTotalPhys;
+        public ulong ullAvailPhys;
+        public ulong ullTotalPagefile;
+        public ulong ullAvailPagefile;
+        public ulong ullTotalVirtual;
+        public ulong ullAvailVirtual;
+        public ulong ullAvailExtendedVirtual;
     }
 }
 

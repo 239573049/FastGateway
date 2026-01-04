@@ -75,6 +75,8 @@ public static class Program
             var blacklistAndWhitelists = configService.GetBlacklistAndWhitelists();
             var rateLimits = configService.GetRateLimits();
 
+            BlacklistAndWhitelistService.RefreshCache(blacklistAndWhitelists);
+
             foreach (var item in configService.GetServers())
                 await Task.Factory.StartNew(async () =>
                     await Gateway.Gateway.BuilderGateway(item, configService.GetDomainNamesByServerId(item.Id),
@@ -103,6 +105,7 @@ public static class Program
 
         app.MapDomain()
             .MapBlacklistAndWhitelist()
+            .MapAbnormalIp()
             .MapCert()
             .MapSetting()
             .MapApiQpsService()

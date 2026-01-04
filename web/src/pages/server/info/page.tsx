@@ -1,12 +1,15 @@
-import DomainNamesList from './features/DomainNamesList';
-import Header from './features/Header';
+import { memo } from "react";
 
-export default function ServerInfoPage() {
+import DomainNamesList from "./features/DomainNamesList";
+import Header from "./features/Header";
 
+const ServerInfoPage = memo(() => {
     return (
-        <>
-            <Header/>
-            <DomainNamesList/>
-        </>
+        <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6 lg:px-10">
+            <Header />
+            <DomainNamesList />
+        </div>
     );
-}
+});
+
+export default ServerInfoPage;

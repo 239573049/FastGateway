@@ -1,7 +1,7 @@
 "use client"
 
 import { PieChart, Pie, Cell, Legend } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, chartConfig } from "./chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./chart"
 import { cn } from "@/lib/utils"
 
 interface DonutChartProps {
@@ -16,7 +16,7 @@ interface DonutChartProps {
 }
 
 const defaultColors = [
-  chartConfig.primary,
+  "hsl(var(--primary))",
   "#68adee",
   "#1395ec", 
   "#0099ff",
@@ -41,6 +41,14 @@ export function DonutChart({
     )
   }
 
+  const config = data.reduce((acc, item, idx) => {
+    acc[item.name] = {
+      label: item.name,
+      color: colors[idx % colors.length],
+    }
+    return acc
+  }, {} as ChartConfig)
+
   const handleClick = (data: any) => {
     onValueChange?.(data)
   }
@@ -52,7 +60,7 @@ export function DonutChart({
           {label}
         </div>
       )}
-      <ChartContainer config={chartConfig} className="h-[200px]">
+      <ChartContainer config={config} className="h-[200px]">
         <PieChart>
           <ChartTooltip
             content={

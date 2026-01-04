@@ -1,7 +1,7 @@
 "use client"
 
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, chartConfig } from "./chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./chart"
 import { cn } from "@/lib/utils"
 
 interface LineChartProps {
@@ -17,7 +17,7 @@ interface LineChartProps {
 }
 
 const defaultColors = [
-  chartConfig.primary,
+  "hsl(var(--primary))",
   "#68adee",
   "#1395ec", 
   "#0099ff",
@@ -43,9 +43,17 @@ export function LineChart({
     )
   }
 
+  const config = categories.reduce((acc, category, idx) => {
+    acc[category] = {
+      label: category,
+      color: colors[idx % colors.length],
+    }
+    return acc
+  }, {} as ChartConfig)
+
   return (
     <div className={cn("w-full", className)}>
-      <ChartContainer config={chartConfig} className="h-[300px]">
+      <ChartContainer config={config} className="h-[300px]">
         <RechartsLineChart
           data={data}
           margin={{

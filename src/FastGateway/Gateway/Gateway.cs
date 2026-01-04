@@ -1,11 +1,8 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
-using Core.Entities;
+﻿using Core.Entities;
 using Core.Entities.Core;
 using FastGateway.Extensions;
 using FastGateway.Infrastructure;
+using FastGateway.Middleware;
 using FastGateway.Options;
 using FastGateway.Services;
 using FastGateway.Tunnels;
@@ -14,6 +11,12 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.WebSockets;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Net;
+using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
@@ -26,6 +29,7 @@ namespace FastGateway.Gateway;
 public static class Gateway
 {
     private const string Root = "Root";
+    private const string GatewayVersionHeader = "X-FastGateway-Version";
     private static readonly ConcurrentDictionary<string, WebApplication> GatewayWebApplications = new();
 
     private static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
@@ -227,6 +231,15 @@ public static class Gateway
                 options.AllowedOrigins.Add("*");
             });
 
+            builder.WebHost.ConfigureKestrel((kestrel =>
+            {
+                kestrel.RequestHeaderEncodingSelector = _ => Encoding.UTF8;
+                // and/or
+                kestrel.ResponseHeaderEncodingSelector = _ => Encoding.UTF8;
+                kestrel.Limits.MaxConcurrentUpgradedConnections = null;
+                kestrel.AddServerHeader = false;
+            }));
+
             builder.Services
                 .AddCors(options =>
                 {
@@ -249,6 +262,11 @@ public static class Gateway
 
             builder.Services.AddRequestTimeouts();
 
+            var gatewayVersion = typeof(Gateway).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                ?? typeof(Gateway).Assembly.GetName().Version?.ToString()
+                ?? "unknown";
+
             builder.Services
                 .AddReverseProxy()
                 .LoadFromMemory(routes, clusters)
@@ -264,6 +282,16 @@ public static class Gateway
                     else if (server.CopyRequestHost) context.AddOriginalHost();
 
                     if (!string.IsNullOrEmpty(prefix)) context.AddPathRemovePrefix(prefix);
+
+                    context.ResponseTransforms.Add(new ResponseFuncTransform((transformContext =>
+                    {
+                        var headers = transformContext.HttpContext.Response.Headers;
+                        headers.Remove("Server");
+                        headers["Server"] = "FastGateway";
+                        headers[GatewayVersionHeader] = gatewayVersion;
+
+                        return ValueTask.CompletedTask;
+                    })));
 
                     #region 静态站点
 
@@ -331,7 +359,10 @@ public static class Gateway
 
             app.UseRateLimitMiddleware(rateLimits);
 
-            if (server.EnableBlacklist || server.EnableWhitelist) app.UseBlacklistMiddleware(blacklistAndWhitelists);
+            // 黑名单默认启用（安全防护），白名单按服务开关控制
+            app.UseBlacklistMiddleware(blacklistAndWhitelists, enableBlacklist: true, enableWhitelist: server.EnableWhitelist);
+
+            app.UseAbnormalIpMonitoring(server.Id);
 
             GatewayWebApplications.TryAdd(server.Id, app);
 
@@ -406,8 +437,7 @@ public static class Gateway
         {
             // 设置ip
             var ip = context.Connection.RemoteIpAddress;
-            if (!context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-                context.Request.Headers["X-Forwarded-For"] = ip?.ToString();
+            context.Request.Headers["X-Forwarded-For"] = ip?.ToString();
 
             if (context.Request.IsHttps)
                 // TODO: 由于h3需要对应请求的端口，所以这里需要动态设置

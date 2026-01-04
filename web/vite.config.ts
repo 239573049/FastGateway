@@ -8,6 +8,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@animate-ui/components-animate-avatar-group": path.resolve(
+        __dirname,
+        "./src/components/animate-ui/components/animate/avatar-group.tsx",
+      ),
     },
   },
   server: {

@@ -11,6 +11,7 @@ const ServerInfoPage = lazy(() => import('./pages/server/info/page'))
 const BlackListPage = lazy(() => import('./pages/protect-config/blacklist'))
 const WhiteListPage = lazy(() => import('./pages/protect-config/whitelist'))
 const RateLimitPage = lazy(() => import('./pages/protect-config/rate-limit'))
+const AbnormalIpPage = lazy(() => import('./pages/protect-config/abnormal-ip'))
 const CertPage = lazy(() => import('./pages/cert/page'))
 const AboutPage = lazy(() => import('./pages/about/page'))
 const FileStoragePage = lazy(() => import('./pages/filestorage/page'))
@@ -74,6 +75,12 @@ const router = createBrowserRouter([
             path: 'protect-config/rate-limit',
             element: <Suspense fallback={<Loading></Loading>}>
               <RateLimitPage />
+            </Suspense>
+          },
+          {
+            path: 'protect-config/abnormal-ip',
+            element: <Suspense fallback={<Loading></Loading>}>
+              <AbnormalIpPage />
             </Suspense>
           },
           {

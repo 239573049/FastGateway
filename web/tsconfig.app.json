@@ -24,7 +24,10 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@animate-ui/components-animate-avatar-group": [
+        "./src/components/animate-ui/components/animate/avatar-group"
+      ]
     }
   },
   "include": ["src"]

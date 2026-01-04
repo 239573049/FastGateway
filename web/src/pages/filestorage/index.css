@@ -1,285 +1,406 @@
-/* Shadcn-inspired file storage layout */
+/* File storage: tree + multi-tab viewer */
 
-.file-storage-container {
-  min-height: calc(100vh - 96px);
+.fs-shell {
+  height: calc(100vh - 100px);
+  min-height: 520px;
   display: grid;
-  grid-template-columns: minmax(260px, 320px) 1fr;
-  gap: 1.5rem;
-  padding: 1.5rem;
+  grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 12px;
+  padding: 12px;
   background: var(--background);
 }
 
-.file-sidebar {
+.fs-panel {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-}
-
-.file-sidebar-card {
-  height: 100%;
-  border: none;
-  background: transparent;
-  box-shadow: none;
-}
-
-.file-sidebar-header {
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.75rem;
-}
-
-.file-sidebar-body {
-  padding: 0 0.75rem 0.75rem;
-  height: calc(100vh - 185px);
-  overflow-y: auto;
-}
-
-.file-tree-scroll {
-  min-height: 160px;
-}
-
-.file-tree-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.file-tree-skeleton > div {
-  height: 32px;
-  border-radius: var(--radius);
-  background: var(--muted);
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
-.file-tree-node {
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius);
-  transition: background 0.2s ease, color 0.2s ease;
-  color: var(--foreground);
-}
-
-.file-tree-node:hover {
-  background: hsl(var(--accent) / 0.1);
-  color: var(--accent-foreground);
-}
-
-.file-tree-node-selected {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-weight: 600;
-}
-
-.file-main-content {
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.file-main-inner {
+.fs-panel-header {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  height: 100%;
-}
-
-.file-header {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem 1.25rem;
-  display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  flex-wrap: wrap;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
-.file-search-pane {
+.fs-panel-title {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  flex: 1;
-  min-width: 220px;
-}
-
-.file-search-container {
-  position: relative;
-  flex: 1;
-  min-width: 200px;
-}
-
-.file-search-input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  padding-left: 2.6rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--background);
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
   color: var(--foreground);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.file-search-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary);
-}
-
-.file-filter-trigger {
-  min-width: 180px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--background);
-}
-
-.file-action-buttons {
+.fs-panel-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.file-selection-actions,
-.file-utility-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.file-path-display {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.5rem 0.75rem;
-  background: var(--card);
+.fs-menu-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
+}
+
+.fs-menu-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.fs-icon {
+  width: 16px;
+  height: 16px;
   color: var(--muted-foreground);
 }
 
-.file-path-badge {
-  border-radius: var(--radius);
-  background: var(--muted);
-  padding: 0.25rem 0.5rem;
+.fs-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px;
 }
 
-.file-grid-wrapper {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem;
-  flex: 1;
+.fs-viewer-body {
+  padding: 10px;
+}
+
+.fs-tree-files {
+  height: 100%;
+}
+
+.fs-tree-clickable {
+  cursor: pointer;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.fs-tree-selected {
+  background: var(--accent);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.fs-tree-clickable:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.fs-tree-status {
+  padding: 10px;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  gap: 8px;
 }
 
-.file-grid-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 0.4rem;
-}
-
-.file-grid-skeleton,
-.file-grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 1rem;
-}
-
-.file-grid-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--card);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.file-grid-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
-}
-
-.file-card-selected {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary);
-  background: hsl(var(--primary) / 0.07);
-}
-
-.file-grid-card-skeleton {
-  border-color: transparent;
-  background: hsl(var(--muted) / 0.35);
-}
-
-.file-grid-card-content {
-  display: flex;
-  flex-direction: column;
+.fs-tree-status-inline {
+  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  min-height: 160px;
+  gap: 8px;
+  padding: 8px 10px;
 }
 
-.file-empty-card {
-  width: 100%;
+.fs-tree-skeleton {
+  height: 32px;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--muted);
+  opacity: 0.65;
+  animation: fs-pulse 1.4s ease-in-out infinite;
+}
+
+.fs-tree-error {
+  border: 1px solid
+    color-mix(in oklab, var(--destructive) 25%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--destructive) 8%, transparent);
+}
+
+.fs-tree-error-text {
+  color: var(--muted-foreground);
+}
+
+.fs-empty {
+  height: 100%;
+  min-height: 180px;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
   background: var(--muted);
   color: var(--muted-foreground);
-}
-
-.file-empty-card-content {
-  width: 100%;
-  min-height: 220px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
   text-align: center;
+  gap: 6px;
+  padding: 18px;
 }
 
-.file-upload-modal {
+.fs-empty-title {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.fs-empty-subtitle {
+  font-size: 0.875rem;
+}
+
+.fs-tabs-root {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fs-tabs-list {
+  width: 100%;
+  justify-content: flex-start;
+  overflow: auto;
+}
+
+.fs-tabs-list [data-slot='tabs-highlight-item'] {
+  flex: 0 0 auto !important;
+}
+
+.fs-tab-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  min-width: 120px;
+  padding: 0 6px;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.fs-tab-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-tab-dirty {
+  margin-left: 4px;
+  color: var(--muted-foreground);
+}
+
+.fs-tab-close {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.fs-tab-close:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.fs-tab-close-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.fs-tab-content {
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+}
+
+.fs-editor-wrap {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fs-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--card);
+  background: var(--muted);
+}
+
+.fs-editor-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fs-editor-path {
+  display: inline-block;
+  max-width: 48vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+.fs-editor-dirty {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.fs-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.fs-editor-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.fs-editor-error {
+  border-color: color-mix(in oklab, var(--destructive) 25%, transparent);
+  background: color-mix(in oklab, var(--destructive) 8%, transparent);
+  color: var(--destructive);
+}
+
+.fs-editor {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  padding: 12px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    \"Liberation Mono\", \"Courier New\", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.fs-editor-input {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  padding: 12px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    \"Liberation Mono\", \"Courier New\", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: none;
+}
+
+.fs-spin {
+  width: 16px;
+  height: 16px;
+  animation: fs-spin 1s linear infinite;
+}
+
+/* Context menu (react-contexify) */
+.fs-context-menu.contexify {
+  /* Override react-contexify CSS variables to match app theme */
+  --contexify-menu-minWidth: 180px;
+  --contexify-menu-padding: 6px;
+  --contexify-menu-radius: var(--radius);
+  --contexify-menu-bgColor: var(--card);
+  --contexify-menu-shadow:
+    0 12px 32px color-mix(in oklab, black 18%, transparent),
+    0 4px 14px color-mix(in oklab, black 10%, transparent);
+  --contexify-separator-color: var(--border);
+  --contexify-separator-margin: 6px 4px;
+  --contexify-itemContent-padding: 8px 10px;
+  --contexify-activeItem-radius: calc(var(--radius) - 2px);
+  --contexify-item-color: var(--foreground);
+  --contexify-activeItem-color: var(--accent-foreground);
+  --contexify-activeItem-bgColor: var(--accent);
+  --contexify-rightSlot-color: var(--muted-foreground);
+  --contexify-activeRightSlot-color: var(--accent-foreground);
+  --contexify-arrow-color: var(--muted-foreground);
+  --contexify-activeArrow-color: var(--accent-foreground);
+
   border: 1px solid var(--border);
 }
 
-.file-upload-modal .file-grid-card {
-  margin-bottom: 0;
+.fs-context-menu .contexify_item:not(.contexify_item-disabled):hover
+  > .contexify_itemContent
+  .fs-context-menu-icon,
+.fs-context-menu .contexify_item:not(.contexify_item-disabled):focus
+  > .contexify_itemContent
+  .fs-context-menu-icon {
+  color: currentColor;
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 0.4;
-  }
+.fs-context-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
+.fs-context-menu-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+}
+
+.fs-context-menu-danger {
+  color: var(--destructive);
+}
+
+.fs-context-menu-danger .fs-context-menu-icon {
+  color: var(--destructive);
+}
+
+@keyframes fs-pulse {
+  0% {
+    opacity: 0.55;
+  }
   50% {
     opacity: 1;
   }
-
   100% {
-    opacity: 0.4;
+    opacity: 0.55;
+  }
+}
+
+@keyframes fs-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
 @media (max-width: 1024px) {
-  .file-storage-container {
+  .fs-shell {
     grid-template-columns: 1fr;
-    padding: 1rem;
-  }
-
-  .file-sidebar {
-    order: 2;
-  }
-
-  .file-grid-wrapper {
-    padding: 0.75rem;
-  }
-
-  .file-search-pane {
-    flex-direction: column;
-  }
-
-  .file-action-buttons {
-    justify-content: center;
+    grid-template-rows: 320px 1fr;
+    min-height: calc(100vh - 100px);
   }
 }

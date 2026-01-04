@@ -56,3 +56,17 @@ export interface RateLimit {
     endpointWhitelist: string[];
     ipWhitelist: string[];
 }
+
+export interface AbnormalIp {
+    ip: string;
+    windowErrorCount: number;
+    totalErrorCount: number;
+    firstSeen: string;
+    lastSeen: string;
+    lastErrorDescription?: string | null;
+    topErrorDescription?: string | null;
+    lastPath?: string | null;
+    lastMethod?: string | null;
+    lastStatusCode?: number | null;
+    lastServerId?: string | null;
+}

@@ -1,7 +1,7 @@
 "use client"
 
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, chartConfig } from "./chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "./chart"
 import { cn } from "@/lib/utils"
 
 interface BarChartProps {
@@ -11,16 +11,18 @@ interface BarChartProps {
   className?: string
   valueFormatter?: (value: number) => string
   colors?: string[]
+  categoryLabels?: Record<string, string>
   showGrid?: boolean
   showXAxis?: boolean
   showYAxis?: boolean
   barRadius?: number
   barSize?: number
   barGap?: number | string
+  stackId?: string
 }
 
 const defaultColors = [
-  chartConfig.primary,
+  "hsl(var(--primary))",
   "#68adee",
   "#1395ec", 
   "#0099ff",
@@ -34,12 +36,14 @@ export function BarChart({
   className,
   valueFormatter = (value) => value.toString(),
   colors = defaultColors,
+  categoryLabels,
   showGrid = false,
   showXAxis = false,
   showYAxis = true,
   barRadius = 3,
   barSize,
   barGap = 4,
+  stackId,
 }: BarChartProps) {
   if (!data || data.length === 0) {
     return (
@@ -49,9 +53,17 @@ export function BarChart({
     )
   }
 
+  const config = categories.reduce((acc, category, idx) => {
+    acc[category] = {
+      label: categoryLabels?.[category] ?? category,
+      color: colors[idx % colors.length],
+    }
+    return acc
+  }, {} as ChartConfig)
+
   return (
     <div className={cn("w-full", className)}>
-      <ChartContainer config={chartConfig} className="h-full w-full">
+      <ChartContainer config={config} className="h-full w-full">
         <RechartsBarChart
           data={data}
           margin={{
@@ -101,9 +113,10 @@ export function BarChart({
             <Bar
               key={category}
               dataKey={category}
+              stackId={stackId}
               fill={colors[index % colors.length]}
               radius={[barRadius, barRadius, barRadius, barRadius]}
-              minPointSize={5}
+              minPointSize={stackId ? 0 : 5}
               maxBarSize={barSize}
             />
           ))}

@@ -50,7 +50,7 @@ public sealed class Server
     /// <summary>
     /// 启用黑名单
     /// </summary>
-    public bool EnableBlacklist { get; set; }
+    public bool EnableBlacklist { get; set; } = true;
 
     /// <summary>
     /// 启用白名单 （白名单优先级高，设置了白名单则忽略黑名单）

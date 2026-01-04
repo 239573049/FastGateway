@@ -1,17 +1,25 @@
+import { Highlight, HighlightItem } from "@/components/animate-ui/primitives/effects/highlight";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+} from "@/components/animate-ui/components/ui/table";
+import { Button } from "@/components/animate-ui/components/ui/button";
+import { ChevronLeftIcon, ChevronRightIcon, Inbox } from "lucide-react";
+import type { Key, ReactNode } from "react";
 
-interface TableProps {
-    columns: any[];
-    dataSources: any[];
+type TableColumn<TData> = {
+    title: ReactNode;
+    dataIndex?: string;
+    key?: Key;
+    render?: (value: unknown, record: TData, index: number) => ReactNode;
+};
+
+interface TableProps<TData> {
+    columns: TableColumn<TData>[];
+    dataSources: TData[];
     onPaginationChange?: (page: number, pageSize: number) => void;
     total?: number;
     pageSize?: number;
@@ -22,7 +30,7 @@ interface TableProps {
     scrollX?: number | string;
 }
 
-function TableList(
+function TableList<TData>(
     {
         columns,
         dataSources,
@@ -32,7 +40,7 @@ function TableList(
         current = 1,
         loading,
         height = 500
-    }: TableProps
+    }: TableProps<TData>
 ) {
     const totalPages = Math.ceil(total / pageSize);
     const startItem = (current - 1) * pageSize + 1;
@@ -40,7 +48,7 @@ function TableList(
 
     if (loading) {
         return (
-            <div className="border rounded-lg p-8 bg-card shadow-sm">
+            <div className="border rounded-lg p-8 bg-card">
                 <div className="flex items-center justify-center space-x-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     <span className="text-muted-foreground font-medium">加载中...</span>
@@ -50,44 +58,63 @@ function TableList(
     }
 
     return (
-        <div className="border rounded-lg bg-card shadow-sm overflow-hidden">
+        <div className="border rounded-lg bg-card overflow-hidden">
             <div className="overflow-auto" style={{ maxHeight: height }}>
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-muted/40 hover:bg-muted/40">
-                            {columns.map((column, index) => (
-                                <TableHead key={column.key || index} className="font-semibold text-foreground">
-                                    {column.title}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {dataSources.length === 0 ? (
-                            <TableRow className="hover:bg-transparent">
-                                <TableCell colSpan={columns.length} className="text-center py-12 text-muted-foreground">
-                                    <div className="flex flex-col items-center space-y-2">
-                                        <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
-                                            <span className="text-xl">📋</span>
-                                        </div>
-                                        <p className="font-medium">暂无数据</p>
-                                        <p className="text-sm">还没有任何记录</p>
-                                    </div>
-                                </TableCell>
+                <Highlight
+                    controlledItems
+                    mode="parent"
+                    hover
+                    click={false}
+                    className="bg-muted/50 rounded-md pointer-events-none"
+                >
+                    <table className="w-full caption-bottom text-sm">
+                        <TableHeader>
+                            <TableRow className="bg-muted/40 hover:bg-muted/40">
+                                {columns.map((column, index) => (
+                                    <TableHead key={column.key || index} className="font-semibold text-foreground">
+                                        {column.title}
+                                    </TableHead>
+                                ))}
                             </TableRow>
-                        ) : (
-                            dataSources.map((row, rowIndex) => (
-                                <TableRow key={row.id || rowIndex} className="hover:bg-muted/50 transition-colors duration-200">
-                                    {columns.map((column, colIndex) => (
-                                        <TableCell key={column.key || colIndex} className="py-3">
-                                            {column.render ? column.render(row[column.dataIndex], row, rowIndex) : row[column.dataIndex]}
-                                        </TableCell>
-                                    ))}
+                        </TableHeader>
+                        <TableBody>
+                            {dataSources.length === 0 ? (
+                                <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={columns.length} className="text-center py-12 text-muted-foreground">
+                                        <div className="flex flex-col items-center space-y-2">
+                                            <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
+                                                <Inbox className="h-5 w-5 text-muted-foreground" />
+                                            </div>
+                                            <p className="font-medium">暂无数据</p>
+                                            <p className="text-sm">还没有任何记录</p>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ) : (
+                                dataSources.map((row, rowIndex) => {
+                                    const record = row as unknown as Record<string, unknown>;
+                                    const key = String(record.id ?? rowIndex);
+                                    return (
+                                        <HighlightItem key={key} value={key} asChild>
+                                            <TableRow className="hover:bg-transparent transition-colors duration-200">
+                                                {columns.map((column, colIndex) => {
+                                                    const cellValue = column.dataIndex ? record[column.dataIndex] : undefined;
+                                                    return (
+                                                        <TableCell key={column.key || colIndex} className="py-3">
+                                                            {column.render
+                                                                ? column.render(cellValue, row, rowIndex)
+                                                                : (cellValue as ReactNode)}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                            </TableRow>
+                                        </HighlightItem>
+                                    );
+                                })
+                            )}
+                        </TableBody>
+                    </table>
+                </Highlight>
             </div>
             
             {/* 分页 */}

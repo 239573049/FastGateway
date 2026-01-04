@@ -7,44 +7,81 @@ namespace FastGateway.Services;
 
 public static class BlacklistAndWhitelistService
 {
-    public static WebApplication UseBlacklistMiddleware(this WebApplication app,
-        List<BlacklistAndWhitelist> blacklistAndWhitelists)
+    private sealed record IpPolicySnapshot(string[] Whitelist, string[] Blacklist);
+
+    private static IpPolicySnapshot _snapshot = new(Array.Empty<string>(), Array.Empty<string>());
+
+    public static void RefreshCache(IEnumerable<BlacklistAndWhitelist> blacklistAndWhitelists)
     {
-        var whitelist = blacklistAndWhitelists.Where(x => x.Enable && !x.IsBlacklist).ToArray();
-
-        if (whitelist.Length > 1)
+        if (blacklistAndWhitelists == null)
         {
-            app.Use(async (context, next) =>
-            {
-                var ip = string.Empty;
-                if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor)) ip = forwardedFor;
+            Volatile.Write(ref _snapshot, new IpPolicySnapshot(Array.Empty<string>(), Array.Empty<string>()));
+            return;
+        }
 
-                // 判断是否在白名单中
-                if (whitelist.Any(x => x.Ips.Any(i => IpHelper.UnsafeCheckIpInIpRange(ip, i)))) await next(context);
+        var whitelist = blacklistAndWhitelists
+            .Where(x => x is { Enable: true, IsBlacklist: false })
+            .SelectMany(x => x.Ips ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var blacklist = blacklistAndWhitelists
+            .Where(x => x is { Enable: true, IsBlacklist: true })
+            .SelectMany(x => x.Ips ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Volatile.Write(ref _snapshot, new IpPolicySnapshot(whitelist, blacklist));
+    }
+
+    public static void RefreshCache(ConfigurationService configService)
+    {
+        RefreshCache(configService.GetBlacklistAndWhitelists());
+    }
+
+    public static WebApplication UseBlacklistMiddleware(this WebApplication app,
+        List<BlacklistAndWhitelist> blacklistAndWhitelists,
+        bool enableBlacklist,
+        bool enableWhitelist)
+    {
+        RefreshCache(blacklistAndWhitelists);
+
+        app.Use(async (context, next) =>
+        {
+            var ip = ClientIpHelper.GetClientIp(context);
+            if (string.IsNullOrWhiteSpace(ip))
+            {
+                await next(context);
+                return;
+            }
+
+            var snapshot = Volatile.Read(ref _snapshot);
+
+            if (enableWhitelist && snapshot.Whitelist.Length > 0)
+            {
+                if (snapshot.Whitelist.Any(range => IpHelper.UnsafeCheckIpInIpRange(ip, range)))
+                {
+                    await next(context);
+                    return;
+                }
 
                 context.Response.StatusCode = 403;
-            });
-        }
-        else
-        {
-            var blacklist = blacklistAndWhitelists.Where(x => x.Enable && x.IsBlacklist).ToArray();
+                return;
+            }
 
-            if (blacklist.Length > 1)
-                app.Use(async (context, next) =>
-                {
-                    var ip = string.Empty;
-                    if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor)) ip = forwardedFor;
+            if (enableBlacklist && snapshot.Blacklist.Length > 0 &&
+                snapshot.Blacklist.Any(range => IpHelper.UnsafeCheckIpInIpRange(ip, range)))
+            {
+                context.Response.StatusCode = 403;
+                return;
+            }
 
-                    // 判断是否在黑名单中
-                    if (blacklist.Any(x => x.Ips.Any(i => IpHelper.UnsafeCheckIpInIpRange(ip, i))))
-                    {
-                        context.Response.StatusCode = 403;
-                        return;
-                    }
-
-                    await next(context);
-                });
-        }
+            await next(context);
+        });
 
         return app;
     }
@@ -67,6 +104,7 @@ public static class BlacklistAndWhitelistService
                 .Distinct().ToList();
 
             configService.AddBlacklistAndWhitelist(whitelist);
+            RefreshCache(configService);
         }).WithDescription("创建黑白名单").WithDisplayName("创建黑白名单").WithTags("黑白名单");
 
         domain.MapGet(string.Empty, (ConfigurationService configService, bool isBlacklist, int page, int pageSize) =>
@@ -87,7 +125,11 @@ public static class BlacklistAndWhitelistService
             .WithTags("黑白名单");
 
         domain.MapDelete("{id}",
-                (ConfigurationService configService, long id) => { configService.DeleteBlacklistAndWhitelist(id); })
+                (ConfigurationService configService, long id) =>
+                {
+                    configService.DeleteBlacklistAndWhitelist(id);
+                    RefreshCache(configService);
+                })
             .WithDescription("删除黑白名单").WithDisplayName("删除黑白名单").WithTags("黑白名单");
 
         domain.MapPut("{id}", (ConfigurationService configService, long id, BlacklistAndWhitelist blacklist) =>
@@ -96,6 +138,7 @@ public static class BlacklistAndWhitelistService
 
             blacklist.Id = id;
             configService.UpdateBlacklistAndWhitelist(blacklist);
+            RefreshCache(configService);
         }).WithDescription("更新黑白名单").WithDisplayName("更新黑白名单").WithTags("黑白名单");
 
 

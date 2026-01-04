@@ -1,1056 +1,1431 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { toast } from "sonner";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import {
-    getDrives,
-    getDirectory,
-    deleteFile,
-    uploadFile,
-    downloadFile,
-    deleteMultipleFiles,
-    moveFile,
-    copyFile,
-    unzipFiles,
-    createZipFile,
-    createZipFromPath,
-} from "@/services/FileStorageService";
-
-import { bytesToSize } from "@/utils/byte";
+  File,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileImage,
+  FileJson,
+  FilePlus,
+  FileSpreadsheet,
+  FileText,
+  FileVideo,
+  FolderPlus,
+  HardDrive,
+  Loader2,
+  PencilLine,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import {
-    Folder,
-    File,
-    HardDrive,
-    Trash2,
-    Download,
-    Copy,
-    Scissors,
-    Filter,
-    RefreshCw,
-    Edit3,
-    FileArchive,
-    Upload,
-    Search,
-    MoreVertical,
-    Eye,
-    EyeOff,
-    Inbox,
-    ChevronRight,
-    ChevronDown,
-    FolderOpen
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import Rename from "./features/Rename";
-import CreateDirectory from "./features/CreateDirectory";
-import Property from "./features/Property";
+  oneDark,
+  oneLight,
+} from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Item, Menu, Separator, useContextMenu } from 'react-contexify';
+import 'react-contexify/dist/ReactContexify.css';
 
-interface TreeNode {
-    title: string;
-    key: string;
-    isLeaf?: boolean;
-    children?: TreeNode[];
-    drive?: string;
-    isDrive?: boolean;
-    totalSize?: number;
-    isReady?: boolean;
-    fullName?: string;
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/animate-ui/components/radix/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  FileItem as TreeFileItem,
+  Files,
+  FolderContent,
+  FolderItem,
+  FolderTrigger,
+} from '@/components/animate-ui/components/radix/files';
+import { useTheme } from '@/components/theme-provider';
+import {
+  createDirectory,
+  createFile,
+  deleteFile,
+  getDirectory,
+  getDrives,
+  getFileContent,
+  renameFile,
+  saveFileContent,
+  type DirectoryListing,
+  type DriveInfo,
+} from '@/services/FileStorageService';
+
+import './index.css';
+
+const MAX_OPEN_BYTES = 5 * 1024 * 1024;
+const TREE_CONTEXT_MENU_ID = 'fs-tree-context-menu';
+
+type NodeType = 'drive' | 'directory' | 'file';
+type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
+
+function normalizeExtension(extension?: string): string {
+  if (!extension) return '';
+  const ext = extension.trim().toLowerCase();
+  if (!ext) return '';
+  return ext.startsWith('.') ? ext : `.${ext}`;
 }
 
-interface FileItem {
-    title: string;
-    key: string;
-    isLeaf: boolean;
-    drive: string;
-    length: number;
-    isHidden: boolean;
-    creationTime: string;
-    isSystem: boolean;
-    fullName: string;
-    extension: string;
+function languageFromExtension(extension?: string): string {
+  const ext = normalizeExtension(extension);
+  switch (ext) {
+    case '.c':
+    case '.h':
+      return 'c';
+    case '.cc':
+    case '.cpp':
+    case '.cxx':
+    case '.hpp':
+    case '.hxx':
+      return 'cpp';
+    case '.go':
+      return 'go';
+    case '.java':
+      return 'java';
+    case '.kt':
+    case '.kts':
+      return 'kotlin';
+    case '.php':
+      return 'php';
+    case '.py':
+      return 'python';
+    case '.rb':
+      return 'ruby';
+    case '.rs':
+      return 'rust';
+    case '.ts':
+      return 'typescript';
+    case '.tsx':
+      return 'tsx';
+    case '.js':
+    case '.mjs':
+    case '.cjs':
+      return 'javascript';
+    case '.jsx':
+      return 'jsx';
+    case '.json':
+      return 'json';
+    case '.yml':
+    case '.yaml':
+      return 'yaml';
+    case '.md':
+    case '.markdown':
+      return 'markdown';
+    case '.css':
+      return 'css';
+    case '.scss':
+      return 'scss';
+    case '.html':
+    case '.htm':
+      return 'html';
+    case '.xml':
+      return 'xml';
+    case '.sql':
+      return 'sql';
+    case '.cs':
+      return 'csharp';
+    case '.dockerfile':
+      return 'docker';
+    case '.toml':
+      return 'toml';
+    case '.sh':
+      return 'bash';
+    case '.ps1':
+      return 'powershell';
+    case '.ini':
+      return 'ini';
+    case '.env':
+      return 'ini';
+    default:
+      return 'text';
+  }
+}
+
+function iconFromFileName(fileName: string, extension?: string) {
+  const name = fileName.trim().toLowerCase();
+  const ext =
+    normalizeExtension(extension) ||
+    normalizeExtension(name.includes('.') ? `.${name.split('.').pop()}` : '');
+
+  if (name === 'dockerfile' || name.endsWith('.dockerfile')) return FileCode;
+  if (name === 'makefile') return FileCode;
+  if (name === 'license' || name.startsWith('license.')) return FileText;
+  if (name === 'readme' || name.startsWith('readme.')) return FileText;
+  if (name.startsWith('.')) return FileCode;
+
+  if (!ext) return File;
+
+  if (ext === '.json') return FileJson;
+
+  if (
+    ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.ico'].includes(ext)
+  ) {
+    return FileImage;
+  }
+
+  if (['.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg'].includes(ext)) {
+    return FileAudio;
+  }
+
+  if (['.mp4', '.mov', '.mkv', '.webm', '.avi'].includes(ext)) {
+    return FileVideo;
+  }
+
+  if (['.zip', '.7z', '.rar', '.tar', '.gz', '.bz2'].includes(ext)) {
+    return FileArchive;
+  }
+
+  if (['.csv', '.xls', '.xlsx'].includes(ext)) {
+    return FileSpreadsheet;
+  }
+
+  if (['.pdf', '.doc', '.docx', '.rtf', '.odt', '.ppt', '.pptx', '.key'].includes(ext)) {
+    return FileText;
+  }
+
+  if (
+    [
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.mjs',
+      '.cjs',
+      '.vue',
+      '.svelte',
+      '.astro',
+      '.go',
+      '.py',
+      '.java',
+      '.kt',
+      '.kts',
+      '.rs',
+      '.rb',
+      '.php',
+      '.c',
+      '.h',
+      '.cc',
+      '.cpp',
+      '.cxx',
+      '.hpp',
+      '.hxx',
+      '.yml',
+      '.yaml',
+      '.toml',
+      '.ini',
+      '.env',
+      '.config',
+      '.conf',
+      '.cfg',
+      '.properties',
+      '.gradle',
+      '.csproj',
+      '.sln',
+      '.vbproj',
+      '.fsproj',
+      '.css',
+      '.scss',
+      '.less',
+      '.html',
+      '.htm',
+      '.xml',
+      '.cshtml',
+      '.razor',
+      '.csx',
+      '.cs',
+      '.sql',
+      '.resx',
+      '.props',
+      '.targets',
+      '.sh',
+      '.ps1',
+      '.bat',
+      '.cmd',
+      '.dockerfile',
+    ].includes(ext)
+  ) {
+    return FileCode;
+  }
+
+  if (['.md', '.markdown', '.txt', '.log'].includes(ext)) {
+    return FileText;
+  }
+
+  return File;
+}
+
+function dirname(path: string): string {
+  const trimmed = path.replace(/[\\/]+$/, '');
+  const idx = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+  if (idx === -1) return path;
+  const dir = trimmed.slice(0, idx);
+  if (/^[a-zA-Z]:$/.test(dir)) return `${dir}\\`;
+  return dir || path;
+}
+
+function joinPath(directory: string, name: string): string {
+  if (!directory) return name;
+  const separator = directory.includes('\\') ? '\\' : '/';
+  if (directory.endsWith('\\') || directory.endsWith('/')) return `${directory}${name}`;
+  return `${directory}${separator}${name}`;
+}
+
+function isPathEqualOrUnder(path: string, prefix: string): boolean {
+  if (path === prefix) return true;
+  return path.startsWith(`${prefix}\\`) || path.startsWith(`${prefix}/`);
+}
+
+function replacePathPrefix(path: string, oldPrefix: string, newPrefix: string): string {
+  if (!oldPrefix) return path;
+  if (path === oldPrefix) return newPrefix;
+  if (path.startsWith(`${oldPrefix}\\`) || path.startsWith(`${oldPrefix}/`)) {
+    return `${newPrefix}${path.slice(oldPrefix.length)}`;
+  }
+  return path;
+}
+
+type FsNode = {
+  type: NodeType;
+  name: string;
+  path: string;
+  drive: string;
+  extension?: string;
+  size?: number;
+  loadState?: LoadState;
+  error?: string;
+  children?: FsNode[];
+};
+
+type OpenTab = {
+  id: string;
+  title: string;
+  path: string;
+  drive: string;
+  extension?: string;
+  language: string;
+  content: string;
+  draft: string;
+  loadState: LoadState;
+  error?: string;
+  mode: 'view' | 'edit';
+  isDirty: boolean;
+  saving: boolean;
+};
+
+function updateNodeByPath(
+  nodes: FsNode[],
+  path: string,
+  updater: (node: FsNode) => FsNode,
+): FsNode[] {
+  return nodes.map((node) => {
+    if (node.path === path) return updater(node);
+    if (!node.children?.length) return node;
+    return { ...node, children: updateNodeByPath(node.children, path, updater) };
+  });
+}
+
+function findNodeByPath(nodes: FsNode[], path: string): FsNode | undefined {
+  for (const node of nodes) {
+    if (node.path === path) return node;
+    if (!node.children?.length) continue;
+    const found = findNodeByPath(node.children, path);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function toChildren(listing: DirectoryListing): FsNode[] {
+  const folders: FsNode[] = listing.directories.map((dir) => ({
+    type: 'directory',
+    name: dir.name,
+    path: dir.fullName,
+    drive: dir.drive,
+    loadState: 'idle',
+  }));
+
+  const files: FsNode[] = listing.files.map((file) => ({
+    type: 'file',
+    name: file.name,
+    path: file.fullName,
+    drive: file.drive,
+    extension: file.extension,
+    size: file.length,
+  }));
+
+  folders.sort((a, b) => a.name.localeCompare(b.name));
+  files.sort((a, b) => a.name.localeCompare(b.name));
+
+  return [...folders, ...files];
 }
 
 const FileStoragePage: React.FC = () => {
-    // 状态管理
-    const [property, setProperty] = useState<any>();
-    const [treeData, setTreeData] = useState<TreeNode[]>([]);
-    const [currentData, setCurrentData] = useState<FileItem[]>([]);
-    const [filteredData, setFilteredData] = useState<FileItem[]>([]);
-    const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
-    const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
-    const [selectedRows, setSelectedRows] = useState<React.Key[]>([]);
-    const [searchTerm, setSearchTerm] = useState<string>("");
-    const [fileFilter, setFileFilter] = useState<'all' | 'files' | 'folders'>('all');
-    const [isLoading, setIsLoading] = useState(false);
-    const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
-    const [clipboard, setClipboard] = useState<{ type: 'copy' | 'cut', items: FileItem[] } | null>(null);
-    const [loadedDirectories, setLoadedDirectories] = useState<Set<string>>(new Set());
-    const [expandedKeys, setExpandedKeys] = useState<Set<React.Key>>(new Set());
-    
-    // Additional state variables for missing functionality
-    const [uploadVisible, setUploadVisible] = useState(false);
-    const [createDirectoryVisible, setCreateDirectoryVisible] = useState(false);
-    const [uploadFileList, setUploadFileList] = useState<File[]>([]);
-    const [renameInput, setRenameInput] = useState({
-        visible: false,
-        id: "",
-        value: "",
-        isFile: false,
-        path: "",
-        drive: "",
-    });
+  const { theme } = useTheme();
+  const resolvedTheme = useMemo(() => {
+    if (typeof window === 'undefined') return 'light';
+    if (theme === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return theme;
+  }, [theme]);
+  const syntaxStyle = useMemo(() => {
+    const base = resolvedTheme === 'dark' ? oneDark : oneLight;
+    const preKey = 'pre[class*="language-"]';
+    const codeKey = 'code[class*="language-"]';
 
-    // 过滤和排序数据
-    useEffect(() => {
-        let filtered = [...currentData];
+    return {
+      ...base,
+      [preKey]: {
+        ...(base as any)[preKey],
+        background: 'transparent',
+      },
+      [codeKey]: {
+        ...(base as any)[codeKey],
+        background: 'transparent',
+      },
+    };
+  }, [resolvedTheme]);
 
-        // 文件类型过滤
-        if (fileFilter === 'files') {
-            filtered = filtered.filter(item => item.isLeaf);
-        } else if (fileFilter === 'folders') {
-            filtered = filtered.filter(item => !item.isLeaf);
+  const [tree, setTree] = useState<FsNode[]>([]);
+  const [openFolders, setOpenFolders] = useState<string[]>([]);
+  const [tabs, setTabs] = useState<OpenTab[]>([]);
+  const [activeTab, setActiveTab] = useState<string>('');
+  const [loadingDrives, setLoadingDrives] = useState(false);
+  const [selectedPath, setSelectedPath] = useState<string>('');
+  const { show: showTreeMenu } = useContextMenu({ id: TREE_CONTEXT_MENU_ID });
+
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [createFileOpen, setCreateFileOpen] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [creatingFile, setCreatingFile] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFileName, setNewFileName] = useState('');
+  const [newFileContent, setNewFileContent] = useState('');
+
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<FsNode | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const refreshDrives = useCallback(async () => {
+    setLoadingDrives(true);
+    try {
+      const res = await getDrives();
+      const drives = res?.data ?? [];
+
+      const driveNodes: FsNode[] = drives.map((drive: DriveInfo) => ({
+        type: 'drive',
+        name: drive.name,
+        path: drive.name,
+        drive: drive.name,
+        loadState: 'idle',
+      }));
+
+      setTree(driveNodes);
+      setOpenFolders(driveNodes.length ? [driveNodes[0].path] : []);
+      setSelectedPath(driveNodes.length ? driveNodes[0].path : '');
+    } catch (error: any) {
+      toast.error(`获取盘符失败: ${error?.message ?? String(error)}`);
+      setTree([]);
+      setOpenFolders([]);
+      setSelectedPath('');
+    } finally {
+      setLoadingDrives(false);
+    }
+  }, []);
+
+  const loadFolderChildren = useCallback(async (node: FsNode, force = false) => {
+    if (node.type === 'file') return;
+    if (!force && node.loadState && node.loadState !== 'idle') return;
+
+    setTree((prev) =>
+      updateNodeByPath(prev, node.path, (n) => ({
+        ...n,
+        loadState: 'loading',
+        error: undefined,
+      })),
+    );
+
+    try {
+      const res = await getDirectory(node.path, node.drive);
+      if (!res?.success) {
+        throw new Error(res?.message || '加载目录失败');
+      }
+
+      const listing = res.data ?? { directories: [], files: [] };
+      const children = toChildren(listing);
+
+      setTree((prev) =>
+        updateNodeByPath(prev, node.path, (n) => ({
+          ...n,
+          children,
+          loadState: 'loaded',
+          error: undefined,
+        })),
+      );
+    } catch (error: any) {
+      setTree((prev) =>
+        updateNodeByPath(prev, node.path, (n) => ({
+          ...n,
+          loadState: 'error',
+          error: error?.message ?? String(error),
+        })),
+      );
+    }
+  }, []);
+
+  const openFile = useCallback(
+    async (node: FsNode) => {
+      if (node.type !== 'file') return;
+
+      setSelectedPath(node.path);
+
+      if (typeof node.size === 'number' && node.size > MAX_OPEN_BYTES) {
+        toast.error('文件超过 5MB，无法打开');
+        return;
+      }
+
+      const extension =
+        normalizeExtension(node.extension) ||
+        normalizeExtension(node.name.includes('.') ? `.${node.name.split('.').pop()}` : '');
+      const language = languageFromExtension(extension);
+
+      const existing = tabs.find((t) => t.id === node.path);
+      if (existing) {
+        setActiveTab(existing.id);
+        return;
+      }
+
+      const tab: OpenTab = {
+        id: node.path,
+        title: node.name,
+        path: node.path,
+        drive: node.drive,
+        extension: extension || undefined,
+        language,
+        content: '',
+        draft: '',
+        loadState: 'loading',
+        mode: 'view',
+        isDirty: false,
+        saving: false,
+      };
+
+      setTabs((prev) => [...prev, tab]);
+      setActiveTab(tab.id);
+
+      try {
+        const res = await getFileContent(node.path, node.drive);
+        if (!res?.success) {
+          throw new Error(res?.message || '读取文件失败');
         }
 
-        // 搜索过滤
-        if (searchTerm) {
-            filtered = filtered.filter(item =>
-                item.title.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        // 排序
-        filtered.sort((a, b) => {
-            // 文件夹优先
-            if (!a.isLeaf && b.isLeaf) return -1;
-            if (a.isLeaf && !b.isLeaf) return 1;
-
-            return 0;
-        });
-
-        setFilteredData(filtered);
-    }, [currentData, searchTerm, fileFilter]);
-
-    // 初始化
-    const init = useCallback(() => {
-        setTreeData([]);
-        setIsLoading(true);
-        getDrives()
-            .then((drives: any) => {
-                const driveNodes = drives.data.map((drive: any) => ({
-                    title: drive.name,
-                    key: drive.name,
-                    isLeaf: false,
-                    totalSize: drive.totalSize,
-                    isReady: drive.isReady,
-                    drive: drive.name,
-                    isDrive: true,
-                }));
-                setTreeData(driveNodes);
-            })
-            .catch((error: any) => {
-                toast.error(`获取盘符失败: ${error.message}`);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, []);
-
-    // 加载目录内容
-    const loadDirectoryContent = useCallback((node: any) => {
-        if (!node) {
-            setCurrentData([]);
-            return;
-        }
-
-        if (node.isDrive || !node.isLeaf) {
-            // 检查缓存，避免重复调用
-            const cacheKey = `${node.key}_${node.drive}`;
-            if (loadedDirectories.has(cacheKey)) {
-                return; // 已加载过，直接返回
-            }
-
-            setIsLoading(true);
-            getDirectory(node.key, node.drive)
-                .then((result: any) => {
-                    if (!result.success) {
-                        toast.error(`加载目录失败: ${result.message}`);
-                        return;
-                    }
-                    const { directories, files } = result.data;
-                    const data: FileItem[] = [];
-
-                    directories.forEach((dir: any) => {
-                        data.push({
-                            title: dir.name,
-                            key: `${dir.fullName}`,
-                            isLeaf: false,
-                            drive: dir.drive,
-                            length: dir.length,
-                            isHidden: dir.isHidden,
-                            creationTime: dir.creationTime,
-                            isSystem: dir.isSystem,
-                            fullName: dir.fullName,
-                            extension: dir.extension,
-                        });
-                    });
-
-                    files.forEach((file: any) => {
-                        data.push({
-                            title: file.name,
-                            key: `${file.fullName}`,
-                            isLeaf: true,
-                            drive: file.drive,
-                            length: file.length,
-                            isHidden: file.isHidden,
-                            creationTime: file.creationTime,
-                            isSystem: file.isSystem,
-                            fullName: file.fullName,
-                            extension: file.extension,
-                        });
-                    });
-
-                    setCurrentData(data);
-                    // 标记为已加载
-                    setLoadedDirectories(prev => new Set([...prev, cacheKey]));
-                })
-                .catch((error: any) => {
-                    toast.error(`加载目录失败: ${error.message}`);
-                })
-                .finally(() => {
-                    setIsLoading(false);
-                });
-        }
-    }, [loadedDirectories]);
-
-    // 刷新当前目录
-    const refreshCurrentDirectory = useCallback(() => {
-        if (selectedNode) {
-            loadDirectoryContent(selectedNode);
-        } else {
-            init();
-        }
-    }, [selectedNode]);
-
-    // 文件下载
-    const handleFileDownload = useCallback(async (file: FileItem) => {
-        setDownloadingFile(file.key);
-        try {
-            const blob = await downloadFile(file.key, file.drive);
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = file.title;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            toast.success('下载完成');
-        } catch (error: any) {
-            toast.error(`下载失败: ${error.message}`);
-        } finally {
-            setDownloadingFile(null);
-        }
-    }, []);
-
-    // 批量删除
-    const handleDelete = useCallback(async (items: FileItem[]) => {
-        try {
-            if (items.length === 1) {
-                await deleteFile(items[0].key, items[0].drive);
-            } else {
-                await deleteMultipleFiles(items.map(item => ({ path: item.key, drives: item.drive })));
-            }
-            toast.success('删除成功');
-            refreshCurrentDirectory();
-            setSelectedRows([]);
-        } catch (error: any) {
-            toast.error(`删除失败: ${error.message}`);
-        }
-    }, [refreshCurrentDirectory]);
-
-    // 复制文件
-    const handleCopy = useCallback((items: FileItem[]) => {
-        setClipboard({ type: 'copy', items });
-        toast.success(`已复制 ${items.length} 个项目`);
-    }, []);
-
-    // 剪切文件
-    const handleCut = useCallback((items: FileItem[]) => {
-        setClipboard({ type: 'cut', items });
-        toast.success(`已剪切 ${items.length} 个项目`);
-    }, []);
-
-    // 粘贴文件
-    const handlePaste = useCallback(async (targetItem: any) => {
-        if (!clipboard) return;
-
-        try {
-            const targetPath = targetItem.key;
-            for (const item of clipboard.items) {
-                if (clipboard.type === 'copy') {
-                    await copyFile(item.key, targetPath, item.drive);
-                } else {
-                    await moveFile(item.key, targetPath, item.drive);
+        const content = res.data?.content ?? '';
+        setTabs((prev) =>
+          prev.map((t) =>
+            t.id === tab.id
+              ? {
+                  ...t,
+                  content,
+                  draft: content,
+                  loadState: 'loaded',
+                  mode: 'view',
+                  isDirty: false,
                 }
-            }
-            toast.success(`${clipboard.type === 'copy' ? '复制' : '移动'}完成`);
-            if (clipboard.type === 'cut') {
-                setClipboard(null);
-            }
-            refreshCurrentDirectory();
-        } catch (error: any) {
-            toast.error(`操作失败: ${error.message}`);
+              : t,
+          ),
+        );
+      } catch (error: any) {
+        setTabs((prev) =>
+          prev.map((t) =>
+            t.id === tab.id
+              ? {
+                  ...t,
+                  loadState: 'error',
+                  error: error?.message ?? String(error),
+                }
+              : t,
+          ),
+        );
+      }
+    },
+    [tabs],
+  );
+
+  const closeTab = useCallback((tabId: string) => {
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.id === tabId);
+      if (idx === -1) return prev;
+
+      const closing = prev[idx];
+      if (closing?.isDirty) {
+        const ok = window.confirm('该文件有未保存的修改，确定关闭吗？');
+        if (!ok) return prev;
+      }
+
+      const nextTabs = prev.filter((t) => t.id !== tabId);
+      setActiveTab((current) => {
+        if (current !== tabId) return current;
+        if (nextTabs.length === 0) return '';
+        const nextIndex = Math.min(idx, nextTabs.length - 1);
+        return nextTabs[nextIndex].id;
+      });
+
+      return nextTabs;
+    });
+  }, []);
+
+  const setTabMode = useCallback((tabId: string, mode: OpenTab['mode']) => {
+    setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, mode } : t)));
+  }, []);
+
+  const discardTabChanges = useCallback((tabId: string) => {
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === tabId
+          ? { ...t, draft: t.content, isDirty: false, mode: 'view' }
+          : t,
+      ),
+    );
+  }, []);
+
+  const updateTabDraft = useCallback((tabId: string, draft: string) => {
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === tabId ? { ...t, draft, isDirty: draft !== t.content } : t,
+      ),
+    );
+  }, []);
+
+  const saveTab = useCallback(
+    async (tabId: string) => {
+      const tab = tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      if (tab.loadState !== 'loaded') return;
+      if (!tab.isDirty) return;
+      if (tab.saving) return;
+
+      const nextSize = new Blob([tab.draft]).size;
+      if (nextSize > MAX_OPEN_BYTES) {
+        toast.error('内容超过 5MB，无法保存');
+        return;
+      }
+
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tabId ? { ...t, saving: true } : t)),
+      );
+
+      try {
+        const res = await saveFileContent(tab.path, tab.drive, tab.draft);
+        if (!res?.success) throw new Error(res?.message || '保存失败');
+
+        setTabs((prev) =>
+          prev.map((t) =>
+            t.id === tabId
+              ? {
+                  ...t,
+                  content: t.draft,
+                  isDirty: false,
+                  saving: false,
+                }
+              : t,
+          ),
+        );
+        toast.success('保存成功');
+      } catch (error: any) {
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tabId ? { ...t, saving: false } : t)),
+        );
+        toast.error(`保存失败: ${error?.message ?? String(error)}`);
+      }
+    },
+    [tabs],
+  );
+
+  const targetDirectory = useMemo(() => {
+    const fallback = tree[0];
+    const selected = selectedPath ? findNodeByPath(tree, selectedPath) : undefined;
+
+    if (!selected) {
+      if (!fallback) return null;
+      return { path: fallback.path, drive: fallback.drive };
+    }
+
+    if (selected.type === 'file') {
+      return { path: dirname(selected.path), drive: selected.drive || fallback?.drive || '' };
+    }
+
+    return { path: selected.path, drive: selected.drive };
+  }, [tree, selectedPath]);
+
+  const refreshDirectoryNode = useCallback(
+    (path: string) => {
+      setOpenFolders((prev) => (prev.includes(path) ? prev : [...prev, path]));
+
+      const node = findNodeByPath(tree, path);
+      if (node && node.type !== 'file') {
+        loadFolderChildren(node, true);
+        return;
+      }
+
+      refreshDrives();
+    },
+    [tree, loadFolderChildren, refreshDrives],
+  );
+
+  const openCreateFolderForSelection = useCallback(() => {
+    setNewFolderName('');
+    setCreateFolderOpen(true);
+  }, []);
+
+  const openCreateFileForSelection = useCallback(() => {
+    setNewFileName('');
+    setNewFileContent('');
+    setCreateFileOpen(true);
+  }, []);
+
+  const openRenameForNode = useCallback((node: FsNode) => {
+    if (node.type === 'drive') return;
+    setRenameTarget(node);
+    setRenameValue(node.name);
+    setRenameOpen(true);
+  }, []);
+
+  const handleRename = useCallback(async () => {
+    if (!renameTarget) return;
+    if (renameTarget.type === 'drive') return;
+
+    const newName = renameValue.trim();
+    if (!newName) {
+      toast.error('请输入新名称');
+      return;
+    }
+
+    if (renaming) return;
+    setRenaming(true);
+
+    const oldPath = renameTarget.path;
+    const parentPath = dirname(oldPath);
+    const newPath = joinPath(parentPath, newName);
+
+    try {
+      const res = await renameFile(oldPath, renameTarget.drive, newName);
+      if (!res?.success) throw new Error(res?.message || '重命名失败');
+
+      setTabs((prev) =>
+        prev.map((t) => {
+          if (renameTarget.type === 'file') {
+            if (t.path !== oldPath) return t;
+            const extension = normalizeExtension(
+              newName.includes('.') ? `.${newName.split('.').pop()}` : '',
+            );
+            return {
+              ...t,
+              id: newPath,
+              title: newName,
+              path: newPath,
+              extension: extension || undefined,
+              language: languageFromExtension(extension),
+            };
+          }
+
+          if (!isPathEqualOrUnder(t.path, oldPath)) return t;
+          const updatedPath = replacePathPrefix(t.path, oldPath, newPath);
+          return { ...t, id: updatedPath, path: updatedPath };
+        }),
+      );
+
+      setActiveTab((current) => replacePathPrefix(current, oldPath, newPath));
+      setOpenFolders((prev) => prev.map((p) => replacePathPrefix(p, oldPath, newPath)));
+      setSelectedPath((prev) => replacePathPrefix(prev, oldPath, newPath));
+
+      refreshDirectoryNode(parentPath);
+      toast.success('重命名成功');
+      setRenameOpen(false);
+      setRenameTarget(null);
+    } catch (error: any) {
+      toast.error(`重命名失败: ${error?.message ?? String(error)}`);
+    } finally {
+      setRenaming(false);
+    }
+  }, [
+    renameTarget,
+    renameValue,
+    renaming,
+    refreshDirectoryNode,
+    setRenaming,
+    setRenameOpen,
+    setRenameTarget,
+  ]);
+
+  const handleDelete = useCallback(
+    async (node: FsNode) => {
+      if (node.type === 'drive') return;
+
+      const affectedTabs = tabs.filter((t) => isPathEqualOrUnder(t.path, node.path));
+      const dirtyCount = affectedTabs.filter((t) => t.isDirty).length;
+
+      const label = node.type === 'directory' ? '文件夹' : '文件';
+      const ok = window.confirm(`确定删除${label} “${node.name}” 吗？`);
+      if (!ok) return;
+
+      if (dirtyCount > 0) {
+        const okDirty = window.confirm(
+          `有 ${dirtyCount} 个打开的文件存在未保存修改，继续删除将丢失修改，是否继续？`,
+        );
+        if (!okDirty) return;
+      }
+
+      try {
+        const res = await deleteFile(node.path, node.drive);
+        if (!res?.success) throw new Error(res?.message || '删除失败');
+
+        const parentPath = dirname(node.path);
+
+        if (node.type === 'directory') {
+          setOpenFolders((prev) => prev.filter((p) => !isPathEqualOrUnder(p, node.path)));
+          setSelectedPath((prev) =>
+            isPathEqualOrUnder(prev, node.path) ? parentPath : prev,
+          );
+        } else {
+          setSelectedPath((prev) => (prev === node.path ? parentPath : prev));
         }
-    }, [clipboard, refreshCurrentDirectory]);
 
-
-    // 解压zip文件
-    const handleUnzipFile = useCallback(async (file: FileItem) => {
-        try {
-            setIsLoading(true);
-            await unzipFiles(file.key, file.drive);
-            toast.success(`${file.title} 解压成功`);
-            refreshCurrentDirectory();
-        } catch (error: any) {
-            toast.error(`解压失败: ${error.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [refreshCurrentDirectory]);
-
-    // 打包单个文件/文件夹为zip
-    const handleCreateZipFromSingle = useCallback(async (item: FileItem) => {
-        const zipName = prompt(`请输入zip文件名 (默认: ${item.title}.zip):`) || `${item.title}.zip`;
-        if (!zipName.endsWith('.zip')) {
-            toast.error('文件名必须以.zip结尾');
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-            await createZipFromPath(item.key, item.drive, zipName);
-            toast.success(`${zipName} 创建成功`);
-            refreshCurrentDirectory();
-        } catch (error: any) {
-            toast.error(`打包失败: ${error.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [refreshCurrentDirectory]);
-
-    // 批量打包为zip
-    const handleCreateZipFromMultiple = useCallback(async (items: FileItem[]) => {
-        const zipName = prompt('请输入zip文件名:');
-        if (!zipName) return;
-
-        const finalZipName = zipName.endsWith('.zip') ? zipName : `${zipName}.zip`;
-        const sourcePaths = items.map(item => item.key);
-
-        try {
-            setIsLoading(true);
-            await createZipFile(sourcePaths, items[0].drive, finalZipName);
-            toast.success(`${finalZipName} 创建成功`);
-            refreshCurrentDirectory();
-            setSelectedRows([]);
-        } catch (error: any) {
-            toast.error(`批量打包失败: ${error.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [refreshCurrentDirectory]);
-
-    // 文件上传处理
-    const handleUpload = useCallback(async () => {
-        if (!selectedNode || uploadFileList.length === 0) return;
-
-        try {
-            setIsLoading(true);
-            for (const file of uploadFileList) {
-                await uploadFile(file, selectedNode.key, selectedNode.drive || '');
-            }
-            toast.success(`成功上传 ${uploadFileList.length} 个文件`);
-            setUploadVisible(false);
-            setUploadFileList([]);
-            refreshCurrentDirectory();
-        } catch (error: any) {
-            toast.error(`上传失败: ${error.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [selectedNode, uploadFileList, refreshCurrentDirectory]);
-
-    // 初始化
-    useEffect(() => {
-        init();
-    }, []);
-
-    // 监听选中节点变化
-    useEffect(() => {
-        loadDirectoryContent(selectedNode);
-    }, [selectedNode, loadDirectoryContent]);
-
-
-    const updateTreeData = (
-        list: TreeNode[],
-        key: React.Key,
-        children: TreeNode[]
-    ): TreeNode[] =>
-        list.map((node) => {
-            if (node.key === key) {
-                return { ...node, children };
-            }
-            if (node.children) {
-                return {
-                    ...node,
-                    children: updateTreeData(node.children, key, children),
-                };
-            }
-            return node;
+        setTabs((prev) => {
+          const nextTabs = prev.filter((t) => !isPathEqualOrUnder(t.path, node.path));
+          setActiveTab((current) => {
+            if (!current) return '';
+            if (nextTabs.some((t) => t.id === current)) return current;
+            return nextTabs[0]?.id ?? '';
+          });
+          return nextTabs;
         });
 
-    // 加载目录树节点的子目录
-    const loadTreeNodeChildren = useCallback(async (node: TreeNode) => {
-        try {
-            const result = await getDirectory(node.key, node.drive || '');
-            if (!result.success) {
-                toast.error(`加载目录失败: ${result.message}`);
-                return;
-            }
-            
-            const { directories } = result.data;
-            const children: TreeNode[] = directories.map((dir: any) => ({
-                title: dir.name,
-                key: dir.fullName,
-                isLeaf: false,
-                drive: dir.drive,
-                fullName: dir.fullName,
-                children: undefined, // 懒加载，初始时不加载子节点
-            }));
+        refreshDirectoryNode(parentPath);
+        toast.success('删除成功');
+      } catch (error: any) {
+        toast.error(`删除失败: ${error?.message ?? String(error)}`);
+      }
+    },
+    [tabs, refreshDirectoryNode],
+  );
 
-            setTreeData(prev => updateTreeData(prev, node.key, children));
-        } catch (error: any) {
-            toast.error(`加载目录失败: ${error.message}`);
+  const onTreeBlankContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      (showTreeMenu as any)({ event: event.nativeEvent, props: { node: null } });
+    },
+    [showTreeMenu],
+  );
+
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: FsNode) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSelectedPath(node.path);
+      (showTreeMenu as any)({ event: event.nativeEvent, props: { node } });
+    },
+    [showTreeMenu],
+  );
+
+  const handleCreateFolder = useCallback(async () => {
+    if (!targetDirectory) {
+      toast.error('没有可用目标目录');
+      return;
+    }
+
+    const name = newFolderName.trim();
+    if (!name) {
+      toast.error('请输入文件夹名称');
+      return;
+    }
+
+    if (creatingFolder) return;
+
+    setCreatingFolder(true);
+    try {
+      const res = await createDirectory(targetDirectory.path, targetDirectory.drive, name);
+      if (!res?.success) throw new Error(res?.message || '创建失败');
+
+      toast.success('文件夹创建成功');
+      setCreateFolderOpen(false);
+      setNewFolderName('');
+      refreshDirectoryNode(targetDirectory.path);
+    } catch (error: any) {
+      toast.error(`创建失败: ${error?.message ?? String(error)}`);
+    } finally {
+      setCreatingFolder(false);
+    }
+  }, [
+    targetDirectory,
+    newFolderName,
+    creatingFolder,
+    refreshDirectoryNode,
+    setCreatingFolder,
+  ]);
+
+  const handleCreateFile = useCallback(async () => {
+    if (!targetDirectory) {
+      toast.error('没有可用目标目录');
+      return;
+    }
+
+    const name = newFileName.trim();
+    if (!name) {
+      toast.error('请输入文件名');
+      return;
+    }
+
+    if (creatingFile) return;
+
+    setCreatingFile(true);
+    try {
+      const res = await createFile(
+        targetDirectory.path,
+        targetDirectory.drive,
+        name,
+        newFileContent,
+      );
+      if (!res?.success) throw new Error(res?.message || '创建失败');
+
+      toast.success('文件创建成功');
+      setCreateFileOpen(false);
+      setNewFileName('');
+      setNewFileContent('');
+      refreshDirectoryNode(targetDirectory.path);
+    } catch (error: any) {
+      toast.error(`创建失败: ${error?.message ?? String(error)}`);
+    } finally {
+      setCreatingFile(false);
+    }
+  }, [
+    targetDirectory,
+    newFileName,
+    newFileContent,
+    creatingFile,
+    refreshDirectoryNode,
+  ]);
+
+  useEffect(() => {
+    refreshDrives();
+  }, [refreshDrives]);
+
+  useEffect(() => {
+    if (!openFolders.length) return;
+
+    for (const folderPath of openFolders) {
+      const node = findNodeByPath(tree, folderPath);
+      if (!node) continue;
+      if (node.type === 'file') continue;
+      if (!node.loadState || node.loadState === 'idle') {
+        loadFolderChildren(node);
+      }
+    }
+  }, [openFolders, tree, loadFolderChildren]);
+
+  useEffect(() => {
+    if (tabs.length === 0) return;
+    if (tabs.some((t) => t.id === activeTab)) return;
+    setActiveTab(tabs[0].id);
+  }, [tabs, activeTab]);
+
+  const treeBody = useMemo(() => {
+    if (loadingDrives) {
+      return (
+        <div className="fs-tree-status">
+          <div className="fs-tree-skeleton" />
+          <div className="fs-tree-skeleton" />
+          <div className="fs-tree-skeleton" />
+        </div>
+      );
+    }
+
+    if (tree.length === 0) {
+      return <div className="fs-tree-status">暂无可用盘符</div>;
+    }
+
+    const renderNodes = (nodes: FsNode[]) =>
+      nodes.map((node) => {
+        if (node.type === 'file') {
+          const isSelected = selectedPath === node.path;
+          const Icon = iconFromFileName(node.name, node.extension);
+          return (
+            <div
+              key={node.path}
+              className={`fs-tree-clickable ${isSelected ? 'fs-tree-selected' : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => openFile(node)}
+              onContextMenu={(e) => onNodeContextMenu(e, node)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') openFile(node);
+              }}
+            >
+              <TreeFileItem icon={Icon}>{node.name}</TreeFileItem>
+            </div>
+          );
         }
-    }, []);
 
-    // 处理目录树节点的展开/折叠
-    const handleTreeNodeExpand = useCallback((node: TreeNode) => {
-        const isExpanded = expandedKeys.has(node.key);
-        
-        if (isExpanded) {
-            // 折叠节点
-            setExpandedKeys(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(node.key);
-                return newSet;
-            });
-        } else {
-            // 展开节点
-            setExpandedKeys(prev => new Set([...prev, node.key]));
-            
-            // 如果还没有加载过子节点，则加载
-            if (!node.children) {
-                loadTreeNodeChildren(node);
-            }
-        }
-    }, [expandedKeys, loadTreeNodeChildren]);
+        const isReady = node.loadState === 'loaded';
+        const isLoading = node.loadState === 'loading';
+        const isError = node.loadState === 'error';
 
-    // 处理目录树节点的点击
-    const handleTreeNodeClick = useCallback((node: TreeNode) => {
-        setSelectedKeys([node.key]);
-        setSelectedNode(node);
-        setSelectedRows([]);
-    }, []);
-
-    // 递归渲染树节点组件
-    const TreeNodeComponent: React.FC<{ node: TreeNode; level: number }> = ({ node, level }) => {
-        const isExpanded = expandedKeys.has(node.key);
-        const isSelected = selectedKeys.includes(node.key);
-        const hasChildren = node.children && node.children.length > 0;
-        const canExpand = !node.isLeaf;
+        const isSelected = selectedPath === node.path;
 
         return (
-            <div>
-                <div
-                    className={`flex items-center gap-1 p-1 rounded-md cursor-pointer transition-colors hover:bg-accent ${isSelected ? 'bg-accent text-accent-foreground' : ''}`}
-                    style={{ paddingLeft: `${level * 12 + 8}px` }}
-                >
-                    {/* 展开/折叠按钮 */}
-                    {canExpand && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-4 w-4 p-0 hover:bg-accent-foreground/10"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleTreeNodeExpand(node);
-                            }}
-                        >
-                            {isExpanded ? (
-                                <ChevronDown className="h-3 w-3" />
-                            ) : (
-                                <ChevronRight className="h-3 w-3" />
-                            )}
-                        </Button>
-                    )}
-                    
-                    {/* 节点内容 */}
-                    <div
-                        className="flex items-center gap-2 flex-1 min-w-0"
-                        onClick={() => handleTreeNodeClick(node)}
-                    >
-                        {node.isDrive ? (
-                            <HardDrive className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        ) : isExpanded ? (
-                            <FolderOpen className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                        ) : (
-                            <Folder className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                        )}
-                        <span className="text-sm font-medium truncate" title={node.title}>
-                            {node.title}
-                        </span>
-                        {node.isDrive && node.isReady === false && (
-                            <Badge variant="secondary" className="text-xs ml-auto">未就绪</Badge>
-                        )}
-                    </div>
-                </div>
-                
-                {/* 子节点 */}
-                {isExpanded && hasChildren && (
-                    <div>
-                        {node.children!.map((child) => (
-                            <TreeNodeComponent key={child.key} node={child} level={level + 1} />
-                        ))}
-                    </div>
-                )}
+          <FolderItem key={node.path} value={node.path}>
+            <div
+              className={isSelected ? 'fs-tree-selected' : undefined}
+              onClickCapture={() => setSelectedPath(node.path)}
+              onContextMenu={(e) => onNodeContextMenu(e, node)}
+            >
+              <FolderTrigger>{node.name}</FolderTrigger>
             </div>
+            <FolderContent>
+              {isLoading && (
+                <div className="fs-tree-status fs-tree-status-inline">
+                  <Loader2 className="fs-spin" />
+                  加载中...
+                </div>
+              )}
+
+              {isError && (
+                <div className="fs-tree-status fs-tree-error">
+                  <div className="fs-tree-error-text">
+                    加载失败：{node.error ?? '未知错误'}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadFolderChildren(node, true)}
+                  >
+                    重试
+                  </Button>
+                </div>
+              )}
+
+              {isReady && (!node.children || node.children.length === 0) && (
+                <div className="fs-tree-status fs-tree-status-inline">空目录</div>
+              )}
+
+              {node.children && node.children.length > 0 && renderNodes(node.children)}
+            </FolderContent>
+          </FolderItem>
         );
-    };
+      });
 
     return (
-        <TooltipProvider>
-            <div className="flex h-[calc(100vh-100px)] max-h-[calc(100vh-100px)] bg-background">
-                <div className="w-80 min-w-[280px] max-w-[400px] border-r bg-card">
-                    <Card className="h-full rounded-none border-r">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <HardDrive className="h-4 w-4" />
-                                文件系统目录
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-2">
-                            <div className="h-[calc(100vh-200px)] overflow-auto">
-                                <div className="space-y-1">
-                                    {isLoading ? (
-                                        <div className="space-y-2 p-2">
-                                            {Array.from({ length: 3 }).map((_, i) => (
-                                                <div key={i} className="h-8 w-full bg-muted animate-pulse rounded" />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        treeData.map((node) => (
-                                            <TreeNodeComponent key={node.key} node={node} level={0} />
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-                
-                <div className="flex-1 bg-background">
-                    <div className="p-6 h-full">
-                        {/* 工具栏 */}
-                        <div className="mb-4">
-                            <div className="flex justify-between items-center mb-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="搜索文件..."
-                                            className="w-72 pl-9"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                        />
-                                    </div>
-                                    <Select value={fileFilter} onValueChange={(value) => setFileFilter(value as any)}>
-                                        <SelectTrigger className="w-36">
-                                            <Filter className="h-4 w-4 mr-2" />
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">全部</SelectItem>
-                                            <SelectItem value="files">仅文件</SelectItem>
-                                            <SelectItem value="folders">仅文件夹</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="flex gap-2">
-                                    {selectedRows.length > 0 && (
-                                        <>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const items = filteredData.filter(item =>
-                                                        selectedRows.includes(item.key));
-                                                    handleCopy(items);
-                                                }}
-                                            >
-                                                <Copy className="h-4 w-4 mr-2" />
-                                                复制 ({selectedRows.length})
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const items = filteredData.filter(item =>
-                                                        selectedRows.includes(item.key));
-                                                    handleCut(items);
-                                                }}
-                                            >
-                                                <Scissors className="h-4 w-4 mr-2" />
-                                                剪切 ({selectedRows.length})
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const itemsToZip = filteredData.filter(item =>
-                                                        selectedRows.includes(item.key));
-                                                    handleCreateZipFromMultiple(itemsToZip);
-                                                }}
-                                            >
-                                                <FileArchive className="h-4 w-4 mr-2" />
-                                                打包ZIP ({selectedRows.length})
-                                            </Button>
-                                            <Button
-                                                variant="destructive"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const itemsToDelete = filteredData.filter(item =>
-                                                        selectedRows.includes(item.key));
-                                                    handleDelete(itemsToDelete);
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                删除 ({selectedRows.length})
-                                            </Button>
-                                        </>
-                                    )}
-
-                                    {clipboard && (
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            disabled={!selectedNode}
-                                            onClick={() => selectedNode && handlePaste(selectedNode)}
-                                        >
-                                            粘贴 ({clipboard.items.length})
-                                        </Button>
-                                    )}
-
-                                    <Button
-                                        size="sm"
-                                        onClick={() => setUploadVisible(true)}
-                                        disabled={!selectedNode}
-                                    >
-                                        <Upload className="h-4 w-4 mr-2" />
-                                        上传文件
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        onClick={() => setCreateDirectoryVisible(true)}
-                                        disabled={!selectedNode}
-                                        variant="outline"
-                                    >
-                                        <Folder className="h-4 w-4 mr-2" />
-                                        新建目录
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        onClick={refreshCurrentDirectory}
-                                        variant="outline"
-                                    >
-                                        <RefreshCw className="h-4 w-4 mr-2" />
-                                        刷新
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* 当前路径显示 */}
-                            {selectedNode && (
-                                <Card className="mb-4">
-                                    <CardContent className="p-3">
-                                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                            <span>当前位置:</span>
-                                            <Badge variant="outline" className="font-mono text-xs">
-                                                {selectedNode.fullName || selectedNode.key}
-                                            </Badge>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
-
-                            {/* 文件列表 - 网格布局 */}
-                            <div className="h-[calc(100vh-240px)] overflow-auto">
-                                {isLoading ? (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
-                                        {Array.from({ length: 16 }).map((_, i) => (
-                                            <Card key={i} className="p-3">
-                                                <CardContent className="p-0 h-36">
-                                                    <div className="flex flex-col items-center justify-center space-y-2 h-full">
-                                                        <div className="h-10 w-10 bg-muted animate-pulse rounded" />
-                                                        <div className="h-3 w-16 bg-muted animate-pulse rounded" />
-                                                        <div className="h-2 w-12 bg-muted animate-pulse rounded" />
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                ) : filteredData.length === 0 ? (
-                                    <Card className="h-64">
-                                        <CardContent className="h-full flex flex-col justify-center items-center text-muted-foreground">
-                                            <Folder className="h-16 w-16 mb-4" />
-                                            <p className="text-lg font-medium">此文件夹为空</p>
-                                            {!selectedNode && <p className="text-sm">请选择一个驱动器查看文件</p>}
-                                        </CardContent>
-                                    </Card>
-                                ) : (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
-                                        {filteredData.map((item: FileItem) => (
-                                            <Card
-                                                key={item.key}
-                                                className={`cursor-pointer transition-all hover:shadow-md ${selectedRows.includes(item.key) ? 'ring-2 ring-primary bg-accent' : ''}`}
-                                                onClick={() => {
-                                                    const newSelectedRows = selectedRows.includes(item.key)
-                                                        ? selectedRows.filter(key => key !== item.key)
-                                                        : [...selectedRows, item.key];
-                                                    setSelectedRows(newSelectedRows);
-                                                }}
-                                                onDoubleClick={() => {
-                                                    if (!item.isLeaf) {
-                                                        // 双击进入文件夹
-                                                        const newNode: TreeNode = {
-                                                            title: item.title,
-                                                            key: item.key,
-                                                            isLeaf: false,
-                                                            drive: item.drive,
-                                                            fullName: item.fullName
-                                                        };
-                                                        setSelectedKeys([item.key]);
-                                                        setSelectedNode(newNode);
-                                                        setSelectedRows([]);
-                                                        
-                                                        // 自动展开路径到这个文件夹
-                                                        const pathParts = item.key.split('\\').filter(part => part.length > 0);
-                                                        let currentPath = '';
-                                                        const pathsToExpand: string[] = [];
-                                                        
-                                                        pathParts.forEach((part, index) => {
-                                                            if (index === 0) {
-                                                                currentPath = part;
-                                                            } else {
-                                                                currentPath += '\\' + part;
-                                                            }
-                                                            pathsToExpand.push(currentPath);
-                                                        });
-                                                        
-                                                        // 展开所有父级路径
-                                                        setExpandedKeys(prev => new Set([...prev, ...pathsToExpand]));
-                                                        
-                                                        // 清除之前的缓存以强制重新加载
-                                                        const cacheKey = `${item.key}_${item.drive}`;
-                                                        setLoadedDirectories(prev => {
-                                                            const newSet = new Set(prev);
-                                                            newSet.delete(cacheKey);
-                                                            return newSet;
-                                                        });
-                                                    }
-                                                }}
-                                            >
-                                                <CardContent className="p-3 flex flex-col items-center justify-between h-36">
-                                                    {/* 文件图标和类型标识 */}
-                                                    <div className="mb-2">
-                                                        <div className="relative">
-                                                            {item.isLeaf ? (
-                                                                <File className="h-10 w-10 text-muted-foreground" />
-                                                            ) : (
-                                                                <Folder className="h-10 w-10 text-blue-500" />
-                                                            )}
-                                                            {item.isLeaf && item.extension?.toLowerCase() === '.zip' && (
-                                                                <Badge className="absolute -top-1 -right-1 text-xs">ZIP</Badge>
-                                                            )}
-                                                            {item.isHidden && (
-                                                                <EyeOff className="absolute -top-1 -left-1 h-4 w-4 text-muted-foreground" />
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 文件信息 */}
-                                                    <div className="flex-1 w-full text-center">
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <div className="text-sm font-medium truncate mb-1" title={item.title}>
-                                                                    {item.title}
-                                                                    {!item.isLeaf && (
-                                                                        <div className="text-xs text-muted-foreground mt-1">双击进入</div>
-                                                                    )}
-                                                                </div>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                {item.title}
-                                                            </TooltipContent>
-                                                        </Tooltip>
-
-                                                        <div className="text-xs text-muted-foreground mb-2">
-                                                            {item.isLeaf ? bytesToSize(item.length) : '文件夹'}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 操作按钮 */}
-                                                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                                        {item.isLeaf && (
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        disabled={downloadingFile === item.key}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleFileDownload(item);
-                                                                        }}
-                                                                    >
-                                                                        <Download className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>下载</TooltipContent>
-                                                            </Tooltip>
-                                                        )}
-
-                                                        {/* zip文件解压按钮 */}
-                                                        {item.isLeaf && item.extension?.toLowerCase() === '.zip' && (
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleUnzipFile(item);
-                                                                        }}
-                                                                    >
-                                                                        <FileArchive className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>解压ZIP文件</TooltipContent>
-                                                            </Tooltip>
-                                                        )}
-
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem
-                                                                    onClick={() => {
-                                                                        setRenameInput({
-                                                                            visible: true,
-                                                                            id: item.key,
-                                                                            value: item.title,
-                                                                            isFile: item.isLeaf,
-                                                                            path: item.fullName,
-                                                                            drive: item.drive,
-                                                                        });
-                                                                    }}
-                                                                >
-                                                                    <Edit3 className="h-4 w-4 mr-2" />
-                                                                    重命名
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleCreateZipFromSingle(item);
-                                                                    }}
-                                                                >
-                                                                    <FileArchive className="h-4 w-4 mr-2" />
-                                                                    打包为ZIP
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={() => setProperty(item.fullName)}
-                                                                >
-                                                                    <Eye className="h-4 w-4 mr-2" />
-                                                                    属性
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem
-                                                                    className="text-destructive"
-                                                                    onClick={() => handleDelete([item])}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4 mr-2" />
-                                                                    删除
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* 上传文件对话框 */}
-            <Dialog
-                open={uploadVisible}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setUploadVisible(false);
-                        setUploadFileList([]);
-                    }
-                }}
-            >
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>上传文件</DialogTitle>
-                        <DialogDescription>
-                            选择要上传到当前目录的文件
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <Card className="border-2 border-dashed border-muted-foreground/25">
-                            <CardContent className="p-8 text-center">
-                                <div className="mb-4">
-                                    <Inbox className="h-12 w-12 mx-auto text-muted-foreground" />
-                                </div>
-                                <p className="text-lg font-medium">点击选择文件上传</p>
-                                <p className="text-sm text-muted-foreground">
-                                    支持单个或批量上传
-                                </p>
-                            </CardContent>
-                        </Card>
-                        
-                        {uploadFileList.length > 0 && (
-                            <Card className="max-h-40 overflow-auto">
-                                <CardContent className="p-3">
-                                    <div className="space-y-2">
-                                        {uploadFileList.map((file, index) => (
-                                            <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
-                                                <span className="text-sm truncate">{file.name}</span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setUploadFileList(prev => prev.filter(f => f.name !== file.name))}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-                        
-                        <input
-                            type="file"
-                            multiple
-                            onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                setUploadFileList(prev => [...prev, ...files]);
-                            }}
-                            className="hidden"
-                            id="file-upload"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => document.getElementById('file-upload')?.click()}
-                        >
-                            选择文件
-                        </Button>
-                        {uploadFileList.length > 0 && (
-                            <Button
-                                onClick={handleUpload}
-                            >
-                                上传 ({uploadFileList.length} 个文件)
-                            </Button>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* 重命名对话框 */}
-            <Rename
-                onClose={() => {
-                    setRenameInput({
-                        visible: false,
-                        id: "",
-                        value: "",
-                        isFile: false,
-                        path: "",
-                        drive: "",
-                    });
-                }}
-                onOk={() => {
-                    setRenameInput({
-                        visible: false,
-                        id: "",
-                        value: "",
-                        isFile: false,
-                        path: "",
-                        drive: "",
-                    });
-                    refreshCurrentDirectory();
-                }}
-                path={renameInput.path}
-                drives={renameInput.drive}
-                visible={renameInput.visible}
-                id={renameInput.id}
-                name={renameInput.value}
-                isFile={renameInput.isFile}
-            />
-
-            {/* 创建目录对话框 */}
-            <CreateDirectory
-                drives={selectedNode?.drive || ''}
-                path={selectedNode?.fullName || selectedNode?.key || ''}
-                visible={createDirectoryVisible}
-                onClose={() => {
-                    setCreateDirectoryVisible(false);
-                }}
-                onOk={() => {
-                    setCreateDirectoryVisible(false);
-                    refreshCurrentDirectory();
-                }}
-            />
-
-            {/* 属性对话框 */}
-            <Property
-                fullPath={property}
-                onClose={() => {
-                    setProperty(null)
-                }}
-                open={property != null}
-            />
-        </TooltipProvider>
+      <Files open={openFolders} onOpenChange={setOpenFolders} className="fs-tree-files">
+        {renderNodes(tree)}
+      </Files>
     );
+  }, [
+    loadingDrives,
+    tree,
+    openFolders,
+    selectedPath,
+    openFile,
+    loadFolderChildren,
+    onNodeContextMenu,
+  ]);
+
+  return (
+    <div className="fs-shell">
+      <aside className="fs-panel fs-tree">
+        <div className="fs-panel-header">
+          <div className="fs-panel-title">
+            <HardDrive className="fs-icon" />
+            文件目录
+          </div>
+          <div className="fs-panel-actions">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="新建">
+                  <Plus />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    openCreateFolderForSelection();
+                  }}
+                  className="fs-menu-item"
+                >
+                  <FolderPlus className="fs-menu-icon" />
+                  新建文件夹
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    openCreateFileForSelection();
+                  }}
+                  className="fs-menu-item"
+                >
+                  <FilePlus className="fs-menu-icon" />
+                  新建文件
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={refreshDrives}
+              disabled={loadingDrives}
+              aria-label="刷新"
+            >
+              <RefreshCw className={loadingDrives ? 'fs-spin' : ''} />
+            </Button>
+          </div>
+        </div>
+        <div
+          className="fs-panel-body custom-scrollbar"
+          onContextMenu={onTreeBlankContextMenu}
+        >
+          {treeBody}
+        </div>
+      </aside>
+
+      <main className="fs-panel fs-viewer">
+        <div className="fs-panel-header">
+          <div className="fs-panel-title">文件预览</div>
+        </div>
+        <div className="fs-panel-body fs-viewer-body">
+          {tabs.length === 0 ? (
+            <div className="fs-empty">
+              <div className="fs-empty-title">从左侧选择文件打开</div>
+              <div className="fs-empty-subtitle">支持多个文件以 Tab 方式并排查看</div>
+            </div>
+          ) : (
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="fs-tabs-root"
+            >
+              <TabsList className="fs-tabs-list w-full">
+                {tabs.map((tab) => (
+                  <TabsTrigger key={tab.id} value={tab.id} asChild>
+                    <div className="fs-tab-trigger">
+                      <span className="fs-tab-title" title={tab.path}>
+                        {tab.title}
+                        {tab.isDirty && <span className="fs-tab-dirty">*</span>}
+                      </span>
+                      <button
+                        type="button"
+                        className="fs-tab-close"
+                        aria-label="关闭"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          closeTab(tab.id);
+                        }}
+                      >
+                        <X className="fs-tab-close-icon" />
+                      </button>
+                    </div>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {tabs.map((tab) => (
+                <TabsContent key={tab.id} value={tab.id} className="fs-tab-content">
+                  {tab.loadState === 'loading' && (
+                    <div className="fs-editor-status">
+                      <Loader2 className="fs-spin" />
+                      读取中...
+                    </div>
+                  )}
+
+                  {tab.loadState === 'error' && (
+                    <div className="fs-editor-status fs-editor-error">
+                      读取失败：{tab.error ?? '未知错误'}
+                    </div>
+                  )}
+
+                  {tab.loadState === 'loaded' && (
+                    <div className="fs-editor-wrap">
+                      <div className="fs-editor-toolbar">
+                        <div className="fs-editor-meta" title={tab.path}>
+                          <span className="fs-editor-path">{tab.path}</span>
+                          {tab.isDirty && <span className="fs-editor-dirty">未保存</span>}
+                        </div>
+                        <div className="fs-editor-actions">
+                          <Button
+                            size="sm"
+                            onClick={() => saveTab(tab.id)}
+                            disabled={!tab.isDirty || tab.saving}
+                          >
+                            {tab.saving ? '保存中...' : '保存'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => discardTabChanges(tab.id)}
+                            disabled={!tab.isDirty || tab.saving}
+                          >
+                            取消
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={tab.mode === 'edit' ? 'secondary' : 'outline'}
+                            onClick={() =>
+                              setTabMode(tab.id, tab.mode === 'edit' ? 'view' : 'edit')
+                            }
+                            disabled={tab.saving}
+                          >
+                            {tab.mode === 'edit' ? '预览' : '编辑'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {tab.mode === 'edit' ? (
+                        <Textarea
+                          value={tab.draft}
+                          onChange={(e) => updateTabDraft(tab.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                              e.preventDefault();
+                              void saveTab(tab.id);
+                            }
+                          }}
+                          className="fs-editor-input custom-scrollbar"
+                        />
+                      ) : (
+                        <SyntaxHighlighter
+                          language={tab.language}
+                          style={syntaxStyle}
+                          className="fs-editor custom-scrollbar"
+                          customStyle={{
+                            margin: 0,
+                            background: 'var(--background)',
+                            padding: '12px',
+                          }}
+                          codeTagProps={{
+                            style: {
+                              background: 'transparent',
+                              display: 'block',
+                              width: '100%',
+                            },
+                          }}
+                          wrapLongLines
+                        >
+                          {tab.draft}
+                        </SyntaxHighlighter>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
+        </div>
+      </main>
+
+      <Menu id={TREE_CONTEXT_MENU_ID} className="fs-context-menu">
+        <Item
+          disabled={({ props }: any) => props?.node?.type !== 'file'}
+          onClick={({ props }: any) => {
+            const node = props?.node as FsNode | undefined;
+            if (!node || node.type !== 'file') return;
+            void openFile(node);
+          }}
+        >
+          <div className="fs-context-menu-row">
+            <FileText className="fs-context-menu-icon" />
+            打开
+          </div>
+        </Item>
+
+        <Separator />
+
+        <Item
+          disabled={!targetDirectory}
+          onClick={() => {
+            openCreateFolderForSelection();
+          }}
+        >
+          <div className="fs-context-menu-row">
+            <FolderPlus className="fs-context-menu-icon" />
+            新建文件夹
+          </div>
+        </Item>
+
+        <Item
+          disabled={!targetDirectory}
+          onClick={() => {
+            openCreateFileForSelection();
+          }}
+        >
+          <div className="fs-context-menu-row">
+            <FilePlus className="fs-context-menu-icon" />
+            新建文件
+          </div>
+        </Item>
+
+        <Separator />
+
+        <Item
+          disabled={({ props }: any) => !props?.node || props?.node?.type === 'drive'}
+          onClick={({ props }: any) => {
+            const node = props?.node as FsNode | undefined;
+            if (!node) return;
+            openRenameForNode(node);
+          }}
+        >
+          <div className="fs-context-menu-row">
+            <PencilLine className="fs-context-menu-icon" />
+            重命名
+          </div>
+        </Item>
+
+        <Item
+          disabled={({ props }: any) => !props?.node || props?.node?.type === 'drive'}
+          onClick={({ props }: any) => {
+            const node = props?.node as FsNode | undefined;
+            if (!node) return;
+            void handleDelete(node);
+          }}
+        >
+          <div className="fs-context-menu-row fs-context-menu-danger">
+            <Trash2 className="fs-context-menu-icon" />
+            删除
+          </div>
+        </Item>
+
+        <Separator />
+
+        <Item
+          onClick={({ props }: any) => {
+            const node = props?.node as FsNode | undefined;
+            if (!node) {
+              refreshDrives();
+              return;
+            }
+            if (node.type === 'file') refreshDirectoryNode(dirname(node.path));
+            else refreshDirectoryNode(node.path);
+          }}
+        >
+          <div className="fs-context-menu-row">
+            <RefreshCw className="fs-context-menu-icon" />
+            刷新
+          </div>
+        </Item>
+      </Menu>
+
+      <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新建文件夹</DialogTitle>
+            <DialogDescription>
+              目标目录：{targetDirectory?.path ?? '未选择'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="请输入文件夹名称"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateFolderOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleCreateFolder} disabled={creatingFolder}>
+              {creatingFolder ? '创建中...' : '创建'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={renameOpen}
+        onOpenChange={(open) => {
+          setRenameOpen(open);
+          if (!open) {
+            setRenameTarget(null);
+            setRenameValue('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>重命名</DialogTitle>
+            <DialogDescription title={renameTarget?.path}>
+              {renameTarget?.path ?? '未选择'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="请输入新名称"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleRename} disabled={renaming}>
+              {renaming ? '处理中...' : '确定'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createFileOpen} onOpenChange={setCreateFileOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>新建文件</DialogTitle>
+            <DialogDescription>
+              目标目录：{targetDirectory?.path ?? '未选择'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="请输入文件名，例如: hello.txt"
+            />
+            <Textarea
+              value={newFileContent}
+              onChange={(e) => setNewFileContent(e.target.value)}
+              placeholder="可选：初始化文件内容"
+              className="min-h-28"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateFileOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleCreateFile} disabled={creatingFile}>
+              {creatingFile ? '创建中...' : '创建'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 export default FileStoragePage;
