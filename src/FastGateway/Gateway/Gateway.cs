@@ -83,7 +83,7 @@ public static class Gateway
             {
                 Enabled = true,
                 Policy = "TransportFailureRate",
-                ReactivationPeriod = TimeSpan.FromSeconds(30)
+                ReactivationPeriod = TimeSpan.FromSeconds(intervalSeconds)
             },
             AvailableDestinationsPolicy = HealthCheckConstants.AvailableDestinations.HealthyAndUnknown
         };
