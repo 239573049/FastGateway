@@ -49,6 +49,8 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
             enable: true,
             service: "",
             upStreams: [],
+            enableHealthCheck: false,
+            healthCheckPath: "/health",
             root: "",
             path: "/",
         }),

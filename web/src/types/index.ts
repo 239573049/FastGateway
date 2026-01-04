@@ -28,6 +28,8 @@ export interface DomainName {
     enable: boolean;
     service: string | null;
     upStreams: UpStream[];
+    enableHealthCheck: boolean;
+    healthCheckPath: string | null;
     root: string | null;
 }
 

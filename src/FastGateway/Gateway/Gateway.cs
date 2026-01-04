@@ -17,7 +17,10 @@ using System.Net;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Yarp.ReverseProxy;
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Health;
+using Yarp.ReverseProxy.Model;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
 
@@ -33,6 +36,28 @@ public static class Gateway
     private static readonly ConcurrentDictionary<string, WebApplication> GatewayWebApplications = new();
 
     private static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
+
+    private static HealthCheckConfig CreateDefaultHealthCheckConfig()
+    {
+        return new HealthCheckConfig
+        {
+            Active = new ActiveHealthCheckConfig
+            {
+                Enabled = true,
+                Interval = TimeSpan.FromSeconds(10),
+                Timeout = TimeSpan.FromSeconds(3),
+                Policy = "ConsecutiveFailures",
+                Path = "/"
+            },
+            Passive = new PassiveHealthCheckConfig
+            {
+                Enabled = true,
+                Policy = "TransportFailureRate",
+                ReactivationPeriod = TimeSpan.FromSeconds(30)
+            },
+            AvailableDestinationsPolicy = HealthCheckConstants.AvailableDestinations.HealthyAndUnknown
+        };
+    }
 
     /// <summary>
     ///     默认的内容类型提供程序
@@ -71,6 +96,61 @@ public static class Gateway
     public static bool CheckServerOnline(string serverId)
     {
         return GatewayWebApplications.ContainsKey(serverId);
+    }
+
+    public static object GetServerHealth(string serverId)
+    {
+        if (string.IsNullOrWhiteSpace(serverId))
+            return new { Online = false };
+
+        if (!GatewayWebApplications.TryGetValue(serverId, out var webApplication))
+            return new { Online = false };
+
+        var stateLookup = webApplication.Services.GetService<IProxyStateLookup>();
+        if (stateLookup == null)
+            return new { Online = true, Supported = false };
+
+        var clusters = stateLookup
+            .GetClusters()
+            .Select(cluster => new
+            {
+                ClusterId = cluster.ClusterId,
+                Destinations = cluster.Destinations
+                    .Select(kvp => new
+                    {
+                        DestinationId = kvp.Value.DestinationId,
+                        Address = kvp.Value.Model.Config.Address,
+                        Health = new
+                        {
+                            Active = kvp.Value.Health.Active,
+                            Passive = kvp.Value.Health.Passive,
+                            Effective = GetEffectiveHealth(kvp.Value.Health)
+                        }
+                    })
+                    .ToArray()
+            })
+            .ToArray();
+
+        return new
+        {
+            Online = true,
+            Supported = true,
+            CheckedAtUtc = DateTime.UtcNow,
+            Clusters = clusters
+        };
+    }
+
+    private static DestinationHealth GetEffectiveHealth(DestinationHealthState healthState)
+    {
+        if (healthState.Active == DestinationHealth.Unhealthy ||
+            healthState.Passive == DestinationHealth.Unhealthy)
+            return DestinationHealth.Unhealthy;
+
+        if (healthState.Active == DestinationHealth.Unknown ||
+            healthState.Passive == DestinationHealth.Unknown)
+            return DestinationHealth.Unknown;
+
+        return DestinationHealth.Healthy;
     }
 
     /// <summary>
@@ -534,7 +614,8 @@ public static class Gateway
                 var cluster = new ClusterConfig
                 {
                     ClusterId = domainName.Id,
-                    Destinations = destinations
+                    Destinations = destinations,
+                    HealthCheck = CreateDefaultHealthCheckConfig()
                 };
 
                 clusters.Add(cluster);

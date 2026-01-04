@@ -55,6 +55,8 @@ export default function UpdateDomain({
             enable: true,
             service: "",
             upStreams: [],
+            enableHealthCheck: false,
+            healthCheckPath: "/health",
             root: "",
             path: "/",
         }),

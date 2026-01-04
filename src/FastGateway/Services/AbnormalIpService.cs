@@ -79,6 +79,45 @@ public static class AbnormalIpService
             .WithDisplayName("将异常IP加入黑名单")
             .WithTags("异常IP");
 
+        abnormalIp.MapDelete("blacklist", (ConfigurationService configService, string ip) =>
+            {
+                ip = NormalizeIp(ip);
+                if (string.IsNullOrWhiteSpace(ip)) throw new ValidationException("IP不能为空");
+                if (!IPAddress.TryParse(ip, out _)) throw new ValidationException("IP格式不正确");
+
+                var allItems = configService.GetBlacklistAndWhitelists();
+                var autoBlacklist = allItems.FirstOrDefault(x =>
+                    x is { IsBlacklist: true } &&
+                    string.Equals(x.Name, AutoBlacklistName, StringComparison.OrdinalIgnoreCase));
+
+                if (autoBlacklist == null || autoBlacklist.Ips == null || autoBlacklist.Ips.Count == 0)
+                {
+                    return ResultDto.CreateSuccess("IP不在黑名单");
+                }
+
+                var removedCount = autoBlacklist.Ips.RemoveAll(x => string.Equals(x, ip, StringComparison.OrdinalIgnoreCase));
+                if (removedCount <= 0)
+                {
+                    return ResultDto.CreateSuccess("IP不在黑名单");
+                }
+
+                if (autoBlacklist.Ips.Count == 0)
+                {
+                    configService.DeleteBlacklistAndWhitelist(autoBlacklist.Id);
+                }
+                else
+                {
+                    configService.UpdateBlacklistAndWhitelist(autoBlacklist);
+                }
+
+                BlacklistAndWhitelistService.RefreshCache(configService);
+
+                return ResultDto.CreateSuccess("已移出黑名单");
+            })
+            .WithDescription("将异常IP移出黑名单")
+            .WithDisplayName("将异常IP移出黑名单")
+            .WithTags("异常IP");
+
         return app;
     }
 
@@ -97,4 +136,3 @@ public sealed class AddAbnormalIpToBlacklistInput
 {
     public string Ip { get; set; } = string.Empty;
 }
-

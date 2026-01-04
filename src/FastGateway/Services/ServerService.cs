@@ -48,6 +48,11 @@ public static class ServerService
             .WithDisplayName("获取服务列表")
             .WithTags("服务");
 
+        server.MapGet("{id}/health", (string id) => Gateway.Gateway.GetServerHealth(id))
+            .WithDescription("获取服务健康状态")
+            .WithDisplayName("获取服务健康状态")
+            .WithTags("服务");
+
         server.MapDelete("{id}",
             async (ConfigurationService configService, string id) =>
             {

@@ -59,6 +59,16 @@ public sealed class DomainName
     public List<UpStream> UpStreams { get; set; } = new();
 
     /// <summary>
+    /// 是否启用健康检查
+    /// </summary>
+    public bool EnableHealthCheck { get; set; }
+
+    /// <summary>
+    /// 健康检查地址（路径），例如：/health 或 /api/health?ready=1
+    /// </summary>
+    public string? HealthCheckPath { get; set; }
+
+    /// <summary>
     /// 静态文件或目录
     /// </summary>
     public string? Root { get; set; }

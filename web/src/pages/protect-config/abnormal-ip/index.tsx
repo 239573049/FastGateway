@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, Ban, RefreshCw } from "lucide-react";
+import { AlertTriangle, Ban, RefreshCw, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AbnormalIp } from "@/types";
-import { AddAbnormalIpToBlacklist, GetAbnormalIps } from "@/services/AbnormalIpService";
+import { AddAbnormalIpToBlacklist, GetAbnormalIps, RemoveAbnormalIpFromBlacklist } from "@/services/AbnormalIpService";
 
 const ABNORMAL_THRESHOLD = 20;
 
@@ -21,6 +21,7 @@ const AbnormalIpPage = memo(() => {
   const [data, setData] = useState<AbnormalIp[]>([]);
   const [loading, setLoading] = useState(false);
   const [blacklistingIp, setBlacklistingIp] = useState<string | null>(null);
+  const [unblacklistingIp, setUnblacklistingIp] = useState<string | null>(null);
 
   function loadData() {
     setLoading(true);
@@ -45,10 +46,24 @@ const AbnormalIpPage = memo(() => {
       setBlacklistingIp(ip);
       await AddAbnormalIpToBlacklist(ip);
       message.success("已加入黑名单");
+      loadData();
     } catch {
       message.error("加入黑名单失败");
     } finally {
       setBlacklistingIp(null);
+    }
+  };
+
+  const handleRemoveFromBlacklist = async (ip: string) => {
+    try {
+      setUnblacklistingIp(ip);
+      const res = await RemoveAbnormalIpFromBlacklist(ip);
+      message.success(res?.message || "已移出黑名单");
+      loadData();
+    } catch {
+      message.error("移出黑名单失败");
+    } finally {
+      setUnblacklistingIp(null);
     }
   };
 
@@ -129,18 +144,32 @@ const AbnormalIpPage = memo(() => {
       header: "操作",
       cell: ({ row }) => {
         const item = row.original;
-        const busy = blacklistingIp === item.ip;
+        const busyAdd = blacklistingIp === item.ip;
+        const busyRemove = unblacklistingIp === item.ip;
+        const busy = busyAdd || busyRemove;
         return (
-          <Button
-            size="sm"
-            variant="destructive"
-            className="gap-2"
-            disabled={busy}
-            onClick={() => handleAddToBlacklist(item.ip)}
-          >
-            <Ban className="h-4 w-4" />
-            {busy ? "处理中..." : "加入黑名单"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              className="gap-2"
+              disabled={busy}
+              onClick={() => handleAddToBlacklist(item.ip)}
+            >
+              <Ban className="h-4 w-4" />
+              {busyAdd ? "处理中..." : "加入黑名单"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              disabled={busy}
+              onClick={() => handleRemoveFromBlacklist(item.ip)}
+            >
+              <Undo2 className="h-4 w-4" />
+              {busyRemove ? "处理中..." : "移出黑名单"}
+            </Button>
+          </div>
         );
       },
     },
@@ -154,7 +183,7 @@ const AbnormalIpPage = memo(() => {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">异常IP</h1>
         </div>
         <p className="text-muted-foreground mt-2">
-          自动统计近1分钟高频异常IP，支持一键加入黑名单
+          自动统计近1分钟高频异常IP，支持一键加入/移出黑名单
         </p>
       </div>
 
@@ -202,4 +231,3 @@ const AbnormalIpPage = memo(() => {
 });
 
 export default AbnormalIpPage;
-
