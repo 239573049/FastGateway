@@ -60,13 +60,21 @@ public static class Gateway
 
         if (string.IsNullOrWhiteSpace(path)) path = "/";
 
+        var intervalSeconds = domainName.HealthCheckIntervalSeconds;
+        if (intervalSeconds <= 0) intervalSeconds = 10;
+
+        var timeoutSeconds = domainName.HealthCheckTimeoutSeconds;
+        if (timeoutSeconds <= 0) timeoutSeconds = 3;
+
+        if (timeoutSeconds > intervalSeconds) timeoutSeconds = intervalSeconds;
+
         return new HealthCheckConfig
         {
             Active = new ActiveHealthCheckConfig
             {
                 Enabled = true,
-                Interval = TimeSpan.FromSeconds(10),
-                Timeout = TimeSpan.FromSeconds(3),
+                Interval = TimeSpan.FromSeconds(intervalSeconds),
+                Timeout = TimeSpan.FromSeconds(timeoutSeconds),
                 Policy = "ConsecutiveFailures",
                 Path = path,
                 Query = query

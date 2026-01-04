@@ -30,6 +30,8 @@ export interface DomainName {
     upStreams: UpStream[];
     enableHealthCheck: boolean;
     healthCheckPath: string | null;
+    healthCheckIntervalSeconds: number;
+    healthCheckTimeoutSeconds: number;
     root: string | null;
 }
 

@@ -69,6 +69,16 @@ public sealed class DomainName
     public string? HealthCheckPath { get; set; }
 
     /// <summary>
+    /// 健康检查间隔（秒）
+    /// </summary>
+    public int HealthCheckIntervalSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// 健康检查超时（秒）
+    /// </summary>
+    public int HealthCheckTimeoutSeconds { get; set; } = 3;
+
+    /// <summary>
     /// 静态文件或目录
     /// </summary>
     public string? Root { get; set; }

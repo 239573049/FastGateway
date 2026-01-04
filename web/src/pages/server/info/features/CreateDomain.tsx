@@ -52,6 +52,8 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
             upStreams: [],
             enableHealthCheck: false,
             healthCheckPath: "/health",
+            healthCheckIntervalSeconds: 10,
+            healthCheckTimeoutSeconds: 3,
             root: "",
             path: "/",
         }),
@@ -170,6 +172,8 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
                 value.serviceType === ServiceType.ServiceCluster);
 
         const healthCheckPath = value.healthCheckPath?.trim() ?? "";
+        const healthCheckIntervalSeconds = value.healthCheckIntervalSeconds;
+        const healthCheckTimeoutSeconds = value.healthCheckTimeoutSeconds;
 
         if (enableHealthCheck) {
             if (!healthCheckPath) {
@@ -179,6 +183,21 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
             }
             if (!healthCheckPath.startsWith("/")) {
                 toast.error("健康检查地址需要以 / 开头");
+                setTab("target");
+                return;
+            }
+            if (!healthCheckIntervalSeconds || healthCheckIntervalSeconds <= 0) {
+                toast.error("健康检查 Interval 必须大于 0");
+                setTab("target");
+                return;
+            }
+            if (!healthCheckTimeoutSeconds || healthCheckTimeoutSeconds <= 0) {
+                toast.error("健康检查 Timeout 必须大于 0");
+                setTab("target");
+                return;
+            }
+            if (healthCheckTimeoutSeconds > healthCheckIntervalSeconds) {
+                toast.error("健康检查 Timeout 不能大于 Interval");
                 setTab("target");
                 return;
             }
@@ -560,6 +579,67 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
                                         />
                                         <div className="text-xs text-muted-foreground">
                                             示例：/health 或 /api/health?ready=1
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="create-domain-health-interval"
+                                                className="text-sm font-medium"
+                                            >
+                                                Interval(秒)
+                                            </Label>
+                                            <Input
+                                                id="create-domain-health-interval"
+                                                type="number"
+                                                value={
+                                                    value.healthCheckIntervalSeconds
+                                                }
+                                                onChange={(e) =>
+                                                    setValue((prev) => ({
+                                                        ...prev,
+                                                        healthCheckIntervalSeconds:
+                                                            Number(
+                                                                e.target.value
+                                                            ),
+                                                    }))
+                                                }
+                                                disabled={!value.enableHealthCheck}
+                                                placeholder="例如：10"
+                                            />
+                                            <div className="text-xs text-muted-foreground">
+                                                探测间隔，默认 10 秒
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor="create-domain-health-timeout"
+                                                className="text-sm font-medium"
+                                            >
+                                                Timeout(秒)
+                                            </Label>
+                                            <Input
+                                                id="create-domain-health-timeout"
+                                                type="number"
+                                                value={
+                                                    value.healthCheckTimeoutSeconds
+                                                }
+                                                onChange={(e) =>
+                                                    setValue((prev) => ({
+                                                        ...prev,
+                                                        healthCheckTimeoutSeconds:
+                                                            Number(
+                                                                e.target.value
+                                                            ),
+                                                    }))
+                                                }
+                                                disabled={!value.enableHealthCheck}
+                                                placeholder="例如：3"
+                                            />
+                                            <div className="text-xs text-muted-foreground">
+                                                单次探测超时，默认 3 秒
+                                            </div>
                                         </div>
                                     </div>
                                 </CardContent>
