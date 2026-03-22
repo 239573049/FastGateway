@@ -115,7 +115,8 @@ public sealed partial class AgentClientConnection : IAsyncDisposable
             switch (text)
             {
                 case null:
-                    break;
+                    Log.LogClosed(_logger, ClientId);
+                    return;
 
                 case Ping:
                     Log.LogRecvPing(_logger, ClientId);
