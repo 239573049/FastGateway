@@ -1,6 +1,6 @@
 ﻿services:
   fast-gateway.service:
-    image: aidotnet/fast-gateway
+    image: registry.cn-shenzhen.aliyuncs.com/token-ai/fast-gateway
     container_name: fast-gateway
     restart: always
     build:
