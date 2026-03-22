@@ -1,25 +1,48 @@
-﻿using System.Diagnostics;
+using FastGateway.Tunnels;
+using System.Diagnostics;
 using System.Net;
 using Yarp.ReverseProxy.Forwarder;
 
-namespace FastGateway.Gateway
-{
-    public class FastGatewayForwarderHttpClientFactory : IForwarderHttpClientFactory
-    {
-        public HttpMessageInvoker CreateClient(ForwarderHttpClientContext context)
-        {
-            var handler = new SocketsHttpHandler
-            {
-                UseProxy = false,
-                AllowAutoRedirect = false,
-                AutomaticDecompression = DecompressionMethods.None | DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-                UseCookies = false,
-                EnableMultipleHttp2Connections = true,
-                ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current),
-                ConnectTimeout = TimeSpan.FromSeconds(600),
-            };
+namespace FastGateway.Gateway;
 
-            return new HttpMessageInvoker(handler, disposeHandler: true);
+internal sealed class FastGatewayForwarderHttpClientFactory(
+    TunnelClientFactory tunnelClientFactory,
+    StandardForwarderHttpClientFactory standardForwarderHttpClientFactory)
+    : IForwarderHttpClientFactory
+{
+    private const string ClientModeMetadataKey = "FastGateway.ClientMode";
+    private const string TunnelClientMode = "Tunnel";
+
+    public HttpMessageInvoker CreateClient(ForwarderHttpClientContext context)
+    {
+        if (context.NewMetadata is not null &&
+            context.NewMetadata.TryGetValue(ClientModeMetadataKey, out var clientMode) &&
+            string.Equals(clientMode, TunnelClientMode, StringComparison.OrdinalIgnoreCase))
+        {
+            return tunnelClientFactory.CreateClient(context);
         }
+
+        return standardForwarderHttpClientFactory.CreateClient(context);
+    }
+}
+
+public sealed class StandardForwarderHttpClientFactory : ForwarderHttpClientFactory
+{
+    protected override void ConfigureHandler(ForwarderHttpClientContext context, SocketsHttpHandler handler)
+    {
+        handler.UseProxy = false;
+        handler.AllowAutoRedirect = false;
+        handler.AutomaticDecompression = DecompressionMethods.None | DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli;
+        handler.UseCookies = false;
+        handler.ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current);
+        handler.ConnectTimeout = TimeSpan.FromSeconds(1);
+        handler.PooledConnectionLifetime = TimeSpan.FromMinutes(10);
+        handler.PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2);
+        handler.ResponseDrainTimeout = TimeSpan.FromSeconds(10);
+        handler.EnableMultipleHttp2Connections = true;
+        handler.EnableMultipleHttp3Connections = false;
+        handler.MaxConnectionsPerServer = context.NewConfig?.MaxConnectionsPerServer ?? 1024;
+
+        base.ConfigureHandler(context, handler);
     }
 }

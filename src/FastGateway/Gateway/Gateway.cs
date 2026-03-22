@@ -8,6 +8,7 @@ using FastGateway.Services;
 using FastGateway.Tunnels;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.WebSockets;
@@ -20,6 +21,7 @@ using System.Text;
 using Yarp.ReverseProxy;
 using Yarp.ReverseProxy.Configuration;
 using Yarp.ReverseProxy.Health;
+using Yarp.ReverseProxy.LoadBalancing;
 using Yarp.ReverseProxy.Model;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
@@ -33,6 +35,9 @@ public static class Gateway
 {
     private const string Root = "Root";
     private const string GatewayVersionHeader = "X-FastGateway-Version";
+    private const string ClientModeMetadataKey = "FastGateway.ClientMode";
+    private const string TunnelClientMode = "Tunnel";
+    private const string StandardClientMode = "Standard";
     private static readonly ConcurrentDictionary<string, WebApplication> GatewayWebApplications = new();
 
     private static readonly DestinationConfig StaticProxyDestination = new() { Address = "http://127.0.0.1" };
@@ -381,6 +386,10 @@ public static class Gateway
             builder.Services.AddRateLimitService(rateLimits);
 
             builder.Services.AddTunnel();
+            builder.Services.AddSingleton<StandardForwarderHttpClientFactory>();
+            builder.Services.AddSingleton<FastGatewayForwarderHttpClientFactory>();
+            builder.Services.AddSingleton<IForwarderHttpClientFactory>(s => s.GetRequiredService<FastGatewayForwarderHttpClientFactory>());
+            builder.Services.AddSingleton<ConfigurationService>();
 
             if (server.StaticCompress)
                 builder.Services.AddResponseCompression();
@@ -481,11 +490,25 @@ public static class Gateway
             app.UseInitGatewayMiddleware();
 
             app.UseRequestTimeouts();
+            app.Use(async (context, next) =>
+            {
+                if (IsSseRequest(context.Request))
+                {
+                    context.Features.Get<IHttpRequestTimeoutFeature>()?.DisableTimeout();
+                    context.Response.Headers.CacheControl = "no-cache";
+                    context.Response.Headers["X-Accel-Buffering"] = "no";
+                }
+
+                await next(context);
+            });
 
             app.UseRateLimitMiddleware(rateLimits);
 
             // 黑名单默认启用（安全防护），白名单按服务开关控制
             app.UseBlacklistMiddleware(blacklistAndWhitelists, enableBlacklist: true, enableWhitelist: server.EnableWhitelist);
+
+            app.UseClusterRequestFailover(server.Id, gatewayVersion);
+            app.UseProxyErrorResponse(gatewayVersion);
 
             app.UseAbnormalIpMonitoring(server.Id);
 
@@ -576,6 +599,50 @@ public static class Gateway
         return app;
     }
 
+    private static HttpClientConfig CreateHttpClientConfig()
+    {
+        return new HttpClientConfig
+        {
+            MaxConnectionsPerServer = 1024,
+            EnableMultipleHttp2Connections = true
+        };
+    }
+
+    private static ForwarderRequestConfig CreateHttpRequestConfig(Server server)
+    {
+        var timeoutSeconds = server.Timeout > 0 ? server.Timeout : 900;
+        if (timeoutSeconds < 600) timeoutSeconds = 600;
+
+        return new ForwarderRequestConfig
+        {
+            ActivityTimeout = TimeSpan.FromSeconds(timeoutSeconds),
+            AllowResponseBuffering = false
+        };
+    }
+
+    private static Dictionary<string, string> CreateClusterMetadata(string? service)
+    {
+        return new Dictionary<string, string>(1)
+        {
+            {
+                ClientModeMetadataKey,
+                IsTunnelService(service) ? TunnelClientMode : StandardClientMode
+            }
+        };
+    }
+
+    private static bool IsTunnelService(string? service)
+    {
+        if (string.IsNullOrWhiteSpace(service)) return false;
+        return service.StartsWith("http://node_", StringComparison.OrdinalIgnoreCase)
+               || service.StartsWith("https://node_", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSseRequest(HttpRequest request)
+    {
+        return request.Headers.Accept.ToString().Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static (IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) BuildConfig(
         DomainName[] domainNames, Server server)
     {
@@ -644,7 +711,10 @@ public static class Gateway
                             config
                         }
                     },
-                    HealthCheck = CreateHealthCheckConfig(domainName)
+                    HealthCheck = CreateHealthCheckConfig(domainName),
+                    HttpClient = CreateHttpClientConfig(),
+                    HttpRequest = CreateHttpRequestConfig(server),
+                    Metadata = CreateClusterMetadata(domainName.Service)
                 };
 
                 clusters.Add(cluster);
@@ -661,7 +731,11 @@ public static class Gateway
                 {
                     ClusterId = domainName.Id,
                     Destinations = destinations,
-                    HealthCheck = CreateHealthCheckConfig(domainName)
+                    LoadBalancingPolicy = LoadBalancingPolicies.LeastRequests,
+                    HealthCheck = CreateHealthCheckConfig(domainName),
+                    HttpClient = CreateHttpClientConfig(),
+                    HttpRequest = CreateHttpRequestConfig(server),
+                    Metadata = CreateClusterMetadata(null)
                 };
 
                 clusters.Add(cluster);

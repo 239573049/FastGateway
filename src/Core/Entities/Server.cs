@@ -71,4 +71,19 @@ public sealed class Server
     /// 请求超时时间（单位：秒）。默认900秒（15分钟）
     /// </summary>
     public int Timeout { get; set; } = 900;
+
+    /// <summary>
+    /// 是否启用请求级故障转移
+    /// </summary>
+    public bool EnableRequestFailover { get; set; }
+
+    /// <summary>
+    /// 请求级故障转移的连接超时（毫秒）
+    /// </summary>
+    public int FailoverConnectTimeoutMs { get; set; } = 150;
+
+    /// <summary>
+    /// 单个请求故障转移总预算（毫秒）
+    /// </summary>
+    public int FailoverBudgetMs { get; set; } = 500;
 }

@@ -49,6 +49,9 @@ export default function CreateServer({
             copyRequestHost: true,
             maxRequestBodySize: null,
             timeout: 900,
+            enableRequestFailover: false,
+            failoverConnectTimeoutMs: 150,
+            failoverBudgetMs: 500,
         }),
         []
     );
@@ -82,6 +85,19 @@ export default function CreateServer({
             toast.error("超时时间必须大于 0");
             setTab("limits");
             return;
+        }
+
+        if (value.enableRequestFailover) {
+            if (value.failoverConnectTimeoutMs <= 0) {
+                toast.error("故障转移连接超时必须大于 0");
+                setTab("limits");
+                return;
+            }
+            if (value.failoverBudgetMs < value.failoverConnectTimeoutMs) {
+                toast.error("故障转移总预算不能小于连接超时");
+                setTab("limits");
+                return;
+            }
         }
 
         if (value.redirectHttps && !value.isHttps) {
@@ -291,6 +307,50 @@ export default function CreateServer({
                                     />
                                 </div>
                             </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <FieldLabel
+                                        htmlFor="create-server-failover-connect-timeout"
+                                        label="故障转移连接超时(ms)"
+                                        tooltip="仅在启用请求级故障转移后生效，用于快速判定单个上游节点连接失败。"
+                                    />
+                                    <Input
+                                        id="create-server-failover-connect-timeout"
+                                        type="number"
+                                        value={value.failoverConnectTimeoutMs}
+                                        onChange={(e) =>
+                                            setValue((prev) => ({
+                                                ...prev,
+                                                failoverConnectTimeoutMs: Number(e.target.value),
+                                            }))
+                                        }
+                                        placeholder="例如：150"
+                                        disabled={!value.enableRequestFailover}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <FieldLabel
+                                        htmlFor="create-server-failover-budget"
+                                        label="故障转移总预算(ms)"
+                                        tooltip="单个请求在多个健康节点之间切换的总耗时预算。"
+                                    />
+                                    <Input
+                                        id="create-server-failover-budget"
+                                        type="number"
+                                        value={value.failoverBudgetMs}
+                                        onChange={(e) =>
+                                            setValue((prev) => ({
+                                                ...prev,
+                                                failoverBudgetMs: Number(e.target.value),
+                                            }))
+                                        }
+                                        placeholder="例如：500"
+                                        disabled={!value.enableRequestFailover}
+                                    />
+                                </div>
+                            </div>
                         </TabsContent>
 
                         <TabsContent value="features" className="space-y-4">
@@ -361,6 +421,18 @@ export default function CreateServer({
                                         setValue((prev) => ({
                                             ...prev,
                                             copyRequestHost: next,
+                                        }))
+                                    }
+                                />
+                                <SettingSwitch
+                                    id="create-server-request-failover"
+                                    label="请求级故障转移"
+                                    description="仅对 GET/HEAD/OPTIONS 生效，网络层失败时尝试切换到其他健康节点。"
+                                    checked={value.enableRequestFailover}
+                                    onCheckedChange={(next) =>
+                                        setValue((prev) => ({
+                                            ...prev,
+                                            enableRequestFailover: next,
                                         }))
                                     }
                                 />
