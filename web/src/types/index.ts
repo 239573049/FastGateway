@@ -14,6 +14,9 @@ export interface Server {
     copyRequestHost: boolean;
     maxRequestBodySize: number | null;
     timeout: number;
+    enableRequestFailover: boolean;
+    failoverConnectTimeoutMs: number;
+    failoverBudgetMs: number;
 }
 
 

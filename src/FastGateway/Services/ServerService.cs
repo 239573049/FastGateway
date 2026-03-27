@@ -41,7 +41,12 @@ public static class ServerService
                     EnableBlacklist = x.EnableBlacklist,
                     EnableTunnel = x.EnableTunnel,
                     EnableWhitelist = x.EnableWhitelist,
-                    Description = x.Description
+                    Description = x.Description,
+                    MaxRequestBodySize = x.MaxRequestBodySize,
+                    Timeout = x.Timeout,
+                    EnableRequestFailover = x.EnableRequestFailover,
+                    FailoverConnectTimeoutMs = x.FailoverConnectTimeoutMs,
+                    FailoverBudgetMs = x.FailoverBudgetMs
                 });
             })
             .WithDescription("获取服务列表")

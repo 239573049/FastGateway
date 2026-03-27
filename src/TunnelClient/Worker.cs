@@ -30,22 +30,21 @@ public class Worker : BackgroundService
         var serverClient = new ServerClient(monitorServer, tunnel,
             _services.GetRequiredService<ILogger<ServerClient>>());
 
-        await monitorServer.RegisterNodeAsync(tunnel, stoppingToken);
-
         while (!stoppingToken.IsCancellationRequested)
         {
-            await MonitorServerAsync(serverClient, tunnel, stoppingToken);
+            await MonitorServerAsync(monitorServer, serverClient, tunnel, stoppingToken);
             _logger.LogInformation("尝试重新连接到服务器...");
             await Task.Delay(tunnel.ReconnectInterval, stoppingToken);
             _logger.LogInformation("重新连接到服务器中...");
         }
     }
 
-    private async Task MonitorServerAsync(ServerClient serverClient,
+    private async Task MonitorServerAsync(MonitorServer monitorServer, ServerClient serverClient,
         Tunnel tunnel, CancellationToken stoppingToken)
     {
         try
         {
+            await monitorServer.RegisterNodeAsync(tunnel, stoppingToken);
             await serverClient.TransportCoreAsync(tunnel, stoppingToken);
         }
         catch (UnauthorizedAccessException e)
