@@ -1,6 +1,7 @@
 using FastGateway.Tunnels;
 using System.Diagnostics;
 using System.Net;
+using System.Text;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace FastGateway.Gateway;
@@ -32,9 +33,10 @@ public sealed class StandardForwarderHttpClientFactory : ForwarderHttpClientFact
     {
         handler.UseProxy = false;
         handler.AllowAutoRedirect = false;
-        handler.AutomaticDecompression = DecompressionMethods.None | DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli;
+        handler.AutomaticDecompression = DecompressionMethods.None;
         handler.UseCookies = false;
         handler.ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current);
+        handler.RequestHeaderEncodingSelector = (_, _) => Encoding.UTF8;
         handler.ConnectTimeout = TimeSpan.FromSeconds(1);
         handler.PooledConnectionLifetime = TimeSpan.FromMinutes(10);
         handler.PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2);

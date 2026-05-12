@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using Yarp.ReverseProxy;
 using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Health;
@@ -325,10 +326,11 @@ public sealed class ClusterRequestFailoverMiddleware
             {
                 UseProxy = false,
                 AllowAutoRedirect = false,
-                AutomaticDecompression = DecompressionMethods.None | DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+                AutomaticDecompression = DecompressionMethods.None,
                 UseCookies = false,
                 EnableMultipleHttp2Connections = true,
                 ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current),
+                RequestHeaderEncodingSelector = (_, _) => Encoding.UTF8,
                 ConnectTimeout = TimeSpan.FromMilliseconds(timeout),
                 PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
                 ResponseDrainTimeout = TimeSpan.FromSeconds(30)

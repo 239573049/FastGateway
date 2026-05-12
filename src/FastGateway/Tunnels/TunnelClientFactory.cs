@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Net.Sockets;
+using System.Text;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace FastGateway.Tunnels;
@@ -51,6 +52,7 @@ internal class TunnelClientFactory(
         handler.KeepAlivePingDelay = TimeSpan.FromMinutes(5);
         handler.KeepAlivePingTimeout = TimeSpan.FromMinutes(5);
         handler.KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always;
+        handler.RequestHeaderEncodingSelector = (_, _) => Encoding.UTF8;
         // 新增：从 Gateway.ConfigureHttpClient 移植的参数
         handler.ConnectTimeout = TimeSpan.FromMinutes(5);
         handler.ResponseDrainTimeout = TimeSpan.FromMinutes(5);
