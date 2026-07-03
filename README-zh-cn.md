@@ -8,8 +8,10 @@ FastGateway提供了基本的管理服务，提供简单的登录授权，和实
 ## 支持功能
 
 - [x] 登录授权
-- [x] 自动申请HTTPS证书
+- [x] 自动申请HTTPS证书（Let's Encrypt / HTTP-01）
 - [x] 自动续期HTTPS证书
+- [x] 泛域名证书（Let's Encrypt / DNS-01）
+- [x] 上传自定义HTTPS证书（PFX / PEM）
 - [x] dashboard监控
 - [x] 静态文件服务
 - [x] 单服务代理
@@ -19,11 +21,25 @@ FastGateway提供了基本的管理服务，提供简单的登录授权，和实
 - [x] 支持自定义限流策略
 - [x] 支持黑白名单
 
+## HTTPS 证书管理
+
+FastGateway 在「证书管理」页面提供三种方式为域名配置 HTTPS 证书：
+
+1. **自动申请（Let's Encrypt，HTTP-01）** — 对于普通域名（如 `example.com`），填写域名与邮箱后点击「申请证书」，网关会自动完成 ACME HTTP-01 验证（需要开启 80 端口服务），并在证书临期前自动续期。
+
+2. **泛域名证书（Let's Encrypt，DNS-01）** — 泛域名（如 `*.example.com`）无法使用 HTTP-01 验证。新增域名后点击「DNS 验证」，网关会生成一条 `_acme-challenge` TXT 记录，请将其添加到域名解析服务商；记录生效后点击「验证并签发」即可完成签发。此方式签发的泛域名证书不会自动续期，到期前需再次通过 DNS 验证。
+
+3. **上传自定义证书** — 点击「上传证书」使用你已有的证书，支持两种格式：
+   - **PFX / P12** — 上传 `.pfx`/`.p12` 文件及其密码（无密码可留空）。
+   - **PEM / CRT** — 分别上传证书文件（`.pem`/`.crt`）与私钥文件（`.key`）。
+
+   上传的证书（包括泛域名）按 SNI 匹配，不参与自动续期，到期前请重新上传。上传的证书会统一转换为 `.pfx` 保存在 `certs` 目录下。
+
 ## 技术栈
 
 ### 后端技术栈
 
-- Asp.Net 8.0 用于提供基础服务
+- .NET 10 用于提供基础服务
 - Yarp 用于提供反向代理服务
 - FreeSql用于提供数据库服务
 - JWT 用于提供登录授权服务
@@ -148,11 +164,19 @@ systemctl stop fastgateway.service
 systemctl restart fastgateway.service
 ```
 
-## 镜像列表
+## 下载
 
-- 默认镜像：hejiale010426/gateway-api:v1.0.0
-- 提供HTTP3镜像：hejiale010426/gateway-api:v1.0.0-h3
-- ARM64镜像：hejiale010426/gateway-api:v1.0.0-arm64
+[Releases](../../releases) 页面提供以下平台的自包含（self-contained）预编译包：
+
+| 操作系统 | x64 | ARM64 |
+| --- | --- | --- |
+| Linux | `fastgateway-linux-x64.tar.gz` | `fastgateway-linux-arm64.tar.gz` |
+| Windows | `fastgateway-win-x64.zip` | `fastgateway-win-arm64.zip` |
+| macOS | `fastgateway-osx-x64.tar.gz` | `fastgateway-osx-arm64.tar.gz` |
+
+`TunnelClient` 组件同样提供上述所有平台的压缩包（`tunnelclient-<runtime>`）。
+
+Docker 镜像 `aidotnet/fast-gateway` 为多架构镜像，同时支持 `linux/amd64` 与 `linux/arm64`，`docker run`/`docker compose` 会自动拉取与主机匹配的版本。
 
 ## 第三方下载
 

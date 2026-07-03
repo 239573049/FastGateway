@@ -86,9 +86,12 @@ export default function CreateCertPage({
                             onChange={(e) =>
                                 setValue({ ...value, domain: e.target.value })
                             }
-                            placeholder="请输入域名，如 example.com"
+                            placeholder="请输入域名，如 example.com 或 *.example.com"
                             className="w-full"
                         />
+                        <p className="text-xs text-muted-foreground">
+                            支持泛域名（如 *.example.com），泛域名需在列表中通过「DNS 验证」方式申请。
+                        </p>
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-medium">邮箱</Label>

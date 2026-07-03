@@ -9,6 +9,11 @@ public sealed class Cert
     public string Domain { get; set; }
 
     /// <summary>
+    /// 证书来源类型（Let's Encrypt 自动申请 / 用户上传）
+    /// </summary>
+    public CertType Type { get; set; }
+
+    /// <summary>
     /// 是否过期
     /// </summary>
     public bool Expired { get; set; }

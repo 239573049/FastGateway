@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography.X509Certificates;
 using Certes;
 using Certes.Acme;
 using Certes.Acme.Resource;
@@ -36,9 +37,39 @@ public static class CertService
         context.Response.StatusCode = 404;
     }
 
-    public static Cert? GetCert(string domain)
+    public static Cert? GetCert(string? domain)
     {
-        return CertWebApplications.TryGetValue(domain, out var cert) ? cert : null;
+        if (string.IsNullOrWhiteSpace(domain)) return null;
+
+        var host = domain.Trim().ToLowerInvariant();
+
+        // 精确匹配优先
+        foreach (var pair in CertWebApplications)
+            if (string.Equals(pair.Key, host, StringComparison.OrdinalIgnoreCase))
+                return pair.Value;
+
+        // 泛域名匹配：a.example.com -> *.example.com（仅匹配一级子域名）
+        var index = host.IndexOf('.');
+        if (index > 0 && index < host.Length - 1)
+        {
+            var wildcard = "*." + host[(index + 1)..];
+            foreach (var pair in CertWebApplications)
+                if (string.Equals(pair.Key, wildcard, StringComparison.OrdinalIgnoreCase))
+                    return pair.Value;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 生成安全的证书文件名，处理泛域名（*）及其它非法文件名字符。
+    /// </summary>
+    private static string SafeCertFileName(string domain)
+    {
+        var name = domain.Replace("*", "_wildcard_");
+        foreach (var c in Path.GetInvalidFileNameChars())
+            name = name.Replace(c, '_');
+        return name;
     }
 
     public static void InitCert(Cert[] certs)
@@ -82,6 +113,10 @@ public static class CertService
         var cert = configService.GetCerts().FirstOrDefault(x => x.Id == id);
 
         if (cert == null) return ResultDto.CreateFailed("证书不存在");
+
+        if (cert.Type == CertType.Custom) return ResultDto.CreateFailed("自定义上传的证书不支持自动申请，请重新上传证书文件");
+
+        if (cert.Domain.StartsWith("*.")) return ResultDto.CreateFailed("泛域名证书请使用 DNS 验证方式申请");
 
         if (!Gateway.Gateway.Has80Service) return ResultDto.CreateFailed("请先80端口服务，再申请证书，否则无法验证域名");
 
@@ -154,7 +189,7 @@ public static class CertService
             if (!Directory.Exists(certPath)) Directory.CreateDirectory(certPath);
 
             // 保存证书文件
-            var certFile = Path.Combine(certPath, $"{certItem.Domain}.pfx");
+            var certFile = Path.Combine(certPath, $"{SafeCertFileName(certItem.Domain)}.pfx");
             await File.WriteAllBytesAsync(certFile, pfx);
 
             // 更新证书信息
@@ -177,6 +212,243 @@ public static class CertService
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// 准备 DNS-01 验证（用于泛域名等无法通过 HTTP-01 验证的场景）。
+    /// 生成 _acme-challenge TXT 记录供用户手动添加到域名解析。
+    /// </summary>
+    public static async Task<ResultDto> PrepareDnsChallengeAsync(ConfigurationService configService, string id)
+    {
+        var cert = configService.GetCerts().FirstOrDefault(x => x.Id == id);
+        if (cert == null) return ResultDto.CreateFailed("证书不存在");
+        if (cert.Type == CertType.Custom) return ResultDto.CreateFailed("自定义上传的证书无需申请");
+        if (string.IsNullOrWhiteSpace(cert.Email)) return ResultDto.CreateFailed("请先为该证书配置邮箱");
+
+        try
+        {
+            var context = await RegisterWithLetsEncrypt(cert.Email);
+            var order = await context.NewOrder(new[] { cert.Domain });
+            var authz = (await order.Authorizations()).First();
+            var dnsChallenge = await authz.Dns();
+            var dnsTxt = context.AccountKey.DnsTxt(dnsChallenge.Token);
+
+            // 泛域名 *.example.com 的验证记录为 _acme-challenge.example.com
+            var baseDomain = cert.Domain.StartsWith("*.") ? cert.Domain[2..] : cert.Domain;
+            var recordName = "_acme-challenge." + baseDomain;
+
+            // 缓存订单地址，供 validate 步骤续用（30 分钟内有效）
+            MemoryCache.Set($"dns-order:{cert.Id}", order.Location.ToString(), TimeSpan.FromMinutes(30));
+
+            return ResultDto.CreateSuccess(new
+            {
+                recordName,
+                recordType = "TXT",
+                recordValue = dnsTxt
+            });
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return ResultDto.CreateFailed("获取 DNS 验证记录失败：" + e.Message);
+        }
+    }
+
+    /// <summary>
+    /// 校验 DNS-01 记录并签发证书。用户在添加 TXT 记录后调用。
+    /// </summary>
+    public static async Task<ResultDto> ValidateDnsChallengeAsync(ConfigurationService configService, string id)
+    {
+        var cert = configService.GetCerts().FirstOrDefault(x => x.Id == id);
+        if (cert == null) return ResultDto.CreateFailed("证书不存在");
+
+        if (!MemoryCache.TryGetValue($"dns-order:{cert.Id}", out var cached) || cached is not string orderUri)
+            return ResultDto.CreateFailed("验证信息已过期，请重新获取 DNS 记录");
+
+        try
+        {
+            var context = await RegisterWithLetsEncrypt(cert.Email);
+            var order = context.Order(new Uri(orderUri));
+            var authz = (await order.Authorizations()).First();
+            var dnsChallenge = await authz.Dns();
+
+            var challenge = await dnsChallenge.Validate();
+            for (var i = 0; i < 30; i++)
+            {
+                if (challenge.Status == ChallengeStatus.Valid) break;
+                if (challenge.Status == ChallengeStatus.Invalid)
+                {
+                    cert.RenewStats = RenewStats.Fail;
+                    configService.UpdateCert(cert);
+                    return ResultDto.CreateFailed("DNS 验证失败：" + (challenge.Error?.Detail ?? "请检查 TXT 记录是否已生效"));
+                }
+
+                await Task.Delay(5000);
+                challenge = await dnsChallenge.Resource();
+            }
+
+            if (challenge.Status != ChallengeStatus.Valid)
+                return ResultDto.CreateFailed("DNS 验证超时，请确认 TXT 记录已生效后重试");
+
+            var privateKey = KeyFactory.NewKey(KeyAlgorithm.ES256);
+            var certChain = await order.Generate(new CsrInfo { CommonName = cert.Domain }, privateKey);
+
+            const string certPassword = "Aa123456";
+            var pfx = certChain.ToPfx(privateKey).Build("my-cert", certPassword);
+
+            var certPath = Path.Combine(AppContext.BaseDirectory, "certs");
+            if (!Directory.Exists(certPath)) Directory.CreateDirectory(certPath);
+            var certFile = Path.Combine(certPath, $"{SafeCertFileName(cert.Domain)}.pfx");
+            await File.WriteAllBytesAsync(certFile, pfx);
+
+            cert.NotAfter = DateTime.Now.AddMonths(3);
+            cert.RenewTime = DateTime.Now;
+            cert.Expired = false;
+            cert.Type = CertType.LetsEncrypt;
+            cert.RenewStats = RenewStats.Success;
+            cert.Certs = new CertData { File = certFile, Domain = cert.Domain, Password = certPassword };
+
+            configService.UpdateCert(cert);
+            MemoryCache.Remove($"dns-order:{cert.Id}");
+            CertWebApplications[cert.Domain] = cert;
+            Gateway.Gateway.InvalidateCertificate(cert.Domain);
+
+            return ResultDto.CreateSuccess();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return ResultDto.CreateFailed("签发证书失败：" + e.Message);
+        }
+    }
+
+    /// <summary>
+    /// 上传用户自定义证书（支持 pfx/p12 与 pem 格式），统一转换为固定密码的 pfx 后落盘。
+    /// </summary>
+    public static async Task<ResultDto> UploadAsync(ConfigurationService configService, HttpRequest request)
+    {
+        if (!request.HasFormContentType)
+            return ResultDto.CreateFailed("请使用 multipart/form-data 上传证书");
+
+        var form = await request.ReadFormAsync();
+
+        var domain = form["domain"].ToString().Trim();
+        if (string.IsNullOrWhiteSpace(domain))
+            return ResultDto.CreateFailed("域名不能为空");
+
+        var id = form["id"].ToString();
+        var certType = form["certType"].ToString().Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(certType)) certType = "pfx";
+
+        var existing = configService.GetCerts().FirstOrDefault(x => x.Id == id);
+        var previousDomain = existing?.Domain;
+
+        // 域名唯一性校验（排除自身）
+        if (configService.GetCerts().Any(x => x.Domain == domain && x.Id != existing?.Id))
+            return ResultDto.CreateFailed("域名已存在");
+
+        // 统一使用固定密码保存，保持与自动申请证书一致，SNI 加载时无需用户密码
+        const string storagePassword = "Aa123456";
+        byte[] pfxBytes;
+
+        try
+        {
+            if (certType == "pem")
+            {
+                var certFile = form.Files["file"];
+                var keyFile = form.Files["keyFile"];
+                if (certFile == null || certFile.Length == 0)
+                    return ResultDto.CreateFailed("请上传证书文件（.pem/.crt）");
+                if (keyFile == null || keyFile.Length == 0)
+                    return ResultDto.CreateFailed("请上传证书私钥文件（.key）");
+
+                var certPem = await ReadAllTextAsync(certFile);
+                var keyPem = await ReadAllTextAsync(keyFile);
+
+                using var fromPem = X509Certificate2.CreateFromPem(certPem, keyPem);
+                pfxBytes = fromPem.Export(X509ContentType.Pfx, storagePassword);
+            }
+            else
+            {
+                var pfxFile = form.Files["file"];
+                if (pfxFile == null || pfxFile.Length == 0)
+                    return ResultDto.CreateFailed("请上传证书文件（.pfx/.p12）");
+
+                var password = form["password"].ToString();
+                var rawBytes = await ReadAllBytesAsync(pfxFile);
+
+                // 导入后重新导出为固定密码的 pfx，并保留完整证书链
+                var collection = new X509Certificate2Collection();
+                collection.Import(rawBytes, password,
+                    X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+                pfxBytes = collection.Export(X509ContentType.Pfx, storagePassword)!;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return ResultDto.CreateFailed("证书解析失败，请检查文件格式和密码是否正确");
+        }
+
+        // 重新加载以读取证书元数据并校验私钥
+        using var certificate = new X509Certificate2(pfxBytes, storagePassword, X509KeyStorageFlags.EphemeralKeySet);
+        if (!certificate.HasPrivateKey)
+            return ResultDto.CreateFailed("上传的证书缺少私钥，无法用于 HTTPS");
+
+        // 保存证书文件
+        var certPath = Path.Combine(AppContext.BaseDirectory, "certs");
+        if (!Directory.Exists(certPath)) Directory.CreateDirectory(certPath);
+        var savePath = Path.Combine(certPath, $"{SafeCertFileName(domain)}.pfx");
+        await File.WriteAllBytesAsync(savePath, pfxBytes);
+
+        var target = existing ?? new Cert { CreateTime = DateTime.Now };
+        target.Domain = domain;
+        target.Type = CertType.Custom;
+        target.AutoRenew = false;
+        target.Expired = certificate.NotAfter < DateTime.Now;
+        target.NotAfter = certificate.NotAfter;
+        target.Issuer = certificate.GetNameInfo(X509NameType.SimpleName, true);
+        target.RenewTime = DateTime.Now;
+        target.RenewStats = RenewStats.Success;
+        var email = form["email"].ToString();
+        if (!string.IsNullOrWhiteSpace(email)) target.Email = email;
+        target.Certs = new CertData
+        {
+            File = savePath,
+            Domain = domain,
+            Password = storagePassword
+        };
+
+        if (existing == null)
+            configService.AddCert(target);
+        else
+            configService.UpdateCert(target);
+
+        // 域名发生变更时，清理旧域名的内存证书与网关缓存，避免残留
+        if (previousDomain != null && !string.Equals(previousDomain, domain, StringComparison.OrdinalIgnoreCase))
+        {
+            CertWebApplications.TryRemove(previousDomain, out _);
+            Gateway.Gateway.InvalidateCertificate(previousDomain);
+        }
+
+        // 更新内存证书并清除网关缓存以立即生效
+        CertWebApplications[domain] = target;
+        Gateway.Gateway.InvalidateCertificate(domain);
+
+        return ResultDto.CreateSuccess();
+    }
+
+    private static async Task<byte[]> ReadAllBytesAsync(IFormFile file)
+    {
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        return ms.ToArray();
+    }
+
+    private static async Task<string> ReadAllTextAsync(IFormFile file)
+    {
+        using var reader = new StreamReader(file.OpenReadStream());
+        return await reader.ReadToEndAsync();
     }
 
     public static IEndpointRouteBuilder MapCert(this IEndpointRouteBuilder app)
@@ -243,6 +515,22 @@ public static class CertService
         cert.MapPost("{id}/apply",
                 async (ConfigurationService configService, string id) => await ApplyAsync(configService, id))
             .WithDescription("申请证书").WithDisplayName("申请证书").WithTags("证书");
+
+        cert.MapPost("upload",
+                async (ConfigurationService configService, HttpRequest request) =>
+                    await UploadAsync(configService, request))
+            .WithDescription("上传自定义证书").WithDisplayName("上传自定义证书").WithTags("证书")
+            .DisableAntiforgery();
+
+        cert.MapPost("{id}/dns/prepare",
+                async (ConfigurationService configService, string id) =>
+                    await PrepareDnsChallengeAsync(configService, id))
+            .WithDescription("获取DNS验证记录").WithDisplayName("获取DNS验证记录").WithTags("证书");
+
+        cert.MapPost("{id}/dns/validate",
+                async (ConfigurationService configService, string id) =>
+                    await ValidateDnsChallengeAsync(configService, id))
+            .WithDescription("校验DNS并签发证书").WithDisplayName("校验DNS并签发证书").WithTags("证书");
 
         return app;
     }

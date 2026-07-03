@@ -51,15 +51,28 @@ jobs:
     name: Build TunnelClient
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             runtime: linux-x64
             arch: amd64
+          - os: ubuntu-latest
+            runtime: linux-arm64
+            arch: arm64
           - os: windows-latest
             runtime: win-x64
             arch: amd64
-    
+          - os: windows-latest
+            runtime: win-arm64
+            arch: arm64
+          - os: macos-latest
+            runtime: osx-x64
+            arch: amd64
+          - os: macos-latest
+            runtime: osx-arm64
+            arch: arm64
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -87,15 +100,28 @@ jobs:
     needs: build-web
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             runtime: linux-x64
             arch: amd64
+          - os: ubuntu-latest
+            runtime: linux-arm64
+            arch: arm64
           - os: windows-latest
             runtime: win-x64
             arch: amd64
-    
+          - os: windows-latest
+            runtime: win-arm64
+            arch: arm64
+          - os: macos-latest
+            runtime: osx-x64
+            arch: amd64
+          - os: macos-latest
+            runtime: osx-arm64
+            arch: arm64
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -173,20 +199,28 @@ jobs:
         run: |
           cat > release-notes.md << 'EOF'
           ## Release ${{ github.ref_name || github.event.inputs.version }}
-          
+
           ### Downloads
-          
-          #### TunnelClient
-          - **Linux AMD64**: `tunnelclient-linux-x64.tar.gz`
-          - **Windows AMD64**: `tunnelclient-win-x64.zip`
-          
+
           #### FastGateway
-          - **Linux AMD64**: `fastgateway-linux-x64.tar.gz`
-          - **Windows AMD64**: `fastgateway-win-x64.zip`
-          
+          - **Linux x64**: `fastgateway-linux-x64.tar.gz`
+          - **Linux ARM64**: `fastgateway-linux-arm64.tar.gz`
+          - **Windows x64**: `fastgateway-win-x64.zip`
+          - **Windows ARM64**: `fastgateway-win-arm64.zip`
+          - **macOS x64 (Intel)**: `fastgateway-osx-x64.tar.gz`
+          - **macOS ARM64 (Apple Silicon)**: `fastgateway-osx-arm64.tar.gz`
+
+          #### TunnelClient
+          - **Linux x64**: `tunnelclient-linux-x64.tar.gz`
+          - **Linux ARM64**: `tunnelclient-linux-arm64.tar.gz`
+          - **Windows x64**: `tunnelclient-win-x64.zip`
+          - **Windows ARM64**: `tunnelclient-win-arm64.zip`
+          - **macOS x64 (Intel)**: `tunnelclient-osx-x64.tar.gz`
+          - **macOS ARM64 (Apple Silicon)**: `tunnelclient-osx-arm64.tar.gz`
+
           ### Features
-          - Cross-platform support for Linux and Windows
-          - AMD64 architecture support
+          - Cross-platform support for Linux, Windows and macOS
+          - x64 and ARM64 architecture support
           - TunnelClient: Single-file executable for optimal portability
           - FastGateway: Single-file executable with all dependencies included
           
