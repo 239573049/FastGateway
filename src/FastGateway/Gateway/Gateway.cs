@@ -111,8 +111,28 @@ public static class Gateway
     public static void InvalidateCertificate(string domain)
     {
         if (string.IsNullOrWhiteSpace(domain)) return;
-        var key = $"sni:{domain.Trim().ToLowerInvariant()}";
-        if (CertificateCache.TryRemove(key, out var cert))
+        var normalized = domain.Trim().ToLowerInvariant();
+
+        // 泛域名证书：清除所有匹配该泛域名的 SNI 缓存（如 *.example.com 对应 a.example.com、b.example.com 等）
+        if (normalized.StartsWith("*."))
+        {
+            var suffix = normalized[1..]; // ".example.com"
+            foreach (var key in CertificateCache.Keys)
+            {
+                if (!key.StartsWith("sni:")) continue;
+                var host = key["sni:".Length..];
+                if (host != normalized && !host.EndsWith(suffix)) continue;
+                if (CertificateCache.TryRemove(key, out var wildcardCert))
+                {
+                    try { wildcardCert.Dispose(); } catch { /* ignore */ }
+                }
+            }
+
+            return;
+        }
+
+        var exactKey = $"sni:{normalized}";
+        if (CertificateCache.TryRemove(exactKey, out var cert))
         {
             try { cert.Dispose(); } catch { /* ignore */ }
         }
@@ -485,6 +505,24 @@ public static class Gateway
                         await CertService.Challenge(context, token.Value![1..]);
                     else
                         await next.Invoke();
+                });
+
+            // HTTPS 重定向：将 80 端口的明文请求重定向到 HTTPS
+            // 放在 ACME 校验之后，避免影响 HTTP-01 证书签发
+            if (is80 && server is { IsHttps: true, RedirectHttps: true })
+                app.Use(async (context, next) =>
+                {
+                    if (!context.Request.IsHttps)
+                    {
+                        var host = context.Request.Host.Host;
+                        var location =
+                            $"https://{host}{context.Request.PathBase}{context.Request.Path}{context.Request.QueryString}";
+                        context.Response.StatusCode = StatusCodes.Status307TemporaryRedirect;
+                        context.Response.Headers.Location = location;
+                        return;
+                    }
+
+                    await next.Invoke();
                 });
 
             app.UseInitGatewayMiddleware();

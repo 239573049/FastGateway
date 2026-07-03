@@ -37,10 +37,13 @@ import {
     Search,
     Shield,
     Trash2,
+    Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import CreateCertPage from "./features/CreateCert";
+import UploadCertPage from "./features/UploadCert";
+import DnsChallengePage from "./features/DnsChallenge";
 import TableList from "./features/TableList";
 
 type CertRenewStats = 0 | 1 | 2;
@@ -53,6 +56,8 @@ type CertItem = {
     renewStats: CertRenewStats;
     renewTime?: string | null;
     notAfter?: string | null;
+    // 0: Let's Encrypt 自动申请, 1: 用户上传的自定义证书
+    type?: number;
 };
 
 type RenewFilter = "all" | "none" | "success" | "failed";
@@ -100,6 +105,12 @@ function copyToClipboard(text: string) {
 
 export default function CertPage() {
     const [createVisible, setCreateVisible] = useState(false);
+    const [uploadVisible, setUploadVisible] = useState(false);
+    const [uploadItem, setUploadItem] = useState<CertItem | null>(null);
+    const [dnsDialog, setDnsDialog] = useState<{
+        open: boolean;
+        item: CertItem | null;
+    }>({ open: false, item: null });
     const [pagination, setPagination] = useState({
         page: 1,
         pageSize: 10,
@@ -243,6 +254,14 @@ export default function CertPage() {
                     return (
                         <div className="flex items-center gap-2">
                             <span className="font-medium">{item.domain || "-"}</span>
+                            {item.type === 1 ? (
+                                <Badge
+                                    variant="outline"
+                                    className="border-violet-200 bg-violet-50 font-normal text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300"
+                                >
+                                    自定义
+                                </Badge>
+                            ) : null}
                             {item.domain ? (
                                 <Button
                                     variant="ghost"
@@ -403,23 +422,49 @@ export default function CertPage() {
                 key: "action",
                 render: (_: unknown, item: CertItem) => {
                     const applying = Boolean(applyingIds[item.id]);
+                    const isCustom = item.type === 1;
+                    const isWildcard = (item.domain || "").includes("*");
                     return (
                         <div className="flex items-center justify-end gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={applying || loading}
-                                onClick={() => handleApply(item)}
-                            >
-                                {applying ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        申请中
-                                    </>
-                                ) : (
-                                    "申请证书"
-                                )}
-                            </Button>
+                            {isCustom ? (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={loading}
+                                    onClick={() => {
+                                        setUploadItem(item);
+                                        setUploadVisible(true);
+                                    }}
+                                >
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    重新上传
+                                </Button>
+                            ) : isWildcard ? (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={loading}
+                                    onClick={() => setDnsDialog({ open: true, item })}
+                                >
+                                    DNS 验证
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={applying || loading}
+                                    onClick={() => handleApply(item)}
+                                >
+                                    {applying ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            申请中
+                                        </>
+                                    ) : (
+                                        "申请证书"
+                                    )}
+                                </Button>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -465,6 +510,17 @@ export default function CertPage() {
                     >
                         <RefreshCw className="mr-2 h-4 w-4" />
                         刷新列表
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setUploadItem(null);
+                            setUploadVisible(true);
+                        }}
+                    >
+                        <Upload className="mr-2 h-4 w-4" />
+                        上传证书
                     </Button>
                     <Button size="sm" onClick={() => setCreateVisible(true)}>
                         <Plus className="mr-2 h-4 w-4" />
@@ -793,6 +849,26 @@ export default function CertPage() {
                 onClose={() => setCreateVisible(false)}
                 onOk={() => {
                     setCreateVisible(false);
+                    loadData();
+                }}
+            />
+
+            <UploadCertPage
+                visible={uploadVisible}
+                editItem={uploadItem}
+                onClose={() => setUploadVisible(false)}
+                onOk={() => {
+                    setUploadVisible(false);
+                    loadData();
+                }}
+            />
+
+            <DnsChallengePage
+                visible={dnsDialog.open}
+                item={dnsDialog.item}
+                onClose={() => setDnsDialog({ open: false, item: null })}
+                onOk={() => {
+                    setDnsDialog({ open: false, item: null });
                     loadData();
                 }}
             />

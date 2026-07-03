@@ -1,4 +1,5 @@
-﻿using FastGateway.Services;
+﻿using Core.Entities.Core;
+using FastGateway.Services;
 
 namespace FastGateway.BackgroundTask;
 
@@ -21,7 +22,10 @@ public class RenewSslBackgroundService(ILogger<RenewSslBackgroundService> logger
                     var configService = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
 
                     // 查询所有需要续期的证书
+                    // 自定义上传的证书不参与自动续期；泛域名证书只能通过 DNS-01 手动验证，无法自动续期
                     var certs = configService.GetCerts()
+                        .Where(x => x.Type != CertType.Custom)
+                        .Where(x => !x.Domain.StartsWith("*."))
                         .Where(x => x.NotAfter == null || (x.NotAfter < DateTime.Now.AddDays(15) && x.AutoRenew))
                         .ToArray();
 
