@@ -16,7 +16,9 @@ permissions:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  NODE_VERSION: '18.x'
+  # Tailwind CSS v4 ships a native (oxide) binding and requires Node 20+.
+  # Node 18 (npm 9) triggers the npm optional-dependency bug (npm/cli#4828).
+  NODE_VERSION: '20.x'
 
 jobs:
   build-web:
