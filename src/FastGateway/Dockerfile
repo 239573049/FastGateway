@@ -1,5 +1,14 @@
 # 请参阅 https://aka.ms/customizecontainer 以了解如何自定义调试容器,以及 Visual Studio 如何使用此 Dockerfile 生成映像以更快地进行调试。
 
+# 前端构建阶段：始终在构建机架构($BUILDPLATFORM)上运行。
+# 前端产物为架构无关的静态文件，这样多架构构建时无需在 QEMU 模拟下重复构建前端。
+FROM --platform=$BUILDPLATFORM node:20-slim AS web
+WORKDIR /web
+COPY web/package.json ./
+RUN npm install
+COPY web/ ./
+RUN npm run build
+
 # 此阶段用于在快速模式(默认为调试配置)下从 VS 运行时
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS base
 USER root
@@ -25,6 +34,8 @@ COPY ["src/FastGateway/FastGateway.csproj", "src/FastGateway/"]
 COPY ["src/Core/Core.csproj", "src/Core/"]
 RUN dotnet restore "./src/FastGateway/FastGateway.csproj"
 COPY . .
+# 将前端构建产物复制到 wwwroot，随 dotnet publish 一起打包
+COPY --from=web /web/dist ./src/FastGateway/wwwroot
 WORKDIR "/src/src/FastGateway"
 RUN dotnet build "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/build
 

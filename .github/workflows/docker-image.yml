@@ -14,16 +14,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Build Frontend
-        run: |
-          cd web
-          npm i
-          npm run build
+      # 前端由 Dockerfile 内的 web 阶段构建（在 $BUILDPLATFORM 上一次构建，
+      # 再复制到 wwwroot），此处无需单独构建前端。
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
