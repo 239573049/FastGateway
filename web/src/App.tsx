@@ -17,6 +17,7 @@ const AboutPage = lazy(() => import('./pages/about/page'))
 const FileStoragePage = lazy(() => import('./pages/filestorage/page'))
 const DashboardPage = lazy(() => import('./pages/dashboard/page'))
 const TunnelPage = lazy(() => import('./pages/tunnel/page'))
+const StreamForwardPage = lazy(() => import('./pages/stream-forward/page'))
 
 const router = createBrowserRouter([
   {
@@ -105,6 +106,12 @@ const router = createBrowserRouter([
             path: 'tunnel',
             element: <Suspense fallback={<Loading></Loading>}>
               <TunnelPage />
+            </Suspense>
+          },
+          {
+            path: 'stream-forward',
+            element: <Suspense fallback={<Loading></Loading>}>
+              <StreamForwardPage />
             </Suspense>
           },
           {

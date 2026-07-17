@@ -49,6 +49,43 @@ export interface UpStream {
     weight: number;
 }
 
+export enum StreamProtocol {
+    Tcp = 0,
+    Udp = 1,
+    Both = 2
+}
+
+export enum StreamLoadBalancing {
+    RoundRobin = 0,
+    LeastConnections = 1,
+    Random = 2
+}
+
+export interface StreamUpStream {
+    host: string;
+    port: number;
+    weight: number;
+}
+
+export interface StreamForward {
+    id: string | null;
+    name: string;
+    description: string | null;
+    enable: boolean;
+    protocol: StreamProtocol;
+    listenPort: number;
+    listenAddress: string;
+    upStreams: StreamUpStream[];
+    loadBalancing: StreamLoadBalancing;
+    connectTimeoutMs: number;
+    idleTimeoutSeconds: number;
+    enableBlacklist: boolean;
+    enableWhitelist: boolean;
+    onLine: boolean;
+    activeConnections: number;
+    udpSessions: number;
+}
+
 export interface HeadersView {
     key: string;
     value: string;

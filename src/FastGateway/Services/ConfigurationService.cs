@@ -234,6 +234,42 @@ public class ConfigurationService
         SaveConfig();
     }
 
+    // StreamForward operations (L4 端口转发)
+    public List<StreamForward> GetStreamForwards()
+    {
+        return _config.StreamForwards.ToList();
+    }
+
+    public StreamForward? GetStreamForward(string id)
+    {
+        return _config.StreamForwards.FirstOrDefault(s => s.Id == id);
+    }
+
+    public void AddStreamForward(StreamForward streamForward)
+    {
+        if (string.IsNullOrEmpty(streamForward.Id))
+            streamForward.Id = Guid.NewGuid().ToString();
+
+        _config.StreamForwards.Add(streamForward);
+        SaveConfig();
+    }
+
+    public void UpdateStreamForward(StreamForward streamForward)
+    {
+        var index = _config.StreamForwards.FindIndex(s => s.Id == streamForward.Id);
+        if (index >= 0)
+        {
+            _config.StreamForwards[index] = streamForward;
+            SaveConfig();
+        }
+    }
+
+    public void DeleteStreamForward(string id)
+    {
+        _config.StreamForwards.RemoveAll(s => s.Id == id);
+        SaveConfig();
+    }
+
     // Setting operations
     public List<Setting> GetSettings()
     {
@@ -290,4 +326,5 @@ public class GatewayConfig
     public List<BlacklistAndWhitelist> BlacklistAndWhitelists { get; set; } = new();
     public List<RateLimit> RateLimits { get; set; } = new();
     public List<Setting> Settings { get; set; } = new();
+    public List<StreamForward> StreamForwards { get; set; } = new();
 }

@@ -81,6 +81,10 @@ public static class Program
                 await Task.Factory.StartNew(async () =>
                     await Gateway.Gateway.BuilderGateway(item, configService.GetDomainNamesByServerId(item.Id),
                         blacklistAndWhitelists, rateLimits));
+
+            // 启动 L4 端口转发（TCP/UDP）
+            foreach (var item in configService.GetStreamForwards())
+                _ = Gateway.StreamProxyManager.StartAsync(item);
         }
 
         app.Use(async (context, next) =>
@@ -113,6 +117,7 @@ public static class Program
             .MapRateLimit()
             .MapAuthorizationService()
             .MapServer()
+            .MapStreamForward()
             .MapTunnel()
             .MapSystem();
 

@@ -12,6 +12,7 @@ import {
   Network,
   ShieldCheck,
   ShieldPlus,
+  Waypoints,
 } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
@@ -52,6 +53,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "核心",
     items: [
       { key: "server", title: "服务管理", to: "/server", icon: Globe },
+      { key: "stream-forward", title: "端口转发", to: "/stream-forward", icon: Waypoints },
       { key: "tunnel", title: "节点管理", to: "/tunnel", icon: Network },
     ],
   },

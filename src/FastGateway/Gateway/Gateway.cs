@@ -509,10 +509,11 @@ public static class Gateway
 
             // HTTPS 重定向：将 80 端口的明文请求重定向到 HTTPS
             // 放在 ACME 校验之后，避免影响 HTTP-01 证书签发
+            // 若前置反向代理已通过 X-Forwarded-Proto=https 声明客户端协议为 HTTPS，则不再跳转
             if (is80 && server is { IsHttps: true, RedirectHttps: true })
                 app.Use(async (context, next) =>
                 {
-                    if (!context.Request.IsHttps)
+                    if (!context.Request.IsHttps && !IsForwardedHttps(context.Request))
                     {
                         var host = context.Request.Host.Host;
                         var location =
@@ -679,6 +680,24 @@ public static class Gateway
     private static bool IsSseRequest(HttpRequest request)
     {
         return request.Headers.Accept.ToString().Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    ///     判断请求是否经反向代理以 HTTPS 接入（依据 X-Forwarded-Proto）。
+    /// </summary>
+    private static bool IsForwardedHttps(HttpRequest request)
+    {
+        if (!request.Headers.TryGetValue("X-Forwarded-Proto", out var forwardedProto))
+            return false;
+
+        var value = forwardedProto.ToString();
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        // 可能是 "https" 或 "https,http" 等多值，取第一个
+        var separatorIndex = value.IndexOf(',');
+        var proto = separatorIndex >= 0 ? value.AsSpan(0, separatorIndex) : value.AsSpan();
+        return proto.Trim().Equals("https", StringComparison.OrdinalIgnoreCase);
     }
 
     private static (IReadOnlyList<RouteConfig> routes, IReadOnlyList<ClusterConfig> clusters) BuildConfig(

@@ -43,6 +43,31 @@ public static class BlacklistAndWhitelistService
         RefreshCache(configService.GetBlacklistAndWhitelists());
     }
 
+    /// <summary>
+    ///     基于当前黑白名单缓存判定来源 IP 是否放行（供 L4 端口转发等非 HTTP 场景复用）。
+    ///     语义与 <see cref="UseBlacklistMiddleware" /> 一致：白名单优先，命中白名单放行、否则拒绝；
+    ///     其次黑名单，命中黑名单拒绝；无匹配规则时放行。
+    /// </summary>
+    /// <param name="ip">来源 IP（字符串形式）。为空时放行（无法判定）。</param>
+    /// <param name="enableBlacklist">是否启用黑名单</param>
+    /// <param name="enableWhitelist">是否启用白名单</param>
+    /// <returns>是否允许通过</returns>
+    public static bool IsAllowed(string? ip, bool enableBlacklist, bool enableWhitelist)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return true;
+
+        var snapshot = Volatile.Read(ref _snapshot);
+
+        if (enableWhitelist && snapshot.Whitelist.Length > 0)
+            return snapshot.Whitelist.Any(range => IpHelper.UnsafeCheckIpInIpRange(ip, range));
+
+        if (enableBlacklist && snapshot.Blacklist.Length > 0 &&
+            snapshot.Blacklist.Any(range => IpHelper.UnsafeCheckIpInIpRange(ip, range)))
+            return false;
+
+        return true;
+    }
+
     public static WebApplication UseBlacklistMiddleware(this WebApplication app,
         List<BlacklistAndWhitelist> blacklistAndWhitelists,
         bool enableBlacklist,
