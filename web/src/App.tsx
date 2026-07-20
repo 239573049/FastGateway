@@ -1,5 +1,5 @@
 import './App.css'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import Layout from './layout'
 import Loading from './components/Loading'
 import { lazy, Suspense } from 'react'
@@ -8,10 +8,11 @@ const MainLayout = lazy(() => import('./pages/layout'))
 const NotFoundPage = lazy(() => import('./pages/not-page'))
 const ServerPage = lazy(() => import('./pages/server/page'))
 const ServerInfoPage = lazy(() => import('./pages/server/info/page'))
-const BlackListPage = lazy(() => import('./pages/protect-config/blacklist'))
-const WhiteListPage = lazy(() => import('./pages/protect-config/whitelist'))
+const SecurityOverviewPage = lazy(() => import('./pages/security/overview'))
+const AccessControlPage = lazy(() => import('./pages/security/access'))
+const ThreatDetectionPage = lazy(() => import('./pages/security/threats'))
+const BlockedLogPage = lazy(() => import('./pages/security/logs'))
 const RateLimitPage = lazy(() => import('./pages/protect-config/rate-limit'))
-const AbnormalIpPage = lazy(() => import('./pages/protect-config/abnormal-ip'))
 const CertPage = lazy(() => import('./pages/cert/page'))
 const AboutPage = lazy(() => import('./pages/about/page'))
 const FileStoragePage = lazy(() => import('./pages/filestorage/page'))
@@ -46,11 +47,56 @@ const router = createBrowserRouter([
               </Suspense>
           },
           {
-            path: 'protect-config/blacklist',
+            path: 'security/overview',
             element:
               <Suspense fallback={<Loading></Loading>}>
-                <BlackListPage />
+                <SecurityOverviewPage />
               </Suspense>
+          },
+          {
+            path: 'security/access',
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <AccessControlPage />
+              </Suspense>
+          },
+          {
+            path: 'security/rate-limit',
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <RateLimitPage />
+              </Suspense>
+          },
+          {
+            path: 'security/threats',
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <ThreatDetectionPage />
+              </Suspense>
+          },
+          {
+            path: 'security/logs',
+            element:
+              <Suspense fallback={<Loading></Loading>}>
+                <BlockedLogPage />
+              </Suspense>
+          },
+          {
+            /* 兼容旧路径：安全防护子菜单 → 安全中心 */
+            path: 'protect-config/blacklist',
+            element: <Navigate to="/security/access" replace />
+          },
+          {
+            path: 'protect-config/whitelist',
+            element: <Navigate to="/security/access" replace />
+          },
+          {
+            path: 'protect-config/rate-limit',
+            element: <Navigate to="/security/rate-limit" replace />
+          },
+          {
+            path: 'protect-config/abnormal-ip',
+            element: <Navigate to="/security/threats" replace />
           },
           {
             path: 'dashboard',
@@ -65,24 +111,6 @@ const router = createBrowserRouter([
               <Suspense fallback={<Loading></Loading>}>
                 <DashboardPage />
               </Suspense>
-          },
-          {
-            path: 'protect-config/whitelist',
-            element: <Suspense fallback={<Loading></Loading>}>
-              <WhiteListPage />
-            </Suspense>
-          },
-          {
-            path: 'protect-config/rate-limit',
-            element: <Suspense fallback={<Loading></Loading>}>
-              <RateLimitPage />
-            </Suspense>
-          },
-          {
-            path: 'protect-config/abnormal-ip',
-            element: <Suspense fallback={<Loading></Loading>}>
-              <AbnormalIpPage />
-            </Suspense>
           },
           {
             path: 'cert',

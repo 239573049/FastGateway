@@ -5,6 +5,7 @@ using FastGateway.Infrastructure;
 using FastGateway.Middleware;
 using FastGateway.Options;
 using FastGateway.Services;
+using FastGateway.Services.Statistics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -61,6 +62,7 @@ public static class Program
         builder.Services.AddResponseCompression();
 
         builder.Services.AddHostedService<RenewSslBackgroundService>();
+        builder.Services.AddHostedService<StatisticsBackgroundService>();
         builder.Services.AddSingleton<ConfigurationService>();
 
         var app = builder.Build();
@@ -119,7 +121,8 @@ public static class Program
             .MapServer()
             .MapStreamForward()
             .MapTunnel()
-            .MapSystem();
+            .MapSystem()
+            .MapStatistics();
 
         await app.RunAsync();
     }

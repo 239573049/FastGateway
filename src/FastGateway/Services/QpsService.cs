@@ -1,5 +1,4 @@
-﻿using System.Net.NetworkInformation;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Diagnostics;
@@ -154,8 +153,9 @@ public static class SystemMonitorService
     private static readonly Lazy<PerformanceCounter> _diskWriteCounter = new(() =>
         new PerformanceCounter("PhysicalDisk", "Disk Write Bytes/sec", "_Total"));
 
-    private static bool _performanceCountersAvailable = true;
-    private static bool _diskCountersAvailable = true;
+    // PerformanceCounter 仅在 Windows 上受支持,其他平台不构造
+    private static bool _performanceCountersAvailable = OperatingSystem.IsWindows();
+    private static bool _diskCountersAvailable = OperatingSystem.IsWindows();
 
     static SystemMonitorService()
     {
@@ -482,44 +482,6 @@ public static class ApiQpsService
     {
         try
         {
-            var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-            long initialBytesSent = 0;
-            long initialBytesReceived = 0;
-
-            foreach (var ni in networkInterfaces)
-            {
-                if (ni.OperationalStatus != OperationalStatus.Up ||
-                    !ni.Supports(NetworkInterfaceComponent.IPv4)) continue;
-                try
-                {
-                    var interfaceStats = ni.GetIPv4Statistics();
-                    initialBytesSent += interfaceStats.BytesSent;
-                    initialBytesReceived += interfaceStats.BytesReceived;
-                }
-                catch { }
-            }
-
-            await Task.Delay(1000);
-
-            long bytesSentAfter1Sec = 0;
-            long bytesReceivedAfter1Sec = 0;
-
-            foreach (var ni in networkInterfaces)
-            {
-                if (ni.OperationalStatus != OperationalStatus.Up ||
-                    !ni.Supports(NetworkInterfaceComponent.IPv4)) continue;
-                try
-                {
-                    var interfaceStats = ni.GetIPv4Statistics();
-                    bytesSentAfter1Sec += interfaceStats.BytesSent;
-                    bytesReceivedAfter1Sec += interfaceStats.BytesReceived;
-                }
-                catch { }
-            }
-
-            var upload = Math.Max(0, bytesSentAfter1Sec - initialBytesSent);
-            var download = Math.Max(0, bytesReceivedAfter1Sec - initialBytesReceived);
-
             var systemStats = SystemMonitorService.GetSystemStats();
             var requestCounts = QpsService.GetRequestCounts();
             var responseTimeStats = QpsService.GetResponseTimeStats();
@@ -531,8 +493,6 @@ public static class ApiQpsService
                 qps = QpsService.GetServiceQps(), // 3s average QPS
                 qpsHistory = qpsHistory.Select(h => new { time = h.Time, qps = h.Qps }).ToArray(),
                 now = DateTime.Now.ToString("HH:mm:ss"),
-                upload,
-                download,
                 requests = new
                 {
                     total = requestCounts.total,

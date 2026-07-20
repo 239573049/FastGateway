@@ -2,16 +2,17 @@ import * as React from "react"
 import { Link, useLocation } from "react-router-dom"
 import type { LucideIcon } from "lucide-react"
 import {
-  AlertTriangle,
-  Clock,
+  Activity,
   FileText,
+  Gauge,
   Globe,
   Info,
   LayoutDashboard,
   Lock,
   Network,
+  Radar,
+  ScrollText,
   ShieldCheck,
-  ShieldPlus,
   Waypoints,
 } from "lucide-react"
 
@@ -58,21 +59,14 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "安全",
+    label: "安全中心",
     items: [
+      { key: "security-overview", title: "安全总览", to: "/security/overview", icon: Activity },
+      { key: "security-access", title: "访问控制", to: "/security/access", icon: Lock },
+      { key: "security-rate-limit", title: "限流策略", to: "/security/rate-limit", icon: Gauge },
+      { key: "security-threats", title: "威胁检测", to: "/security/threats", icon: Radar },
+      { key: "security-logs", title: "拦截日志", to: "/security/logs", icon: ScrollText },
       { key: "cert", title: "证书管理", to: "/cert", icon: ShieldCheck, badge: "SSL" },
-      {
-        key: "protect-config",
-        title: "安全防护",
-        to: "/protect-config/blacklist",
-        icon: ShieldPlus,
-        children: [
-          { key: "blacklist", title: "IP黑名单", to: "/protect-config/blacklist", icon: Lock },
-          { key: "whitelist", title: "IP白名单", to: "/protect-config/whitelist", icon: ShieldCheck },
-          { key: "rate-limit", title: "限流配置", to: "/protect-config/rate-limit", icon: Clock },
-          { key: "abnormal-ip", title: "异常IP", to: "/protect-config/abnormal-ip", icon: AlertTriangle },
-        ],
-      },
     ],
   },
   {

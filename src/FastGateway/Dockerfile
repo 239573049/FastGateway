@@ -48,4 +48,6 @@ RUN dotnet publish "./FastGateway.csproj" -c $BUILD_CONFIGURATION -o /app/publis
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# ip2region 离线IP归属地库（仓库不入库，构建时下载；失败不阻断构建，运行时统计归属地降级为“其他”）
+RUN curl -sSL --retry 3 -o /app/ip2region.xdb https://tokenfile.oss-cn-beijing.aliyuncs.com/ip2region.xdb || true
 ENTRYPOINT ["dotnet", "FastGateway.dll"]

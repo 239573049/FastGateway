@@ -9,14 +9,15 @@ import { useUserStore } from "@/store/user";
 import type { ThemeMode } from "antd-style";
 
 const PAGE_TITLES: Record<string, string> = {
-    dashboard: "仪表盘",
+    dashboard: "统计报表",
     server: "服务管理",
     tunnel: "节点管理",
     cert: "证书管理",
-    "protect-config/blacklist": "IP黑名单",
-    "protect-config/whitelist": "IP白名单",
-    "protect-config/rate-limit": "限流配置",
-    "protect-config/abnormal-ip": "异常IP",
+    "security/overview": "安全总览",
+    "security/access": "访问控制",
+    "security/rate-limit": "限流策略",
+    "security/threats": "威胁检测",
+    "security/logs": "拦截日志",
     filestorage: "文件管理",
     about: "系统信息",
 };
@@ -26,9 +27,9 @@ function getPageTitle(pathname: string) {
     if (!key || key === "dashboard") return PAGE_TITLES.dashboard;
 
     if (key.startsWith("server/")) return PAGE_TITLES.server;
-    if (key.startsWith("protect-config/")) {
+    if (key.startsWith("security/")) {
         const parts = key.split("/").slice(0, 2).join("/");
-        return PAGE_TITLES[parts] || "安全防护";
+        return PAGE_TITLES[parts] || "安全中心";
     }
 
     const base = key.split("/")[0];

@@ -5,7 +5,7 @@ import CreateRateLimitPage from "./feautres/CreateRateLimit";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { Clock, Plus, Edit, Trash2, Activity } from "lucide-react";
+import { Clock, Plus, Edit, Trash2, Activity, AlertTriangle } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { RateLimit } from "@/types";
@@ -142,20 +142,29 @@ const RateLimitPage = memo(() => {
                 {/* Header Section */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            限流管理
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                            限流策略
                         </h1>
                         <p className="text-muted-foreground text-sm">
-                            管理请求限流策略，保护系统稳定性
+                            基于端点的请求速率限制，保护后端稳定性
                         </p>
                     </div>
-                    <Button 
+                    <Button
                         onClick={() => setCreateVisible(true)}
                         className="w-full sm:w-auto"
                     >
                         <Plus className="h-4 w-4 mr-2" />
                         创建限流策略
                     </Button>
+                </div>
+
+                {/* 限流规则在网关构建时绑定，改动需重建后生效 */}
+                <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                        <span className="font-medium text-foreground">限流规则在网关构建时绑定。</span>
+                        <span className="text-muted-foreground"> 新增或修改策略后，需重建对应网关才会生效。</span>
+                    </div>
                 </div>
 
                 {/* Stats Cards */}

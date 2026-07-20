@@ -3,6 +3,7 @@ using AspNetCoreRateLimit;
 using Core.Entities;
 using FastGateway.Dto;
 using FastGateway.Infrastructure;
+using FastGateway.Services.Statistics;
 
 namespace FastGateway.Services;
 
@@ -24,15 +25,19 @@ public static class RateLimitService
                     Limit = x.Limit
                 }).ToList();
 
-                options.ClientWhitelist.AddRange(rateLimits.SelectMany(x => x.IpWhitelist).ToArray());
+                // AspNetCoreRateLimit 的各白名单默认是 null，直接 AddRange 会导致网关启动 NullReference
+                var ipWhitelist = rateLimits.SelectMany(x => x.IpWhitelist ?? []).ToList();
+                var endpointWhitelist = rateLimits.SelectMany(x => x.EndpointWhitelist ?? []).ToList();
+                options.ClientWhitelist = [..ipWhitelist];
                 options.DisableRateLimitHeaders = false;
                 options.EnableEndpointRateLimiting = true;
                 options.EnableRegexRuleMatching = false;
-                options.EndpointWhitelist.AddRange(rateLimits.SelectMany(x => x.EndpointWhitelist).ToArray());
-                options.IpWhitelist.AddRange(rateLimits.SelectMany(x => x.IpWhitelist).ToArray());
+                options.EndpointWhitelist = endpointWhitelist;
+                options.IpWhitelist = ipWhitelist;
                 options.RealIpHeader = "X-Forwarded-For";
                 options.RequestBlockedBehaviorAsync = async (context, _, _, _) =>
                 {
+                    context.Items[StatisticsCollector.BlockReasonKey] = (byte)BlockReason.RateLimit;
                     context.Response.StatusCode = 429;
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsJsonAsync(ResultDto.CreateFailed("请求过于频繁,请稍后再试"));

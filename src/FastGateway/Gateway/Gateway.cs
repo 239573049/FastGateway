@@ -528,6 +528,9 @@ public static class Gateway
 
             app.UseInitGatewayMiddleware();
 
+            // 统计采集：在限流/黑名单之前挂载，next 之后记录，可观察到 403/429 短路后的最终状态
+            app.UseStatisticsCapture(server.Id);
+
             app.UseRequestTimeouts();
             app.Use(async (context, next) =>
             {

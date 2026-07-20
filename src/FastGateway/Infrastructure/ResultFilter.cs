@@ -1,4 +1,5 @@
-﻿using FastGateway.Dto;
+﻿using System.ComponentModel.DataAnnotations;
+using FastGateway.Dto;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FastGateway.Infrastructure;
@@ -10,7 +11,16 @@ public sealed class ResultFilter : IEndpointFilter
 {
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        var result = await next(context);
+        object? result;
+
+        try
+        {
+            result = await next(context);
+        }
+        catch (ValidationException ex)
+        {
+            return ResultDto.CreateFailed(ex.Message);
+        }
 
         if (result is EmptyResult) return null;
 

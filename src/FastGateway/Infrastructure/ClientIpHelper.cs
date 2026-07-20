@@ -20,8 +20,8 @@ public static class ClientIpHelper
             }
         }
 
-        var remote = context.Connection.RemoteIpAddress?.ToString();
-        return string.IsNullOrWhiteSpace(remote) ? string.Empty : remote;
+        var remote = context.Connection.RemoteIpAddress;
+        return remote == null ? string.Empty : Normalize(remote);
     }
 
     private static bool TryParseIp(string raw, out string ip)
@@ -34,17 +34,26 @@ public static class ClientIpHelper
 
         if (IPAddress.TryParse(raw, out var address))
         {
-            ip = address.ToString();
+            ip = Normalize(address);
             return true;
         }
 
         if (IPEndPoint.TryParse(raw, out var endpoint))
         {
-            ip = endpoint.Address.ToString();
+            ip = Normalize(endpoint.Address);
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    ///     双栈监听下 IPv4 客户端表现为 IPv4 映射地址（::ffff:1.2.3.4），
+    ///     必须还原为纯 IPv4，否则黑白名单/限流/归属地全部无法匹配。
+    /// </summary>
+    private static string Normalize(IPAddress address)
+    {
+        return (address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address).ToString();
     }
 }
 

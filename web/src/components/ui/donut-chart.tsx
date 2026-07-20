@@ -13,6 +13,8 @@ interface DonutChartProps {
   valueFormatter?: (value: number) => string
   variant?: "donut" | "pie"
   colors?: string[]
+  showLegend?: boolean
+  chartClassName?: string
 }
 
 const defaultColors = [
@@ -32,6 +34,8 @@ export function DonutChart({
   valueFormatter = (value) => value.toString(),
   variant = "donut",
   colors = defaultColors,
+  showLegend = true,
+  chartClassName,
 }: DonutChartProps) {
   if (!data || data.length === 0) {
     return (
@@ -60,7 +64,7 @@ export function DonutChart({
           {label}
         </div>
       )}
-      <ChartContainer config={config} className="h-[200px]">
+      <ChartContainer config={config} className={cn("h-[200px]", chartClassName)}>
         <PieChart>
           <ChartTooltip
             content={
@@ -76,8 +80,8 @@ export function DonutChart({
             data={data}
             cx="50%"
             cy="50%"
-            outerRadius={variant === "donut" ? 80 : 80}
-            innerRadius={variant === "donut" ? 40 : 0}
+            outerRadius="90%"
+            innerRadius={variant === "donut" ? "58%" : 0}
             paddingAngle={2}
             dataKey="value"
             onClick={handleClick}
@@ -90,11 +94,13 @@ export function DonutChart({
               />
             ))}
           </Pie>
-          <Legend 
-            formatter={(value) => (
-              <span className="text-xs text-muted-foreground">{value}</span>
-            )}
-          />
+          {showLegend && (
+            <Legend
+              formatter={(value) => (
+                <span className="text-xs text-muted-foreground">{value}</span>
+              )}
+            />
+          )}
         </PieChart>
       </ChartContainer>
     </div>

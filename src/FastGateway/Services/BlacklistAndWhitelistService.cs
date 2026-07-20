@@ -2,6 +2,7 @@
 using Core.Entities;
 using FastGateway.Dto;
 using FastGateway.Infrastructure;
+using FastGateway.Services.Statistics;
 
 namespace FastGateway.Services;
 
@@ -27,8 +28,9 @@ public static class BlacklistAndWhitelistService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        // 黑名单强制启用，不受 Enable 开关影响（安全防护不可关闭）
         var blacklist = blacklistAndWhitelists
-            .Where(x => x is { Enable: true, IsBlacklist: true })
+            .Where(x => x.IsBlacklist)
             .SelectMany(x => x.Ips ?? [])
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Select(x => x.Trim())
@@ -94,6 +96,7 @@ public static class BlacklistAndWhitelistService
                     return;
                 }
 
+                context.Items[StatisticsCollector.BlockReasonKey] = (byte)BlockReason.Whitelist;
                 context.Response.StatusCode = 403;
                 return;
             }
@@ -101,6 +104,7 @@ public static class BlacklistAndWhitelistService
             if (enableBlacklist && snapshot.Blacklist.Length > 0 &&
                 snapshot.Blacklist.Any(range => IpHelper.UnsafeCheckIpInIpRange(ip, range)))
             {
+                context.Items[StatisticsCollector.BlockReasonKey] = (byte)BlockReason.Blacklist;
                 context.Response.StatusCode = 403;
                 return;
             }

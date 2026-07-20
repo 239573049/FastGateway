@@ -177,21 +177,24 @@ const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = 
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                            <Label htmlFor="enable" className="text-sm font-medium cursor-pointer">
-                                启用{isBlacklist ? '黑名单' : '白名单'}
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                                {isBlacklist ? '启用后将阻止列表中的IP访问' : '启用后将允许列表中的IP访问'}
-                            </p>
+                    {/* 黑名单为安全防护强制启用，不提供开关 */}
+                    {!isBlacklist && (
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="enable" className="text-sm font-medium cursor-pointer">
+                                    启用白名单
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                    启用后将允许列表中的IP访问
+                                </p>
+                            </div>
+                            <Switch
+                                id="enable"
+                                checked={value.enable}
+                                onCheckedChange={(checked: boolean) => setValue({ ...value, enable: checked })}
+                            />
                         </div>
-                        <Switch
-                            id="enable"
-                            checked={value.enable} 
-                            onCheckedChange={(checked: boolean) => setValue({ ...value, enable: checked })} 
-                        />
-                    </div>
+                    )}
                 </div>
                 
                 <DialogFooter className="border-t pt-4">

@@ -13,10 +13,16 @@
     <ItemGroup>
         <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
         <PackageReference Include="Certes" Version="3.0.4" />
+        <PackageReference Include="Dapper" Version="2.1.79" />
+        <PackageReference Include="IP2Region.Net" Version="3.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
         <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
         <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+        <PackageReference Include="MyCSharp.HttpUserAgentParser" Version="3.1.6" />
+        <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.4" />
         <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0" />
+        <PackageReference Include="System.IO.Hashing" Version="10.0.10" />
         <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     </ItemGroup>
 
@@ -26,6 +32,9 @@
 
     <ItemGroup>
         <None Update="gateway.pfx">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="ip2region.xdb">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <None Update="install-window.bat">
