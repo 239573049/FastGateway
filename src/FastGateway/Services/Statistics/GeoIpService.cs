@@ -21,6 +21,8 @@ public static class GeoIpService
     private static ISearcher? _searcher;
     private static bool _loadFailed;
 
+    public static bool IsReady => _searcher != null;
+
     public static void Initialize(ILogger? logger = null)
     {
         if (_searcher != null || _loadFailed) return;
@@ -77,13 +79,13 @@ public static class GeoIpService
 
         try
         {
-            // 区域格式: 国家|区域|省份|城市|ISP，缺失字段为 0
+            // ip2region_v4.xdb 区域格式: 国家|省份|城市|ISP|国家代码，缺失字段为 0
             var region = searcher.Search(ip);
             if (string.IsNullOrEmpty(region)) return (Unknown, string.Empty);
 
             var parts = region.Split('|');
             var country = Normalize(parts.Length > 0 ? parts[0] : null);
-            var province = Normalize(parts.Length > 2 ? parts[2] : null);
+            var province = Normalize(parts.Length > 1 ? parts[1] : null);
 
             if (country == Unknown && province.Length > 0) country = China;
             return (country, country == China ? province : string.Empty);

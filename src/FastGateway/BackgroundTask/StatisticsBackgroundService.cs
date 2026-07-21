@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Dapper;
 using FastGateway.Services.Statistics;
 using Microsoft.Data.Sqlite;
@@ -18,6 +18,7 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
     private const int DimKeyLimitPerBucket = 300;
     private const string DimOverflowKey = "__other__";
     private const int MetaFlushBatches = 60;
+    private const string ProvinceV4BackfillMetaKey = "province_v4_backfill_completed";
 
     private static readonly int[] UnboundedDimTypes = [StatDimType.RefererHost, StatDimType.RefererUrl, StatDimType.Path];
 
@@ -41,6 +42,7 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             return;
         }
 
+        BackfillProvinceFromIp();
         logger.LogInformation("统计后台服务已启动");
 
         SqliteConnection? connection = null;
@@ -112,6 +114,60 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
         {
             connection?.Dispose();
         }
+    }
+
+    private void BackfillProvinceFromIp()
+    {
+        if (!GeoIpService.IsReady)
+        {
+            logger.LogWarning("ip2region.xdb 不可用，跳过省份统计回填");
+            return;
+        }
+
+        using var connection = StatisticsDb.OpenWriteConnection();
+        var completed = connection.ExecuteScalar<string?>(
+            "SELECT value FROM stat_meta WHERE key = @key", new { key = ProvinceV4BackfillMetaKey });
+        if (completed == "1") return;
+
+        var startTs = DateTimeOffset.UtcNow.AddDays(-RawRetentionDays).ToUnixTimeSeconds();
+        var bucketStart = startTs / 3600 * 3600;
+        var rows = connection.Query<GeoBackfillRow>(
+            "SELECT id AS Id, ip AS Ip FROM request_log WHERE ts >= @startTs AND country = @country",
+            new { startTs, country = GeoIpService.China }).ToList();
+
+        using var transaction = connection.BeginTransaction();
+        foreach (var row in rows)
+        {
+            var (_, province) = GeoIpService.Resolve(row.Ip);
+            connection.Execute("UPDATE request_log SET province = @province WHERE id = @id",
+                new { province, row.Id }, transaction);
+        }
+
+        connection.Execute(
+            "DELETE FROM stat_dim WHERE dim_type = @dimType AND bucket >= @bucketStart",
+            new { dimType = StatDimType.Province, bucketStart }, transaction);
+        connection.Execute(
+            """
+            INSERT INTO stat_dim (bucket, host, dim_type, dim_key, cnt, blocked)
+            SELECT ts / 3600 * 3600, host, @dimType, province, COUNT(*),
+                   SUM(CASE WHEN blocked != 0 THEN 1 ELSE 0 END)
+            FROM request_log
+            WHERE ts >= @startTs AND country = @country AND province != ''
+            GROUP BY ts / 3600 * 3600, host, province
+            UNION ALL
+            SELECT ts / 3600 * 3600, '', @dimType, province, COUNT(*),
+                   SUM(CASE WHEN blocked != 0 THEN 1 ELSE 0 END)
+            FROM request_log
+            WHERE ts >= @startTs AND country = @country AND province != ''
+            GROUP BY ts / 3600 * 3600, province
+            """,
+            new { dimType = StatDimType.Province, startTs, country = GeoIpService.China }, transaction);
+        connection.Execute(
+            "INSERT INTO stat_meta (key, value) VALUES (@key, '1') ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            new { key = ProvinceV4BackfillMetaKey }, transaction);
+        transaction.Commit();
+
+        logger.LogInformation("已回填 {Count} 条最近 {Days} 天的省份统计", rows.Count, RawRetentionDays);
     }
 
     private void WriteBatch(SqliteConnection connection, List<RequestStatEntry> batch)
@@ -440,6 +496,12 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
         {
             logger.LogWarning(ex, "统计数据清理失败");
         }
+    }
+
+    private sealed class GeoBackfillRow
+    {
+        public long Id { get; init; }
+        public string Ip { get; init; } = string.Empty;
     }
 
     private sealed class BucketAgg
