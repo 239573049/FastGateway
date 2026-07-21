@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Dapper;
 using FastGateway.Services.Statistics;
 using Microsoft.Data.Sqlite;
@@ -18,7 +18,7 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
     private const int DimKeyLimitPerBucket = 300;
     private const string DimOverflowKey = "__other__";
     private const int MetaFlushBatches = 60;
-    private const string ProvinceV4BackfillMetaKey = "province_v4_backfill_completed";
+    private const string GeoZhBackfillMetaKey = "geo_zh_country_v1_completed";
 
     private static readonly int[] UnboundedDimTypes = [StatDimType.RefererHost, StatDimType.RefererUrl, StatDimType.Path];
 
@@ -42,7 +42,7 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             return;
         }
 
-        BackfillProvinceFromIp();
+        BackfillGeoLocalization();
         logger.LogInformation("统计后台服务已启动");
 
         SqliteConnection? connection = null;
@@ -116,58 +116,123 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
         }
     }
 
-    private void BackfillProvinceFromIp()
+    private void BackfillGeoLocalization()
     {
         if (!GeoIpService.IsReady)
         {
-            logger.LogWarning("ip2region.xdb 不可用，跳过省份统计回填");
+            logger.LogWarning("ip2region.xdb 不可用，跳过地理统计回填");
             return;
         }
 
         using var connection = StatisticsDb.OpenWriteConnection();
         var completed = connection.ExecuteScalar<string?>(
-            "SELECT value FROM stat_meta WHERE key = @key", new { key = ProvinceV4BackfillMetaKey });
+            "SELECT value FROM stat_meta WHERE key = @key", new { key = GeoZhBackfillMetaKey });
         if (completed == "1") return;
 
         var startTs = DateTimeOffset.UtcNow.AddDays(-RawRetentionDays).ToUnixTimeSeconds();
         var bucketStart = startTs / 3600 * 3600;
         var rows = connection.Query<GeoBackfillRow>(
-            "SELECT id AS Id, ip AS Ip FROM request_log WHERE ts >= @startTs AND country = @country",
-            new { startTs, country = GeoIpService.China }).ToList();
+            "SELECT id AS Id, ip AS Ip FROM request_log WHERE ts >= @startTs",
+            new { startTs }).ToList();
 
         using var transaction = connection.BeginTransaction();
         foreach (var row in rows)
         {
-            var (_, province) = GeoIpService.Resolve(row.Ip);
-            connection.Execute("UPDATE request_log SET province = @province WHERE id = @id",
-                new { province, row.Id }, transaction);
+            var (country, province) = GeoIpService.Resolve(row.Ip);
+            connection.Execute(
+                "UPDATE request_log SET country = @country, province = @province WHERE id = @id",
+                new { country, province, row.Id }, transaction);
+        }
+
+        // 旧聚合里可能残留英文国名；超过 7 天且无 IP 的记录仅做名称归一
+        var englishCountries = connection.Query<string>(
+            """
+            SELECT DISTINCT dim_key FROM stat_dim
+            WHERE dim_type = @dimType AND dim_key GLOB '*[A-Za-z]*'
+            """,
+            new { dimType = StatDimType.Country }, transaction).ToList();
+        foreach (var oldName in englishCountries)
+        {
+            var zh = GeoIpService.NormalizeCountryName(oldName);
+            if (zh == oldName) continue;
+            connection.Execute(
+                """
+                UPDATE stat_dim
+                SET dim_key = @zh
+                WHERE dim_type = @dimType AND dim_key = @oldName
+                  AND NOT EXISTS (
+                      SELECT 1 FROM stat_dim x
+                      WHERE x.bucket = stat_dim.bucket AND x.host = stat_dim.host
+                        AND x.dim_type = stat_dim.dim_type AND x.dim_key = @zh)
+                """,
+                new { zh, oldName, dimType = StatDimType.Country }, transaction);
+            connection.Execute(
+                """
+                UPDATE stat_dim
+                SET cnt = cnt + (
+                        SELECT COALESCE(SUM(s.cnt), 0) FROM stat_dim s
+                        WHERE s.bucket = stat_dim.bucket AND s.host = stat_dim.host
+                          AND s.dim_type = stat_dim.dim_type AND s.dim_key = @oldName),
+                    blocked = blocked + (
+                        SELECT COALESCE(SUM(s.blocked), 0) FROM stat_dim s
+                        WHERE s.bucket = stat_dim.bucket AND s.host = stat_dim.host
+                          AND s.dim_type = stat_dim.dim_type AND s.dim_key = @oldName)
+                WHERE dim_type = @dimType AND dim_key = @zh
+                """,
+                new { zh, oldName, dimType = StatDimType.Country }, transaction);
+            connection.Execute(
+                "DELETE FROM stat_dim WHERE dim_type = @dimType AND dim_key = @oldName",
+                new { dimType = StatDimType.Country, oldName }, transaction);
         }
 
         connection.Execute(
-            "DELETE FROM stat_dim WHERE dim_type = @dimType AND bucket >= @bucketStart",
-            new { dimType = StatDimType.Province, bucketStart }, transaction);
+            """
+            DELETE FROM stat_dim
+            WHERE (dim_type = @countryType OR dim_type = @provinceType)
+              AND bucket >= @bucketStart
+            """,
+            new { countryType = StatDimType.Country, provinceType = StatDimType.Province, bucketStart },
+            transaction);
         connection.Execute(
             """
             INSERT INTO stat_dim (bucket, host, dim_type, dim_key, cnt, blocked)
-            SELECT ts / 3600 * 3600, host, @dimType, province, COUNT(*),
+            SELECT ts / 3600 * 3600, host, @countryType, country, COUNT(*),
                    SUM(CASE WHEN blocked != 0 THEN 1 ELSE 0 END)
             FROM request_log
-            WHERE ts >= @startTs AND country = @country AND province != ''
+            WHERE ts >= @startTs AND country != ''
+            GROUP BY ts / 3600 * 3600, host, country
+            UNION ALL
+            SELECT ts / 3600 * 3600, '', @countryType, country, COUNT(*),
+                   SUM(CASE WHEN blocked != 0 THEN 1 ELSE 0 END)
+            FROM request_log
+            WHERE ts >= @startTs AND country != ''
+            GROUP BY ts / 3600 * 3600, country
+            UNION ALL
+            SELECT ts / 3600 * 3600, host, @provinceType, province, COUNT(*),
+                   SUM(CASE WHEN blocked != 0 THEN 1 ELSE 0 END)
+            FROM request_log
+            WHERE ts >= @startTs AND country = @china AND province != ''
             GROUP BY ts / 3600 * 3600, host, province
             UNION ALL
-            SELECT ts / 3600 * 3600, '', @dimType, province, COUNT(*),
+            SELECT ts / 3600 * 3600, '', @provinceType, province, COUNT(*),
                    SUM(CASE WHEN blocked != 0 THEN 1 ELSE 0 END)
             FROM request_log
-            WHERE ts >= @startTs AND country = @country AND province != ''
+            WHERE ts >= @startTs AND country = @china AND province != ''
             GROUP BY ts / 3600 * 3600, province
             """,
-            new { dimType = StatDimType.Province, startTs, country = GeoIpService.China }, transaction);
+            new
+            {
+                countryType = StatDimType.Country,
+                provinceType = StatDimType.Province,
+                startTs,
+                china = GeoIpService.China
+            }, transaction);
         connection.Execute(
             "INSERT INTO stat_meta (key, value) VALUES (@key, '1') ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-            new { key = ProvinceV4BackfillMetaKey }, transaction);
+            new { key = GeoZhBackfillMetaKey }, transaction);
         transaction.Commit();
 
-        logger.LogInformation("已回填 {Count} 条最近 {Days} 天的省份统计", rows.Count, RawRetentionDays);
+        logger.LogInformation("已回填 {Count} 条最近 {Days} 天的中文地理统计", rows.Count, RawRetentionDays);
     }
 
     private void WriteBatch(SqliteConnection connection, List<RequestStatEntry> batch)

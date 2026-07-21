@@ -9,6 +9,7 @@ import { formatCount, type GeoItem } from "../../types";
 import { ChinaMap } from "./ChinaMap";
 import { WorldMap2D } from "./WorldMap2D";
 import { Globe3D } from "./Globe3D";
+import { normalizeCountry } from "./map-utils";
 
 export function GeoCard() {
   const { range, host } = useDashboardStore();
@@ -29,7 +30,24 @@ export function GeoCard() {
     [range, host, scope, mode]
   );
 
-  const topItems = items.slice(0, 8);
+  const displayItems = (() => {
+    if (scope !== "world") return items;
+    const merged = new Map<string, GeoItem>();
+    for (const item of items) {
+      const name = normalizeCountry(item.name);
+      const prev = merged.get(name);
+      if (!prev) {
+        merged.set(name, { ...item, name });
+        continue;
+      }
+      prev.count += item.count;
+      prev.blocked += item.blocked;
+    }
+    return Array.from(merged.values()).sort(
+      (a, b) => (mode === "blocked" ? b.blocked - a.blocked : b.count - a.count)
+    );
+  })();
+  const topItems = displayItems.slice(0, 8);
   const valueOf = (x: GeoItem) => (mode === "blocked" ? x.blocked : x.count);
   const maxValue = Math.max(...topItems.map(valueOf), 1);
 
@@ -95,9 +113,9 @@ export function GeoCard() {
             {scope === "china" ? (
               <ChinaMap items={items} mode={mode} />
             ) : dimension === "3d" ? (
-              <Globe3D items={items} mode={mode} />
+              <Globe3D items={displayItems} mode={mode} />
             ) : (
-              <WorldMap2D items={items} mode={mode} />
+              <WorldMap2D items={displayItems} mode={mode} />
             )}
           </div>
 
