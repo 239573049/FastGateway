@@ -141,7 +141,7 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             var (country, province) = GeoIpService.Resolve(row.Ip);
             connection.Execute(
                 "UPDATE request_log SET country = @country, province = @province WHERE id = @id",
-                new { country, province, row.Id }, transaction);
+                new { country, province, id = row.Id }, transaction);
         }
 
         // 旧聚合里可能残留英文国名；超过 7 天且无 IP 的记录仅做名称归一

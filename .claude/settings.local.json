@@ -19,7 +19,8 @@
       "Bash(rg -n \"SelectItem\" D:codeFastGatewaywebsrcpagesserverinfofeaturesCreateDomain.tsx)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(dotnet build *)"
     ],
     "deny": [],
     "additionalDirectories": [
