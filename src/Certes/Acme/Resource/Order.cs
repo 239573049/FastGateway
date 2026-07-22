@@ -107,8 +107,14 @@ namespace Certes.Acme.Resource
             /// <value>
             /// The CSR.
             /// </value>
+            // Must be public: System.Text.Json's source generator serializes only public
+            // members, so an internal Csr is silently dropped and finalize sends a payload
+            // with no csr — the server then fails with "asn1: syntax error: sequence
+            // truncated". The enclosing Payload class is internal, so this does not widen
+            // the public API surface.
             [JsonPropertyName("csr")]
-            internal string Csr { get; set; }
+            [JsonInclude]
+            public string Csr { get; set; }
         }
     }
 }
