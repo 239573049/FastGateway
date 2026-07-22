@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Certes.Acme.Resource;
+using Certes.Jws;
 
 namespace Certes.Acme
 {
@@ -60,7 +61,10 @@ namespace Certes.Acme
         /// </returns>
         public async Task<Challenge> Validate()
         {
-            var resp = await Context.HttpClient.Post<Challenge>(Context, Location, new {}, true);
+            // RFC 8555 §7.5.1: the challenge-trigger POST carries an empty JSON object.
+            // Must be a concrete, source-gen-registered type (EmptyObject) — an anonymous
+            // `new {}` has no JsonTypeInfo under Native AOT and throws in JwsSigner.Sign.
+            var resp = await Context.HttpClient.Post<Challenge>(Context, Location, new EmptyObject(), true);
             return resp.Resource;
         }
     }

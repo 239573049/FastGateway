@@ -62,9 +62,28 @@ namespace Certes.Jws
                     Url = url,
                 };
 
-            var entityJson = payload == null
-                ? ""
-                : JsonSerializer.Serialize(payload, CertesJsonContext.Default.GetTypeInfo(payload.GetType()));
+            string entityJson;
+            if (payload == null)
+            {
+                // POST-as-GET: RFC 8555 §6.3 requires an empty (not "{}") payload.
+                entityJson = "";
+            }
+            else
+            {
+                var payloadType = payload.GetType();
+                var typeInfo = CertesJsonContext.Default.GetTypeInfo(payloadType);
+                if (typeInfo == null)
+                {
+                    // Anonymous/unregistered types have no source-generated metadata and
+                    // would otherwise surface as an opaque ArgumentNullException from
+                    // System.Text.Json under Native AOT. Point at the real cause instead.
+                    throw new InvalidOperationException(
+                        $"No JSON metadata for payload type '{payloadType}'. Add it to " +
+                        $"{nameof(CertesJsonContext)} (anonymous types are not supported under AOT).");
+                }
+
+                entityJson = JsonSerializer.Serialize(payload, typeInfo);
+            }
             var protectedHeaderJson = JsonSerializer.Serialize(protectedHeader, CertesJsonContext.Default.JwsHeader);
 
             var payloadEncoded = JwsConvert.ToBase64String(Encoding.UTF8.GetBytes(entityJson));
