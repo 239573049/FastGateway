@@ -38,7 +38,11 @@ RUN RID=$([ "$TARGETARCH" = "arm64" ] && echo linux-arm64 || echo linux-x64) \
 
 # 依赖收集阶段：chiseled 最终镜像无 apt/shell，故在此（有 shell 的构建镜像）安装 libmsquic
 # 并把 HTTP/3 所需原生库与离线 IP 库归拢到 /deps，供最终阶段直接 COPY。
-RUN apt-get update \
+# libmsquic 不在 Ubuntu 官方仓库，需先注册微软 apt 源（ubuntu/24.04 = noble）。
+RUN curl -sSL -O https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
+    && apt-get update \
     && apt-get install -y --no-install-recommends libmsquic \
     && mkdir -p /deps/lib \
     # 动态解析 libmsquic 的实际 .so 路径（amd64/arm64 目录名不同），复制其全部 so 文件
