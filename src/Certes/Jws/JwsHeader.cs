@@ -46,6 +46,16 @@ namespace Certes.Jws
     }
 
     /// <summary>
+    /// An empty JWS payload that serializes to <c>{}</c>. Used for requests whose body
+    /// is an empty JSON object (e.g. the RFC 8555 §7.5.1 challenge-validation trigger).
+    /// A concrete, source-gen-registered type is required so serialization is AOT-safe;
+    /// an anonymous <c>new {}</c> has no JsonTypeInfo and throws under Native AOT.
+    /// </summary>
+    internal class EmptyObject
+    {
+    }
+
+    /// <summary>
     /// External account binding JWS, embedded into the new-account request.
     /// </summary>
     public class ExternalAccountBinding

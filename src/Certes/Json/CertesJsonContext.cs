@@ -20,6 +20,7 @@ namespace Certes.Json
     [JsonSerializable(typeof(EcJsonWebKey))]
     [JsonSerializable(typeof(RsaJsonWebKey))]
     [JsonSerializable(typeof(KeyChangePayload))]
+    [JsonSerializable(typeof(EmptyObject))]
     [JsonSerializable(typeof(ExternalAccountBinding))]
     [JsonSerializable(typeof(ExternalAccountBindingHeader))]
     // ACME resources
