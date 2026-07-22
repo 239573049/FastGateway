@@ -415,7 +415,16 @@ public static class Gateway
             if (server.StaticCompress)
                 builder.Services.AddResponseCompression();
 
-            builder.Services.AddRequestTimeouts();
+            // 默认请求超时兜底：框架默认 100s 会把耗时较长的普通响应（大文件、慢上游、
+            // stream:true 但 Accept 非 SSE 的 AI 流式回答）在传输途中切断，客户端表现为
+            // net_http_invalid_response_premature_eof。放宽到 10 分钟；真正的流式请求另行 DisableTimeout。
+            builder.Services.AddRequestTimeouts(options =>
+            {
+                options.DefaultPolicy = new RequestTimeoutPolicy
+                {
+                    Timeout = TimeSpan.FromMinutes(10)
+                };
+            });
 
             var gatewayVersion = typeof(Gateway).Assembly
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
@@ -535,11 +544,32 @@ public static class Gateway
             app.UseRequestTimeouts();
             app.Use(async (context, next) =>
             {
+                var timeoutFeature = context.Features.Get<IHttpRequestTimeoutFeature>();
+
                 if (IsSseRequest(context.Request))
                 {
-                    context.Features.Get<IHttpRequestTimeoutFeature>()?.DisableTimeout();
+                    // 请求阶段已能判定为 SSE：直接豁免
+                    timeoutFeature?.DisableTimeout();
                     context.Response.Headers.CacheControl = "no-cache";
                     context.Response.Headers["X-Accel-Buffering"] = "no";
+                }
+                else if (timeoutFeature != null)
+                {
+                    // 请求阶段无法判定（如 AI 流式：Accept 非 SSE，靠 body stream:true 触发）。
+                    // 挂响应回调：一旦上游返回 text/event-stream，在写出响应体前豁免超时，
+                    // 避免长回答传输途中被请求超时切断（premature_eof）。
+                    context.Response.OnStarting(state =>
+                    {
+                        var ctx = (HttpContext)state;
+                        if (IsStreamingResponse(ctx.Response))
+                        {
+                            ctx.Features.Get<IHttpRequestTimeoutFeature>()?.DisableTimeout();
+                            ctx.Response.Headers.CacheControl = "no-cache";
+                            ctx.Response.Headers["X-Accel-Buffering"] = "no";
+                        }
+
+                        return Task.CompletedTask;
+                    }, context);
                 }
 
                 await next(context);
@@ -677,7 +707,25 @@ public static class Gateway
 
     private static bool IsSseRequest(HttpRequest request)
     {
-        return request.Headers.Accept.ToString().Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
+        // 标准 SSE：显式 Accept: text/event-stream
+        if (request.Headers.Accept.ToString().Contains("text/event-stream", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // AI/LLM 流式补全：很多客户端（Anthropic/OpenAI SDK、各类中转）用 Accept: application/json + 请求体
+        // "stream": true 触发流式响应，Accept 头并非 text/event-stream。这类响应同样是长连接 SSE，
+        // 若不豁免超时会在 100s（或默认策略）处被切断，客户端报 premature_eof。
+        // 不读取/缓冲请求体（会破坏转发），仅按方法+Content-Type 粗筛，真正判定交由响应阶段的 Content-Type。
+        return false;
+    }
+
+    /// <summary>
+    ///     响应阶段判定：上游是否以流式（SSE）返回。用于在响应头就绪后二次豁免请求超时。
+    /// </summary>
+    private static bool IsStreamingResponse(HttpResponse response)
+    {
+        var contentType = response.ContentType;
+        return !string.IsNullOrEmpty(contentType) &&
+               contentType.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

@@ -20,7 +20,9 @@
       "Bash(npm run typecheck:*)",
       "Bash(npm run:*)",
       "Bash(rg:*)",
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ],
     "deny": [],
     "additionalDirectories": [
