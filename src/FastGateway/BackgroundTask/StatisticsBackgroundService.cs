@@ -42,7 +42,17 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             return;
         }
 
-        BackfillGeoLocalization();
+        // 地理回填属非关键的一次性数据修复，任何异常都不得拖垮宿主
+        // （BackgroundServiceExceptionBehavior 默认 StopHost 会连带停掉整个网关）
+        try
+        {
+            BackfillGeoLocalization();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "地理统计回填失败，已跳过（不影响网关运行）");
+        }
+
         logger.LogInformation("统计后台服务已启动");
 
         SqliteConnection? connection = null;
@@ -219,6 +229,8 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             FROM request_log
             WHERE ts >= @startTs AND country = @china AND province != ''
             GROUP BY ts / 3600 * 3600, province
+            ON CONFLICT (bucket, host, dim_type, dim_key) DO UPDATE SET
+                cnt = cnt + excluded.cnt, blocked = blocked + excluded.blocked
             """,
             new
             {
