@@ -47,7 +47,7 @@ public static class ServerService
                     EnableRequestFailover = x.EnableRequestFailover,
                     FailoverConnectTimeoutMs = x.FailoverConnectTimeoutMs,
                     FailoverBudgetMs = x.FailoverBudgetMs
-                });
+                }).ToList();
             })
             .WithDescription("获取服务列表")
             .WithDisplayName("获取服务列表")

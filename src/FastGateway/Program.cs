@@ -56,6 +56,7 @@ public static class Program
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default);
             options.SerializerOptions.Converters.Add(new DateTimeJsonConverter());
         });
         builder.Services.AddSystemUsage();

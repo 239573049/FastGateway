@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using FastGateway.Dto;
 using FastGateway.Infrastructure;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -29,13 +30,12 @@ public static class SystemService
         return app;
     }
 
-    private static object GetVersion()
+    private static SystemVersionDto GetVersion()
     {
         // 获取程序集版本号
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "未知版本";
-        
 
-        return new
+        return new SystemVersionDto
         {
             Version = version,
             Framework = Environment.Version.ToString(),
@@ -43,7 +43,7 @@ public static class SystemService
         };
     }
 
-    private static object GetInfo()
+    private static SystemInfoDto GetInfo()
     {
         var assembly = Assembly.GetExecutingAssembly();
         var assemblyName = assembly.GetName();
@@ -86,7 +86,7 @@ public static class SystemService
         {
         }
 
-        return new
+        return new SystemInfoDto
         {
             Name = assemblyName.Name,
             Version = version,
