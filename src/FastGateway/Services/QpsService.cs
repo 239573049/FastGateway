@@ -146,6 +146,9 @@ public record ResponseTimeStats(long Avg, long P95, long P99, long Min, long Max
 
 public static class SystemMonitorService
 {
+    // PerformanceCounter 依赖反射、不兼容 Native AOT，故仅在 Windows 目标编译（WINDOWS 常量由 csproj 按 RID 定义）。
+    // 非 Windows 构建根本不引用该包，计数器恒不可用，CPU/磁盘 IO 统计降级为 0。
+#if WINDOWS
     private static readonly Lazy<PerformanceCounter> _cpuCounter = new(() =>
         new PerformanceCounter("Processor", "% Processor Time", "_Total"));
     private static readonly Lazy<PerformanceCounter> _memoryCounter = new(() =>
@@ -155,10 +158,15 @@ public static class SystemMonitorService
     private static readonly Lazy<PerformanceCounter> _diskWriteCounter = new(() =>
         new PerformanceCounter("PhysicalDisk", "Disk Write Bytes/sec", "_Total"));
 
-    // PerformanceCounter 仅在 Windows 上受支持,其他平台不构造
     private static bool _performanceCountersAvailable = OperatingSystem.IsWindows();
     private static bool _diskCountersAvailable = OperatingSystem.IsWindows();
+#else
+    // 非 Windows：计数器不可用，字段保留以便其余逻辑无需分支判断。
+    private const bool _performanceCountersAvailable = false;
+    private const bool _diskCountersAvailable = false;
+#endif
 
+#if WINDOWS
     static SystemMonitorService()
     {
         try
@@ -187,6 +195,7 @@ public static class SystemMonitorService
             _diskCountersAvailable = false;
         }
     }
+#endif
 
     public static SystemStats GetSystemStats()
     {
@@ -197,6 +206,7 @@ public static class SystemMonitorService
             long diskReadBytesPerSec = 0;
             long diskWriteBytesPerSec = 0;
 
+#if WINDOWS
             if (_performanceCountersAvailable)
             {
                 try
@@ -222,6 +232,7 @@ public static class SystemMonitorService
                     _diskCountersAvailable = false;
                 }
             }
+#endif
 
             var totalMemoryBytes = GC.GetTotalMemory(false);
             var workingSetBytes = Environment.WorkingSet;

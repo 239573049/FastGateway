@@ -55,7 +55,7 @@ public class ConfigurationService
         {
             try
             {
-                var json = JsonSerializer.Serialize(_config, _jsonOptions);
+                var json = JsonSerializer.Serialize(_config, ConfigJsonContext.Default.GatewayConfig);
 
                 // 原子落盘：先写临时文件再替换，避免写入途中崩溃/断电损坏配置文件
                 var tempPath = _configPath + ".tmp";

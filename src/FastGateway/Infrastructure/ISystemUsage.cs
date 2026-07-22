@@ -16,15 +16,22 @@ public static class SystemUsageExtensions
 {
     public static IServiceCollection AddSystemUsage(this IServiceCollection services)
     {
+#if WINDOWS
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             services.AddSingleton<ISystemUsage, WindowsSystemUsage>();
         else
             services.AddSingleton<ISystemUsage, LinuxSystemUsage>();
+#else
+        // 非 Windows 构建不含 WindowsSystemUsage，直接使用基于 /proc 的 Linux 实现。
+        services.AddSingleton<ISystemUsage, LinuxSystemUsage>();
+#endif
 
         return services;
     }
 }
 
+// PerformanceCounter 不兼容 Native AOT，故 Windows 专属实现仅在 Windows 目标编译（WINDOWS 常量由 csproj 按 RID 定义）。
+#if WINDOWS
 public class WindowsSystemUsage : ISystemUsage
 {
     private readonly PerformanceCounter _ioReadCounter;
@@ -91,6 +98,7 @@ public class WindowsSystemUsage : ISystemUsage
         public ulong ullAvailExtendedVirtual; //保留 这个值始终为0
     }
 }
+#endif
 
 public class LinuxSystemUsage : ISystemUsage
 {
