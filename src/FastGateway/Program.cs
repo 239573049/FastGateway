@@ -62,6 +62,12 @@ public static class Program
         builder.Services.AddSystemUsage();
         builder.Services.AddResponseCompression();
 
+        // 宿主级总保险：后台服务（统计、证书续期等）抛出未捕获异常时，默认行为 StopHost 会
+        // 连带停掉整个网关，导致所有客户端连接被断开。改为 Ignore，任何后台任务崩溃都不再拖垮
+        // 转发主流程；后台服务内部各自记录日志并自愈。
+        builder.Services.Configure<HostOptions>(options =>
+            options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
+
         builder.Services.AddHostedService<RenewSslBackgroundService>();
         builder.Services.AddHostedService<StatisticsBackgroundService>();
         builder.Services.AddSingleton<ConfigurationService>();
