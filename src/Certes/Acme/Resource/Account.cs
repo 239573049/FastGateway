@@ -71,8 +71,13 @@ namespace Certes.Acme.Resource
             /// <value>
             /// The only return existing flag.
             /// </value>
+            // Must be public for the source generator to emit it — see the note on
+            // Order.Payload.Csr. An internal setter would be silently dropped, breaking
+            // the "return existing account" lookup. Payload is internal, so the public
+            // accessor does not widen the API surface.
             [JsonPropertyName("onlyReturnExisting")]
-            internal bool? OnlyReturnExisting { get; set; }
+            [JsonInclude]
+            public bool? OnlyReturnExisting { get; set; }
         }
     }
 }
