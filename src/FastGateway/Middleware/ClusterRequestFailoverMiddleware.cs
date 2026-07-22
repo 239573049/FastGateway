@@ -1,5 +1,7 @@
 using Core.Entities;
 using Core.Entities.Core;
+using FastGateway.Dto;
+using FastGateway.Infrastructure;
 using FastGateway.Services;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
@@ -155,13 +157,13 @@ public sealed class ClusterRequestFailoverMiddleware
             context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
             context.Response.Headers["Server"] = "FastGateway";
             context.Response.Headers["X-FastGateway-Version"] = _gatewayVersion;
-            await context.Response.WriteAsJsonAsync(new
+            await context.Response.WriteAsJsonAsync(new CodeMessageDto
             {
                 Code = StatusCodes.Status504GatewayTimeout,
                 Message = "没有可用的健康上游节点或请求级故障转移预算已耗尽",
                 Error = lastError.ToString(),
                 Detail = lastException?.Message
-            });
+            }, AppJsonContext.Default.CodeMessageDto);
         }
     }
 

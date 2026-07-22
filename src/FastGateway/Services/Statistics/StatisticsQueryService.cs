@@ -1,10 +1,11 @@
-using Dapper;
 using FastGateway.Dto;
+using static FastGateway.Services.Statistics.SqlRunner;
 
 namespace FastGateway.Services.Statistics;
 
 /// <summary>
-///     统计查询（Dapper + 只读连接）。≤7天优先明细/分钟桶精确计算，30天走小时桶与每日唯一集合。
+///     统计查询（手写 ADO.NET + 只读连接）。≤7天优先明细/分钟桶精确计算，30天走小时桶与每日唯一集合。
+///     不使用 Dapper（其运行时 IL emit 映射与 Native AOT 不兼容），改用显式参数绑定与手写列映射。
 /// </summary>
 public static class StatisticsQueryService
 {
@@ -38,7 +39,7 @@ public static class StatisticsQueryService
 
         using var connection = StatisticsDb.OpenReadConnection();
 
-        var totals = connection.QuerySingleOrDefault<BucketTotals>(
+        var totals = Query(connection,
             """
             SELECT COALESCE(SUM(requests), 0)    AS Requests,
                    COALESCE(SUM(page_views), 0)  AS PageViews,
@@ -50,7 +51,24 @@ public static class StatisticsQueryService
                    COALESCE(SUM(elapsed_sum), 0) AS ElapsedSum
             FROM stat_bucket
             WHERE granularity = @Granularity AND bucket >= @StartTs AND host = @hostFilter
-            """, new { info.Granularity, info.StartTs, hostFilter });
+            """,
+            r => new BucketTotals
+            {
+                Requests = r.GetLong(0),
+                PageViews = r.GetLong(1),
+                Blocked = r.GetLong(2),
+                Blocked403 = r.GetLong(3),
+                Blocked429 = r.GetLong(4),
+                Status4xx = r.GetLong(5),
+                Status5xx = r.GetLong(6),
+                ElapsedSum = r.GetLong(7)
+            },
+            parameters:
+            [
+                new P("@Granularity", info.Granularity),
+                new P("@StartTs", info.StartTs),
+                new P("@hostFilter", hostFilter)
+            ]).FirstOrDefault();
 
         if (totals != null)
         {
@@ -76,27 +94,27 @@ public static class StatisticsQueryService
         {
             // 超过明细保留期，用每日唯一集合（仍为精确值）
             var dayStart = LocalDay(info.StartTs);
-            result.UniqueIps = connection.ExecuteScalar<long>(
+            result.UniqueIps = ExecuteScalarLong(connection,
                 $"SELECT COUNT(DISTINCT hash) FROM stat_unique_daily WHERE day >= @dayStart AND host = @hostFilter AND kind = {StatUniqueKind.Ip}",
-                new { dayStart, hostFilter });
-            result.UniqueVisitors = connection.ExecuteScalar<long>(
+                parameters: [new P("@dayStart", dayStart), new P("@hostFilter", hostFilter)]);
+            result.UniqueVisitors = ExecuteScalarLong(connection,
                 $"SELECT COUNT(DISTINCT hash) FROM stat_unique_daily WHERE day >= @dayStart AND host = @hostFilter AND kind = {StatUniqueKind.Visitor}",
-                new { dayStart, hostFilter });
-            result.AttackIps = connection.ExecuteScalar<long>(
+                parameters: [new P("@dayStart", dayStart), new P("@hostFilter", hostFilter)]);
+            result.AttackIps = ExecuteScalarLong(connection,
                 $"SELECT COUNT(DISTINCT hash) FROM stat_unique_daily WHERE day >= @dayStart AND host = @hostFilter AND kind = {StatUniqueKind.BlockedIp}",
-                new { dayStart, hostFilter });
+                parameters: [new P("@dayStart", dayStart), new P("@hostFilter", hostFilter)]);
         }
         else
         {
-            result.UniqueIps = connection.ExecuteScalar<long>(
+            result.UniqueIps = ExecuteScalarLong(connection,
                 $"SELECT COUNT(DISTINCT ip) FROM request_log WHERE ts >= @StartTs{hostCondition}",
-                new { info.StartTs, hostFilter });
-            result.UniqueVisitors = connection.ExecuteScalar<long>(
+                parameters: [new P("@StartTs", info.StartTs), new P("@hostFilter", hostFilter)]);
+            result.UniqueVisitors = ExecuteScalarLong(connection,
                 $"SELECT COUNT(DISTINCT visitor_hash) FROM request_log WHERE ts >= @StartTs{hostCondition}",
-                new { info.StartTs, hostFilter });
-            result.AttackIps = connection.ExecuteScalar<long>(
+                parameters: [new P("@StartTs", info.StartTs), new P("@hostFilter", hostFilter)]);
+            result.AttackIps = ExecuteScalarLong(connection,
                 $"SELECT COUNT(DISTINCT ip) FROM request_log WHERE ts >= @StartTs AND blocked != 0{hostCondition}",
-                new { info.StartTs, hostFilter });
+                parameters: [new P("@StartTs", info.StartTs), new P("@hostFilter", hostFilter)]);
         }
 
         result.AbnormalIpsLive = AbnormalIpMonitor.GetAbnormalIps().Count;
@@ -113,7 +131,7 @@ public static class StatisticsQueryService
 
         using var connection = StatisticsDb.OpenReadConnection();
 
-        var points = connection.Query<TimeSeriesPointDto>(
+        var points = Query(connection,
             """
             SELECT ((bucket + @tzOffset) / @StepSeconds) * @StepSeconds - @tzOffset AS Time,
                    SUM(requests)   AS Requests,
@@ -125,8 +143,24 @@ public static class StatisticsQueryService
             WHERE granularity = @Granularity AND bucket >= @StartTs AND host = @hostFilter
             GROUP BY Time
             ORDER BY Time
-            """, new { info.Granularity, info.StartTs, info.StepSeconds, hostFilter, tzOffset })
-            .ToDictionary(x => x.Time);
+            """,
+            r => new TimeSeriesPointDto
+            {
+                Time = r.GetLong(0),
+                Requests = r.GetLong(1),
+                PageViews = r.GetLong(2),
+                Blocked = r.GetLong(3),
+                Error4xx = r.GetLong(4),
+                Error5xx = r.GetLong(5)
+            },
+            parameters:
+            [
+                new P("@Granularity", info.Granularity),
+                new P("@StartTs", info.StartTs),
+                new P("@StepSeconds", info.StepSeconds),
+                new P("@hostFilter", hostFilter),
+                new P("@tzOffset", tzOffset)
+            ]).ToDictionary(x => x.Time);
 
         // 补齐空档，保证序列连续
         var result = new List<TimeSeriesPointDto>();
@@ -156,7 +190,7 @@ public static class StatisticsQueryService
             var column = isChina ? "province" : "country";
             var hostCondition = hostFilter.Length == 0 ? string.Empty : " AND host = @hostFilter";
             var chinaCondition = isChina ? " AND country = '中国' AND province != ''" : string.Empty;
-            items = connection.Query<GeoItemDto>(
+            items = Query(connection,
                 $"""
                  SELECT {column} AS Name,
                         COUNT(*) AS Count,
@@ -166,12 +200,19 @@ public static class StatisticsQueryService
                  GROUP BY {column}
                  ORDER BY {orderColumn} DESC
                  LIMIT @top
-                 """, new { info.StartTs, hostFilter, top }).ToList();
+                 """,
+                MapGeoItem,
+                parameters:
+                [
+                    new P("@StartTs", info.StartTs),
+                    new P("@hostFilter", hostFilter),
+                    new P("@top", top)
+                ]);
         }
         else
         {
             var dimType = isChina ? StatDimType.Province : StatDimType.Country;
-            items = connection.Query<GeoItemDto>(
+            items = Query(connection,
                 $"""
                  SELECT dim_key AS Name, SUM(cnt) AS Count, SUM(blocked) AS Blocked
                  FROM stat_dim
@@ -179,7 +220,15 @@ public static class StatisticsQueryService
                  GROUP BY dim_key
                  ORDER BY {orderColumn} DESC
                  LIMIT @top
-                 """, new { info.StartTs, hostFilter, dimType, top }).ToList();
+                 """,
+                MapGeoItem,
+                parameters:
+                [
+                    new P("@StartTs", info.StartTs),
+                    new P("@hostFilter", hostFilter),
+                    new P("@dimType", dimType),
+                    new P("@top", top)
+                ]);
         }
 
         var total = items.Sum(x => mode == "blocked" ? x.Blocked : x.Count);
@@ -208,7 +257,7 @@ public static class StatisticsQueryService
         using var connection = StatisticsDb.OpenReadConnection();
 
         string baseQuery;
-        object parameters;
+        P[] parameters;
 
         if (type == "host")
         {
@@ -220,7 +269,13 @@ public static class StatisticsQueryService
                 WHERE granularity = @Granularity AND bucket >= @StartTs AND host != ''
                 GROUP BY host
                 """;
-            parameters = new { info.Granularity, info.StartTs, take, skip };
+            parameters =
+            [
+                new P("@Granularity", info.Granularity),
+                new P("@StartTs", info.StartTs),
+                new P("@take", take),
+                new P("@skip", skip)
+            ];
         }
         else if (info.UseRaw)
         {
@@ -245,7 +300,13 @@ public static class StatisticsQueryService
                  WHERE ts >= @StartTs{hostCondition}{notEmptyCondition}
                  GROUP BY {column}
                  """;
-            parameters = new { info.StartTs, hostFilter, take, skip };
+            parameters =
+            [
+                new P("@StartTs", info.StartTs),
+                new P("@hostFilter", hostFilter),
+                new P("@take", take),
+                new P("@skip", skip)
+            ];
         }
         else
         {
@@ -266,15 +327,29 @@ public static class StatisticsQueryService
                 WHERE bucket >= @StartTs AND host = @hostFilter AND dim_type = @dimType
                 GROUP BY dim_key
                 """;
-            parameters = new { info.StartTs, hostFilter, dimType, take, skip };
+            parameters =
+            [
+                new P("@StartTs", info.StartTs),
+                new P("@hostFilter", hostFilter),
+                new P("@dimType", dimType),
+                new P("@take", take),
+                new P("@skip", skip)
+            ];
         }
 
-        var total = connection.ExecuteScalar<int>($"SELECT COUNT(*) FROM ({baseQuery})", parameters);
-        var grandTotal = connection.ExecuteScalar<long>(
-            $"SELECT COALESCE(SUM(Count), 0) FROM ({baseQuery})", parameters);
+        var total = ExecuteScalarInt(connection, $"SELECT COUNT(*) FROM ({baseQuery})", parameters: parameters);
+        var grandTotal = ExecuteScalarLong(connection,
+            $"SELECT COALESCE(SUM(Count), 0) FROM ({baseQuery})", parameters: parameters);
 
-        var items = connection.Query<RankingItemDto>(
-            $"{baseQuery} ORDER BY {orderColumn} DESC LIMIT @take OFFSET @skip", parameters).ToList();
+        var items = Query(connection,
+            $"{baseQuery} ORDER BY {orderColumn} DESC LIMIT @take OFFSET @skip",
+            r => new RankingItemDto
+            {
+                Key = r.GetStringOrEmpty(0),
+                Count = r.GetLong(1),
+                Blocked = r.GetLong(2)
+            },
+            parameters: parameters);
 
         foreach (var item in items)
             item.Percent = grandTotal > 0 ? Math.Round(item.Count * 100.0 / grandTotal, 2) : 0;
@@ -297,18 +372,23 @@ public static class StatisticsQueryService
         if (status.HasValue) conditions += " AND status = @status";
         if (blocked == true) conditions += " AND blocked != 0";
 
-        var parameters = new
+        var parameters = new List<P>
         {
-            info.StartTs, host, ip, status,
-            take = pageSize, skip = (page - 1) * pageSize
+            new("@StartTs", info.StartTs),
+            new("@take", pageSize),
+            new("@skip", (page - 1) * pageSize)
         };
+        if (!string.IsNullOrEmpty(host)) parameters.Add(new P("@host", host));
+        if (!string.IsNullOrEmpty(ip)) parameters.Add(new P("@ip", ip));
+        if (status.HasValue) parameters.Add(new P("@status", status.Value));
+        var paramArray = parameters.ToArray();
 
         using var connection = StatisticsDb.OpenReadConnection();
 
-        var total = connection.ExecuteScalar<int>(
-            $"SELECT COUNT(*) FROM request_log WHERE {conditions}", parameters);
+        var total = ExecuteScalarInt(connection,
+            $"SELECT COUNT(*) FROM request_log WHERE {conditions}", parameters: paramArray);
 
-        var items = connection.Query<RequestLogItemDto>(
+        var items = Query(connection,
             $"""
              SELECT id AS Id, ts AS Ts, host AS Host, path AS Path, method AS Method, status AS Status,
                     elapsed_ms AS ElapsedMs, ip AS Ip, country AS Country, province AS Province,
@@ -317,10 +397,35 @@ public static class StatisticsQueryService
              WHERE {conditions}
              ORDER BY id DESC
              LIMIT @take OFFSET @skip
-             """, parameters).ToList();
+             """,
+            r => new RequestLogItemDto
+            {
+                Id = r.GetLong(0),
+                Ts = r.GetLong(1),
+                Host = r.GetStringOrEmpty(2),
+                Path = r.GetStringOrEmpty(3),
+                Method = r.GetStringOrEmpty(4),
+                Status = r.GetInt(5),
+                ElapsedMs = r.GetInt(6),
+                Ip = r.GetStringOrEmpty(7),
+                Country = r.GetStringOrEmpty(8),
+                Province = r.GetStringOrEmpty(9),
+                Os = r.GetStringOrEmpty(10),
+                Browser = r.GetStringOrEmpty(11),
+                RefererUrl = r.GetStringOrEmpty(12),
+                Blocked = r.GetInt(13)
+            },
+            parameters: paramArray);
 
         return new PagingDto<RequestLogItemDto>(total, items);
     }
+
+    private static GeoItemDto MapGeoItem(Microsoft.Data.Sqlite.SqliteDataReader r) => new()
+    {
+        Name = r.GetStringOrEmpty(0),
+        Count = r.GetLong(1),
+        Blocked = r.GetLong(2)
+    };
 
     private static int LocalDay(long ts)
     {

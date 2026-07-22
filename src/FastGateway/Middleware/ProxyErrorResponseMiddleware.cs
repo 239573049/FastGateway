@@ -1,3 +1,5 @@
+using FastGateway.Dto;
+using FastGateway.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -38,7 +40,7 @@ public sealed class ProxyErrorResponseMiddleware
         var error = errorFeature?.Error ?? ForwarderError.None;
         var exception = errorFeature?.Exception;
 
-        var payload = new
+        var payload = new ProxyErrorDto
         {
             Code = statusCode,
             Message = GetMessage(statusCode, error),
@@ -54,7 +56,7 @@ public sealed class ProxyErrorResponseMiddleware
         context.Response.ContentType = "application/json; charset=utf-8";
         context.Response.Headers["Server"] = "FastGateway";
         context.Response.Headers["X-FastGateway-Version"] = _gatewayVersion;
-        await context.Response.WriteAsJsonAsync(payload);
+        await context.Response.WriteAsJsonAsync(payload, AppJsonContext.Default.ProxyErrorDto);
     }
 
     private static string GetMessage(int statusCode, ForwarderError error)

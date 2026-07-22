@@ -47,7 +47,7 @@ public static class StreamForwardService
                         ActiveConnections = activeConnections,
                         UdpSessions = udpSessions
                     };
-                });
+                }).ToList();
             })
             .WithDescription("获取端口转发列表")
             .WithDisplayName("获取端口转发列表")

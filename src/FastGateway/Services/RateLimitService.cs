@@ -40,7 +40,9 @@ public static class RateLimitService
                     context.Items[StatisticsCollector.BlockReasonKey] = (byte)BlockReason.RateLimit;
                     context.Response.StatusCode = 429;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(ResultDto.CreateFailed("请求过于频繁,请稍后再试"));
+                    await context.Response.WriteAsJsonAsync(
+                        ResultDto.CreateFailed("请求过于频繁,请稍后再试"),
+                        AppJsonContext.Default.ResultDto);
                 };
             });
             services.AddSingleton<IRateLimitConfiguration,

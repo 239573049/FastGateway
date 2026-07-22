@@ -1,7 +1,7 @@
 using System.Text;
-using Dapper;
 using FastGateway.Services.Statistics;
 using Microsoft.Data.Sqlite;
+using static FastGateway.Services.Statistics.SqlRunner;
 
 namespace FastGateway.BackgroundTask;
 
@@ -135,37 +135,40 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
         }
 
         using var connection = StatisticsDb.OpenWriteConnection();
-        var completed = connection.ExecuteScalar<string?>(
-            "SELECT value FROM stat_meta WHERE key = @key", new { key = GeoZhBackfillMetaKey });
+        var completed = ExecuteScalarString(connection,
+            "SELECT value FROM stat_meta WHERE key = @key", parameters: [new P("@key", GeoZhBackfillMetaKey)]);
         if (completed == "1") return;
 
         var startTs = DateTimeOffset.UtcNow.AddDays(-RawRetentionDays).ToUnixTimeSeconds();
         var bucketStart = startTs / 3600 * 3600;
-        var rows = connection.Query<GeoBackfillRow>(
+        var rows = Query(connection,
             "SELECT id AS Id, ip AS Ip FROM request_log WHERE ts >= @startTs",
-            new { startTs }).ToList();
+            r => new GeoBackfillRow { Id = r.GetLong(0), Ip = r.GetStringOrEmpty(1) },
+            parameters: [new P("@startTs", startTs)]);
 
         using var transaction = connection.BeginTransaction();
         foreach (var row in rows)
         {
             var (country, province) = GeoIpService.Resolve(row.Ip);
-            connection.Execute(
+            Execute(connection,
                 "UPDATE request_log SET country = @country, province = @province WHERE id = @id",
-                new { country, province, id = row.Id }, transaction);
+                transaction,
+                new P("@country", country), new P("@province", province), new P("@id", row.Id));
         }
 
         // 旧聚合里可能残留英文国名；超过 7 天且无 IP 的记录仅做名称归一
-        var englishCountries = connection.Query<string>(
+        var englishCountries = Query(connection,
             """
             SELECT DISTINCT dim_key FROM stat_dim
             WHERE dim_type = @dimType AND dim_key GLOB '*[A-Za-z]*'
             """,
-            new { dimType = StatDimType.Country }, transaction).ToList();
+            r => r.GetStringOrEmpty(0),
+            transaction, new P("@dimType", StatDimType.Country));
         foreach (var oldName in englishCountries)
         {
             var zh = GeoIpService.NormalizeCountryName(oldName);
             if (zh == oldName) continue;
-            connection.Execute(
+            Execute(connection,
                 """
                 UPDATE stat_dim
                 SET dim_key = @zh
@@ -175,8 +178,9 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
                       WHERE x.bucket = stat_dim.bucket AND x.host = stat_dim.host
                         AND x.dim_type = stat_dim.dim_type AND x.dim_key = @zh)
                 """,
-                new { zh, oldName, dimType = StatDimType.Country }, transaction);
-            connection.Execute(
+                transaction,
+                new P("@zh", zh), new P("@oldName", oldName), new P("@dimType", StatDimType.Country));
+            Execute(connection,
                 """
                 UPDATE stat_dim
                 SET cnt = cnt + (
@@ -189,21 +193,25 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
                           AND s.dim_type = stat_dim.dim_type AND s.dim_key = @oldName)
                 WHERE dim_type = @dimType AND dim_key = @zh
                 """,
-                new { zh, oldName, dimType = StatDimType.Country }, transaction);
-            connection.Execute(
+                transaction,
+                new P("@zh", zh), new P("@oldName", oldName), new P("@dimType", StatDimType.Country));
+            Execute(connection,
                 "DELETE FROM stat_dim WHERE dim_type = @dimType AND dim_key = @oldName",
-                new { dimType = StatDimType.Country, oldName }, transaction);
+                transaction,
+                new P("@dimType", StatDimType.Country), new P("@oldName", oldName));
         }
 
-        connection.Execute(
+        Execute(connection,
             """
             DELETE FROM stat_dim
             WHERE (dim_type = @countryType OR dim_type = @provinceType)
               AND bucket >= @bucketStart
             """,
-            new { countryType = StatDimType.Country, provinceType = StatDimType.Province, bucketStart },
-            transaction);
-        connection.Execute(
+            transaction,
+            new P("@countryType", StatDimType.Country),
+            new P("@provinceType", StatDimType.Province),
+            new P("@bucketStart", bucketStart));
+        Execute(connection,
             """
             INSERT INTO stat_dim (bucket, host, dim_type, dim_key, cnt, blocked)
             SELECT ts / 3600 * 3600, host, @countryType, country, COUNT(*),
@@ -232,16 +240,15 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             ON CONFLICT (bucket, host, dim_type, dim_key) DO UPDATE SET
                 cnt = cnt + excluded.cnt, blocked = blocked + excluded.blocked
             """,
-            new
-            {
-                countryType = StatDimType.Country,
-                provinceType = StatDimType.Province,
-                startTs,
-                china = GeoIpService.China
-            }, transaction);
-        connection.Execute(
+            transaction,
+            new P("@countryType", StatDimType.Country),
+            new P("@provinceType", StatDimType.Province),
+            new P("@startTs", startTs),
+            new P("@china", GeoIpService.China));
+        Execute(connection,
             "INSERT INTO stat_meta (key, value) VALUES (@key, '1') ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-            new { key = GeoZhBackfillMetaKey }, transaction);
+            transaction,
+            new P("@key", GeoZhBackfillMetaKey));
         transaction.Commit();
 
         logger.LogInformation("已回填 {Count} 条最近 {Days} 天的中文地理统计", rows.Count, RawRetentionDays);
@@ -249,16 +256,16 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
 
     private void WriteBatch(SqliteConnection connection, List<RequestStatEntry> batch)
     {
-        var rows = new List<object>(batch.Count);
+        var rows = new List<RequestLogRow>(batch.Count);
         var buckets = new Dictionary<(int Granularity, long Bucket, string Host), BucketAgg>();
         var dims = new Dictionary<(long Bucket, string Host, int Type, string Key), DimAgg>();
-        var uniques = new List<object>();
+        var uniques = new List<UniqueRow>();
 
         foreach (var entry in batch) Accumulate(entry, rows, buckets, dims, uniques);
 
         using var transaction = connection.BeginTransaction();
 
-        connection.Execute(
+        ExecuteBatch(connection,
             """
             INSERT INTO request_log
                 (ts, server_id, host, path, method, status, elapsed_ms, ip, country, province,
@@ -266,9 +273,28 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             VALUES
                 (@Ts, @ServerId, @Host, @Path, @Method, @Status, @ElapsedMs, @Ip, @Country, @Province,
                  @Os, @Browser, @VisitorHash, @RefererHost, @RefererUrl, @Blocked, @IsPage)
-            """, rows, transaction);
+            """, transaction, rows, static (cmd, row) =>
+            {
+                cmd.Parameters.AddWithValue("@Ts", row.Ts);
+                cmd.Parameters.AddWithValue("@ServerId", (object?)row.ServerId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Host", row.Host);
+                cmd.Parameters.AddWithValue("@Path", row.Path);
+                cmd.Parameters.AddWithValue("@Method", row.Method);
+                cmd.Parameters.AddWithValue("@Status", row.Status);
+                cmd.Parameters.AddWithValue("@ElapsedMs", row.ElapsedMs);
+                cmd.Parameters.AddWithValue("@Ip", row.Ip);
+                cmd.Parameters.AddWithValue("@Country", row.Country);
+                cmd.Parameters.AddWithValue("@Province", row.Province);
+                cmd.Parameters.AddWithValue("@Os", row.Os);
+                cmd.Parameters.AddWithValue("@Browser", row.Browser);
+                cmd.Parameters.AddWithValue("@VisitorHash", row.VisitorHash);
+                cmd.Parameters.AddWithValue("@RefererHost", row.RefererHost);
+                cmd.Parameters.AddWithValue("@RefererUrl", row.RefererUrl);
+                cmd.Parameters.AddWithValue("@Blocked", row.Blocked);
+                cmd.Parameters.AddWithValue("@IsPage", row.IsPage);
+            });
 
-        connection.Execute(
+        ExecuteBatch(connection,
             """
             INSERT INTO stat_bucket
                 (granularity, bucket, host, requests, page_views, blocked, blocked_403, blocked_429,
@@ -287,55 +313,58 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
                 status_4xx  = status_4xx  + excluded.status_4xx,
                 status_5xx  = status_5xx  + excluded.status_5xx,
                 elapsed_sum = elapsed_sum + excluded.elapsed_sum
-            """,
-            buckets.Select(pair => new
+            """, transaction, buckets, static (cmd, pair) =>
             {
-                pair.Key.Granularity,
-                pair.Key.Bucket,
-                pair.Key.Host,
-                pair.Value.Requests,
-                pair.Value.PageViews,
-                pair.Value.Blocked,
-                pair.Value.Blocked403,
-                pair.Value.Blocked429,
-                pair.Value.Status2xx,
-                pair.Value.Status3xx,
-                pair.Value.Status4xx,
-                pair.Value.Status5xx,
-                pair.Value.ElapsedSum
-            }), transaction);
+                cmd.Parameters.AddWithValue("@Granularity", pair.Key.Granularity);
+                cmd.Parameters.AddWithValue("@Bucket", pair.Key.Bucket);
+                cmd.Parameters.AddWithValue("@Host", pair.Key.Host);
+                cmd.Parameters.AddWithValue("@Requests", pair.Value.Requests);
+                cmd.Parameters.AddWithValue("@PageViews", pair.Value.PageViews);
+                cmd.Parameters.AddWithValue("@Blocked", pair.Value.Blocked);
+                cmd.Parameters.AddWithValue("@Blocked403", pair.Value.Blocked403);
+                cmd.Parameters.AddWithValue("@Blocked429", pair.Value.Blocked429);
+                cmd.Parameters.AddWithValue("@Status2xx", pair.Value.Status2xx);
+                cmd.Parameters.AddWithValue("@Status3xx", pair.Value.Status3xx);
+                cmd.Parameters.AddWithValue("@Status4xx", pair.Value.Status4xx);
+                cmd.Parameters.AddWithValue("@Status5xx", pair.Value.Status5xx);
+                cmd.Parameters.AddWithValue("@ElapsedSum", pair.Value.ElapsedSum);
+            });
 
-        connection.Execute(
+        ExecuteBatch(connection,
             """
             INSERT INTO stat_dim (bucket, host, dim_type, dim_key, cnt, blocked)
             VALUES (@Bucket, @Host, @Type, @Key, @Cnt, @Blocked)
             ON CONFLICT (bucket, host, dim_type, dim_key) DO UPDATE SET
                 cnt = cnt + excluded.cnt, blocked = blocked + excluded.blocked
-            """,
-            dims.Select(pair => new
+            """, transaction, dims, static (cmd, pair) =>
             {
-                pair.Key.Bucket,
-                pair.Key.Host,
-                pair.Key.Type,
-                pair.Key.Key,
-                pair.Value.Cnt,
-                pair.Value.Blocked
-            }), transaction);
+                cmd.Parameters.AddWithValue("@Bucket", pair.Key.Bucket);
+                cmd.Parameters.AddWithValue("@Host", pair.Key.Host);
+                cmd.Parameters.AddWithValue("@Type", pair.Key.Type);
+                cmd.Parameters.AddWithValue("@Key", pair.Key.Key);
+                cmd.Parameters.AddWithValue("@Cnt", pair.Value.Cnt);
+                cmd.Parameters.AddWithValue("@Blocked", pair.Value.Blocked);
+            });
 
-        if (uniques.Count > 0)
-            connection.Execute(
-                "INSERT OR IGNORE INTO stat_unique_daily (day, host, kind, hash) VALUES (@Day, @Host, @Kind, @Hash)",
-                uniques, transaction);
+        ExecuteBatch(connection,
+            "INSERT OR IGNORE INTO stat_unique_daily (day, host, kind, hash) VALUES (@Day, @Host, @Kind, @Hash)",
+            transaction, uniques, static (cmd, u) =>
+            {
+                cmd.Parameters.AddWithValue("@Day", u.Day);
+                cmd.Parameters.AddWithValue("@Host", u.Host);
+                cmd.Parameters.AddWithValue("@Kind", u.Kind);
+                cmd.Parameters.AddWithValue("@Hash", u.Hash);
+            });
 
         transaction.Commit();
     }
 
     private void Accumulate(
         in RequestStatEntry entry,
-        List<object> rows,
+        List<RequestLogRow> rows,
         Dictionary<(int, long, string), BucketAgg> buckets,
         Dictionary<(long, string, int, string), DimAgg> dims,
-        List<object> uniques)
+        List<UniqueRow> uniques)
     {
         var (country, province) = GeoIpService.Resolve(entry.Ip);
         var (os, browser) = UserAgentService.Parse(entry.UserAgent);
@@ -344,16 +373,16 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
         var visitorHash = Hash($"{entry.Ip}|{entry.UserAgent}");
         var isBlocked = entry.Blocked != 0;
 
-        rows.Add(new
+        rows.Add(new RequestLogRow
         {
-            entry.Ts,
-            entry.ServerId,
-            entry.Host,
-            entry.Path,
-            entry.Method,
-            entry.Status,
-            entry.ElapsedMs,
-            entry.Ip,
+            Ts = entry.Ts,
+            ServerId = entry.ServerId,
+            Host = entry.Host,
+            Path = entry.Path,
+            Method = entry.Method,
+            Status = entry.Status,
+            ElapsedMs = entry.ElapsedMs,
+            Ip = entry.Ip,
             Country = country,
             Province = province,
             Os = os,
@@ -468,7 +497,7 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
         return key;
     }
 
-    private void AccumulateUnique(List<object> uniques, int day, string host, int kind, long hash)
+    private void AccumulateUnique(List<UniqueRow> uniques, int day, string host, int kind, long hash)
     {
         if (!_uniqueSeen.TryGetValue(day, out var byHostKind))
         {
@@ -488,7 +517,7 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
 
         if (!seen.Add(hash)) return;
 
-        uniques.Add(new { Day = day, Host = host, Kind = kind, Hash = hash });
+        uniques.Add(new UniqueRow(day, host, kind, hash));
     }
 
     private static (string Host, string Url) ParseReferer(string? referer, string requestHost)
@@ -522,7 +551,8 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
 
     private static long ReadMetaLong(SqliteConnection connection, string key)
     {
-        var value = connection.ExecuteScalar<string?>("SELECT value FROM stat_meta WHERE key = @key", new { key });
+        var value = ExecuteScalarString(connection,
+            "SELECT value FROM stat_meta WHERE key = @key", parameters: [new P("@key", key)]);
         return long.TryParse(value, out var result) ? result : 0;
     }
 
@@ -530,9 +560,9 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
     {
         try
         {
-            connection.Execute(
+            Execute(connection,
                 "INSERT INTO stat_meta (key, value) VALUES ('dropped_entries_total', @value) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-                new { value = StatisticsCollector.DroppedCount.ToString() });
+                parameters: [new P("@value", StatisticsCollector.DroppedCount.ToString())]);
         }
         catch (Exception ex)
         {
@@ -551,23 +581,27 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
             // 分批删除明细，保持写事务短小
             while (true)
             {
-                var deleted = connection.Execute(
+                var deleted = Execute(connection,
                     "DELETE FROM request_log WHERE id IN (SELECT id FROM request_log WHERE ts < @rawCutoff LIMIT 20000)",
-                    new { rawCutoff });
+                    parameters: [new P("@rawCutoff", rawCutoff)]);
                 if (deleted == 0) break;
             }
 
-            connection.Execute("DELETE FROM stat_bucket WHERE granularity = 1 AND bucket < @rawCutoff", new { rawCutoff });
-            connection.Execute("DELETE FROM stat_bucket WHERE granularity = 2 AND bucket < @aggCutoff", new { aggCutoff });
-            connection.Execute("DELETE FROM stat_dim WHERE bucket < @aggCutoff", new { aggCutoff });
-            connection.Execute("DELETE FROM stat_unique_daily WHERE day < @dayCutoff", new { dayCutoff });
+            Execute(connection, "DELETE FROM stat_bucket WHERE granularity = 1 AND bucket < @rawCutoff",
+                parameters: [new P("@rawCutoff", rawCutoff)]);
+            Execute(connection, "DELETE FROM stat_bucket WHERE granularity = 2 AND bucket < @aggCutoff",
+                parameters: [new P("@aggCutoff", aggCutoff)]);
+            Execute(connection, "DELETE FROM stat_dim WHERE bucket < @aggCutoff",
+                parameters: [new P("@aggCutoff", aggCutoff)]);
+            Execute(connection, "DELETE FROM stat_unique_daily WHERE day < @dayCutoff",
+                parameters: [new P("@dayCutoff", dayCutoff)]);
 
-            connection.Execute(
+            Execute(connection,
                 "INSERT INTO stat_meta (key, value) VALUES ('last_cleanup_ts', @value) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
-                new { value = now.ToString() });
+                parameters: [new P("@value", now.ToString())]);
 
-            connection.Execute("PRAGMA incremental_vacuum(2000);");
-            connection.Execute("PRAGMA wal_checkpoint(PASSIVE);");
+            Execute(connection, "PRAGMA incremental_vacuum(2000);");
+            Execute(connection, "PRAGMA wal_checkpoint(PASSIVE);");
         }
         catch (Exception ex)
         {
@@ -580,6 +614,31 @@ public sealed class StatisticsBackgroundService(ILogger<StatisticsBackgroundServ
         public long Id { get; init; }
         public string Ip { get; init; } = string.Empty;
     }
+
+    /// <summary>request_log 单行写入载荷（替代原匿名对象，AOT 安全）。</summary>
+    private readonly struct RequestLogRow
+    {
+        public long Ts { get; init; }
+        public string? ServerId { get; init; }
+        public string Host { get; init; }
+        public string Path { get; init; }
+        public string Method { get; init; }
+        public int Status { get; init; }
+        public int ElapsedMs { get; init; }
+        public string Ip { get; init; }
+        public string Country { get; init; }
+        public string Province { get; init; }
+        public string Os { get; init; }
+        public string Browser { get; init; }
+        public long VisitorHash { get; init; }
+        public string RefererHost { get; init; }
+        public string RefererUrl { get; init; }
+        public int Blocked { get; init; }
+        public int IsPage { get; init; }
+    }
+
+    /// <summary>stat_unique_daily 单行写入载荷。</summary>
+    private readonly record struct UniqueRow(int Day, string Host, int Kind, long Hash);
 
     private sealed class BucketAgg
     {

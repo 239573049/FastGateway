@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using FastGateway.Dto;
+using FastGateway.Infrastructure;
 
 namespace FastGateway.Services;
 
@@ -488,64 +490,68 @@ public static class ApiQpsService
             var qpsHistory = QpsService.GetQpsHistory();
             var uptime = QpsService.GetUptime();
 
-            var data = new
+            var data = new QpsRealtimeDto
             {
-                qps = QpsService.GetServiceQps(), // 3s average QPS
-                qpsHistory = qpsHistory.Select(h => new { time = h.Time, qps = h.Qps }).ToArray(),
-                now = DateTime.Now.ToString("HH:mm:ss"),
-                requests = new
+                Qps = QpsService.GetServiceQps(), // 3s average QPS
+                QpsHistory = qpsHistory
+                    .Select(h => new QpsHistoryPointDto { Time = h.Time, Qps = h.Qps })
+                    .ToArray(),
+                Now = DateTime.Now.ToString("HH:mm:ss"),
+                Requests = new QpsRequestsDto
                 {
-                    total = requestCounts.total,
-                    success = requestCounts.success,
-                    failed = requestCounts.failed,
-                    successRate = requestCounts.total > 0 ? Math.Round((double)requestCounts.success / requestCounts.total * 100, 2) : 0.0
+                    Total = requestCounts.total,
+                    Success = requestCounts.success,
+                    Failed = requestCounts.failed,
+                    SuccessRate = requestCounts.total > 0
+                        ? Math.Round((double)requestCounts.success / requestCounts.total * 100, 2)
+                        : 0.0
                 },
-                responseTime = new
+                ResponseTime = new QpsResponseTimeDto
                 {
-                    avg = responseTimeStats.Avg,
-                    p95 = responseTimeStats.P95,
-                    p99 = responseTimeStats.P99,
-                    min = responseTimeStats.Min,
-                    max = responseTimeStats.Max
+                    Avg = responseTimeStats.Avg,
+                    P95 = responseTimeStats.P95,
+                    P99 = responseTimeStats.P99,
+                    Min = responseTimeStats.Min,
+                    Max = responseTimeStats.Max
                 },
-                system = new
+                System = new QpsSystemDto
                 {
-                    cpu = new
+                    Cpu = new QpsCpuDto
                     {
-                        usage = Math.Round(systemStats.CpuUsage, 2),
-                        cores = systemStats.ProcessorCount
+                        Usage = Math.Round(systemStats.CpuUsage, 2),
+                        Cores = systemStats.ProcessorCount
                     },
-                    memory = new
+                    Memory = new QpsMemoryDto
                     {
-                        usage = Math.Round(systemStats.MemoryUsagePercent, 2),
-                        total = systemStats.TotalMemoryBytes,
-                        used = systemStats.UsedMemoryBytes,
-                        available = systemStats.AvailableMemoryBytes,
-                        workingSet = systemStats.WorkingSetBytes,
-                        gc = systemStats.GCMemoryBytes
+                        Usage = Math.Round(systemStats.MemoryUsagePercent, 2),
+                        Total = systemStats.TotalMemoryBytes,
+                        Used = systemStats.UsedMemoryBytes,
+                        Available = systemStats.AvailableMemoryBytes,
+                        WorkingSet = systemStats.WorkingSetBytes,
+                        Gc = systemStats.GCMemoryBytes
                     },
-                    disk = new
+                    Disk = new QpsDiskDto
                     {
-                        readBytesPerSec = systemStats.DiskReadBytesPerSec,
-                        writeBytesPerSec = systemStats.DiskWriteBytesPerSec
+                        ReadBytesPerSec = systemStats.DiskReadBytesPerSec,
+                        WriteBytesPerSec = systemStats.DiskWriteBytesPerSec
                     }
                 },
-                service = new
+                Service = new QpsServiceDto
                 {
-                    isOnline = true,
-                    uptime = new
+                    IsOnline = true,
+                    Uptime = new QpsUptimeDto
                     {
-                        days = uptime.Days,
-                        hours = uptime.Hours,
-                        minutes = uptime.Minutes,
-                        seconds = uptime.Seconds,
-                        totalSeconds = (long)uptime.TotalSeconds
+                        Days = uptime.Days,
+                        Hours = uptime.Hours,
+                        Minutes = uptime.Minutes,
+                        Seconds = uptime.Seconds,
+                        TotalSeconds = (long)uptime.TotalSeconds
                     },
-                    lastUpdate = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                    LastUpdate = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
                 }
             };
 
-            await context.Response.WriteAsJsonAsync(data);
+            await context.Response.WriteAsJsonAsync(data, AppJsonContext.Default.QpsRealtimeDto);
         }
         finally { }
     }

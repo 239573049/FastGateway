@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- AOT / trimming: vendored, dependency-free, source-generated JSON -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+
+    <RootNamespace>Certes</RootNamespace>
+    <AssemblyName>Certes</AssemblyName>
+    <Product>Certes ACME Client</Product>
+    <Description>A client implementation for the Automated Certificate Management Environment (ACME) protocol. Vendored, Newtonsoft.Json- and BouncyCastle-free, AOT-compatible.</Description>
+  </PropertyGroup>
+
+</Project>
