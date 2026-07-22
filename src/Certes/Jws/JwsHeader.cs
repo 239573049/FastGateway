@@ -12,8 +12,14 @@ namespace Certes.Jws
         [JsonPropertyName("alg")]
         public string Alg { get; set; }
 
+        // Declared as object (not JsonWebKey) on purpose: System.Text.Json's source
+        // generator serializes a member by its *declared* type, so a JsonWebKey-typed
+        // property would emit only the base "kty" and drop the derived key material
+        // (crv/x/y or n/e), producing a malformed jwk that Let's Encrypt rejects with
+        // "Parse error reading JWS". object triggers runtime-type serialization, and
+        // EcJsonWebKey/RsaJsonWebKey are both registered in CertesJsonContext.
         [JsonPropertyName("jwk")]
-        public JsonWebKey Jwk { get; set; }
+        public object Jwk { get; set; }
 
         [JsonPropertyName("kid")]
         public Uri Kid { get; set; }
@@ -33,8 +39,10 @@ namespace Certes.Jws
         [JsonPropertyName("account")]
         public Uri Account { get; set; }
 
+        // object (not JsonWebKey) so the derived key material serializes — see the note
+        // on JwsHeader.Jwk above. Otherwise account key rollover sends a malformed oldKey.
         [JsonPropertyName("oldKey")]
-        public JsonWebKey OldKey { get; set; }
+        public object OldKey { get; set; }
     }
 
     /// <summary>

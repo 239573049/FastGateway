@@ -44,6 +44,10 @@ namespace Certes.Json
     [JsonSerializable(typeof(RevocationReason))]
     // primitives that appear as top-level T in AcmeHttpClient
     [JsonSerializable(typeof(string))]
+    // object: enables runtime-type (polymorphic) serialization for the JsonWebKey
+    // members declared as object on JwsHeader/KeyChangePayload. Without this the
+    // resolver has no JsonTypeInfo for object and serialization throws under AOT.
+    [JsonSerializable(typeof(object))]
     internal partial class CertesJsonContext : JsonSerializerContext
     {
     }
