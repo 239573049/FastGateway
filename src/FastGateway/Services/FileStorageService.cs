@@ -95,7 +95,7 @@ public static class FileStorageService
                         VolumeLabel = x.VolumeLabel,
                         DriveFormat = x.DriveFormat,
                         IsReady = x.IsReady
-                    });
+                    }).ToArray();
 
                 return DriveInfo.GetDrives().Where(x => x.Name == "/").Select(x => new DriveInfoDto
                 {
@@ -106,7 +106,7 @@ public static class FileStorageService
                     VolumeLabel = x.VolumeLabel,
                     DriveFormat = x.DriveFormat,
                     IsReady = x.IsReady
-                });
+                }).ToArray();
             })
             .WithDescription("获取系统盘符")
             .WithDisplayName("获取系统盘符").WithTags("文件存储");
@@ -123,9 +123,9 @@ public static class FileStorageService
             var directory = new DirectoryInfo(path);
             var directories = directory.GetDirectories();
             var files = directory.GetFiles();
-            return new
+            return new DirectoryListingDto
             {
-                directories = directories.Select(x => new DirectoryInfoDto
+                Directories = directories.Select(x => new DirectoryInfoDto
                 {
                     Name = x.Name,
                     FullName = x.FullName,
@@ -140,7 +140,7 @@ public static class FileStorageService
                     IsFile = x.Attributes.HasFlag(FileAttributes.Archive),
                     Drive = GetDriveLetter(x.FullName)
                 }).ToArray(),
-                files = files.Select(x => new FileInfoDto
+                Files = files.Select(x => new FileInfoDto
                 {
                     Name = x.Name,
                     FullName = x.FullName,
@@ -414,16 +414,16 @@ public static class FileStorageService
             if (File.Exists(path))
             {
                 var fileInfo = new FileInfo(path);
-                var fileProperties = new
+                var fileProperties = new FilePropertyDto
                 {
                     Type = "File",
-                    fileInfo.Name,
-                    fileInfo.FullName,
-                    fileInfo.Extension,
-                    fileInfo.Length,
-                    fileInfo.CreationTime,
-                    fileInfo.LastAccessTime,
-                    fileInfo.LastWriteTime
+                    Name = fileInfo.Name,
+                    FullName = fileInfo.FullName,
+                    Extension = fileInfo.Extension,
+                    Length = fileInfo.Length,
+                    CreationTime = fileInfo.CreationTime,
+                    LastAccessTime = fileInfo.LastAccessTime,
+                    LastWriteTime = fileInfo.LastWriteTime
                 };
                 return ResultDto.CreateSuccess(fileProperties);
             }
@@ -431,14 +431,14 @@ public static class FileStorageService
             if (Directory.Exists(path))
             {
                 var directoryInfo = new DirectoryInfo(path);
-                var directoryProperties = new
+                var directoryProperties = new FilePropertyDto
                 {
                     Type = "Directory",
-                    directoryInfo.Name,
-                    directoryInfo.FullName,
-                    directoryInfo.CreationTime,
-                    directoryInfo.LastAccessTime,
-                    directoryInfo.LastWriteTime
+                    Name = directoryInfo.Name,
+                    FullName = directoryInfo.FullName,
+                    CreationTime = directoryInfo.CreationTime,
+                    LastAccessTime = directoryInfo.LastAccessTime,
+                    LastWriteTime = directoryInfo.LastWriteTime
                 };
                 return ResultDto.CreateSuccess(directoryProperties);
             }
@@ -563,7 +563,7 @@ public static class FileStorageService
             if (!File.Exists(filePath)) throw new ValidationException("文件不存在");
 
             var content = File.ReadAllText(filePath);
-            return new { content };
+            return new FileContentDto { Content = content };
         }).WithDescription("获取文件内容").WithDisplayName("获取文件内容").WithTags("文件存储");
 
         // 保存文件内容

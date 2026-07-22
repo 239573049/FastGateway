@@ -1,5 +1,5 @@
-using Dapper;
 using Microsoft.Data.Sqlite;
+using static FastGateway.Services.Statistics.SqlRunner;
 
 namespace FastGateway.Services.Statistics;
 
@@ -40,9 +40,9 @@ public static class StatisticsDb
 
                 using var connection = new SqliteConnection(WriteConnectionString);
                 connection.Open();
-                connection.Execute("PRAGMA journal_mode=WAL;");
-                connection.Execute("PRAGMA synchronous=NORMAL;");
-                connection.Execute("PRAGMA auto_vacuum=INCREMENTAL;");
+                Execute(connection, "PRAGMA journal_mode=WAL;");
+                Execute(connection, "PRAGMA synchronous=NORMAL;");
+                Execute(connection, "PRAGMA auto_vacuum=INCREMENTAL;");
                 CreateSchema(connection);
                 IsAvailable = true;
             }
@@ -63,7 +63,7 @@ public static class StatisticsDb
     {
         var connection = new SqliteConnection(WriteConnectionString);
         connection.Open();
-        connection.Execute("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY;");
+        Execute(connection, "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY;");
         return connection;
     }
 
@@ -71,13 +71,13 @@ public static class StatisticsDb
     {
         var connection = new SqliteConnection(ReadConnectionString);
         connection.Open();
-        connection.Execute("PRAGMA busy_timeout=3000;");
+        Execute(connection, "PRAGMA busy_timeout=3000;");
         return connection;
     }
 
     private static void CreateSchema(SqliteConnection connection)
     {
-        connection.Execute(
+        Execute(connection,
             """
             CREATE TABLE IF NOT EXISTS request_log (
                 id            INTEGER PRIMARY KEY,
@@ -143,8 +143,8 @@ public static class StatisticsDb
             ) WITHOUT ROWID;
             """);
 
-        var version = connection.ExecuteScalar<long>("PRAGMA user_version;");
-        if (version < SchemaVersion) connection.Execute($"PRAGMA user_version={SchemaVersion};");
+        var version = ExecuteScalarLong(connection, "PRAGMA user_version;");
+        if (version < SchemaVersion) Execute(connection, $"PRAGMA user_version={SchemaVersion};");
     }
 }
 

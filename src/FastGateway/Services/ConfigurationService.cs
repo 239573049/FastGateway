@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Core.Entities;
+using FastGateway.Infrastructure;
 
 namespace FastGateway.Services;
 
@@ -9,7 +10,6 @@ namespace FastGateway.Services;
 public class ConfigurationService
 {
     private readonly string _configPath;
-    private readonly JsonSerializerOptions _jsonOptions;
     private readonly Lock _lockObject = new();
     private GatewayConfig _config;
 
@@ -20,13 +20,6 @@ public class ConfigurationService
         // 判断目录是否存在，如果不存在则创建
         var directory = Path.GetDirectoryName(_configPath);
         if (directory != null && !Directory.Exists(directory)) Directory.CreateDirectory(directory);
-
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        };
 
         LoadConfig();
     }
@@ -40,7 +33,8 @@ public class ConfigurationService
                 try
                 {
                     var json = File.ReadAllText(_configPath);
-                    _config = JsonSerializer.Deserialize<GatewayConfig>(json, _jsonOptions) ?? new GatewayConfig();
+                    _config = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.GatewayConfig)
+                              ?? new GatewayConfig();
                 }
                 catch
                 {

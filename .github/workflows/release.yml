@@ -143,7 +143,7 @@ jobs:
         run: dotnet restore src/FastGateway/FastGateway.csproj
 
       - name: Build FastGateway
-        run: dotnet publish src/FastGateway/FastGateway.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o ./artifacts/fastgateway-${{ matrix.runtime }}
+        run: dotnet publish src/FastGateway/FastGateway.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -p:PublishAot=false -o ./artifacts/fastgateway-${{ matrix.runtime }}
 
       - name: Upload FastGateway artifacts
         uses: actions/upload-artifact@v4

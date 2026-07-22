@@ -1,5 +1,6 @@
 ﻿using Core.Entities;
 using Core.Entities.Core;
+using FastGateway.Dto;
 using FastGateway.Extensions;
 using FastGateway.Infrastructure;
 using FastGateway.Middleware;
@@ -153,17 +154,17 @@ public static class Gateway
         return GatewayWebApplications.ContainsKey(serverId);
     }
 
-    public static object GetServerHealth(string serverId)
+    public static ServerHealthDto GetServerHealth(string serverId)
     {
         if (string.IsNullOrWhiteSpace(serverId))
-            return new { Online = false };
+            return new ServerHealthDto { Online = false };
 
         if (!GatewayWebApplications.TryGetValue(serverId, out var webApplication))
-            return new { Online = false };
+            return new ServerHealthDto { Online = false };
 
         var stateLookup = webApplication.Services.GetService<IProxyStateLookup>();
         if (stateLookup == null)
-            return new { Online = true, Supported = false };
+            return new ServerHealthDto { Online = true, Supported = false };
 
         var clusters = stateLookup
             .GetClusters()
@@ -176,20 +177,20 @@ public static class Gateway
                 var enabled = active?.Enabled == true || passive?.Enabled == true;
                 var path = active?.Path == null ? null : active.Path + (active.Query ?? string.Empty);
 
-                return new
+                return new ClusterHealthDto
                 {
                     ClusterId = cluster.ClusterId,
-                    HealthCheck = new
+                    HealthCheck = new ClusterHealthCheckDto
                     {
                         Enabled = enabled,
                         Path = path
                     },
                     Destinations = cluster.Destinations
-                        .Select(kvp => new
+                        .Select(kvp => new DestinationHealthDto
                         {
                             DestinationId = kvp.Value.DestinationId,
                             Address = kvp.Value.Model.Config.Address,
-                            Health = new
+                            Health = new DestinationHealthStateDto
                             {
                                 Active = kvp.Value.Health.Active,
                                 Passive = kvp.Value.Health.Passive,
@@ -201,7 +202,7 @@ public static class Gateway
             })
             .ToArray();
 
-        return new
+        return new ServerHealthDto
         {
             Online = true,
             Supported = true,
@@ -595,33 +596,27 @@ public static class Gateway
                     if (string.IsNullOrEmpty(token) || FastGatewayOptions.TunnelToken != token)
                     {
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        await context.Response.WriteAsJsonAsync(new
-                        {
-                            Code = 401,
-                            Message = "未授权的请求"
-                        });
+                        await context.Response.WriteAsJsonAsync(
+                            new CodeMessageDto { Code = 401, Message = "未授权的请求" },
+                            AppJsonContext.Default.CodeMessageDto);
                         return;
                     }
 
-                    var dto = await context.Request.ReadFromJsonAsync<Tunnel>();
+                    var dto = await context.Request.ReadFromJsonAsync(AppJsonContext.Default.Tunnel);
                     if (dto == null)
                     {
                         context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                        await context.Response.WriteAsJsonAsync(new
-                        {
-                            Code = 400,
-                            Message = "请求数据格式错误"
-                        });
+                        await context.Response.WriteAsJsonAsync(
+                            new CodeMessageDto { Code = 400, Message = "请求数据格式错误" },
+                            AppJsonContext.Default.CodeMessageDto);
                         return;
                     }
 
                     tunnel.CreateClient(dto, server, domainNames);
                     context.Response.StatusCode = StatusCodes.Status200OK;
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        Code = 200,
-                        Message = "注册成功"
-                    });
+                    await context.Response.WriteAsJsonAsync(
+                        new CodeMessageDto { Code = 200, Message = "注册成功" },
+                        AppJsonContext.Default.CodeMessageDto);
                     return;
                 }
 

@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using Core.Entities;
 using Core.Entities.Core;
+using FastGateway.Dto;
 using FastGateway.Services;
 
 namespace FastGateway.Gateway;
@@ -78,10 +79,15 @@ public static class StreamProxyManager
     /// <summary>
     ///     获取运行状态（在线、活动连接数、UDP 会话数）。
     /// </summary>
-    public static object GetStats(string id)
+    public static StreamForwardStatsDto GetStats(string id)
     {
         var (online, activeConnections, udpSessions) = GetRuntimeStats(id);
-        return new { Online = online, ActiveConnections = activeConnections, UdpSessions = udpSessions };
+        return new StreamForwardStatsDto
+        {
+            Online = online,
+            ActiveConnections = activeConnections,
+            UdpSessions = udpSessions
+        };
     }
 
     /// <summary>

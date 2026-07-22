@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using FastGateway.Dto;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FastGateway.Infrastructure;
@@ -22,7 +23,9 @@ public sealed class ResultFilter : IEndpointFilter
             return ResultDto.CreateFailed(ex.Message);
         }
 
-        if (result is EmptyResult) return null;
+        // 返回 void/Task 的端点由 Minimal API 产出 EmptyHttpResult；MVC 场景为 EmptyResult。
+        // 二者都表示“无数据成功”，不能塞进 ResultDto.Data(object)，否则 AOT 源生成器无对应元数据会抛异常。
+        if (result is EmptyHttpResult or EmptyResult) return ResultDto.CreateSuccess();
 
         if (result is ResultDto dto) return dto;
 
