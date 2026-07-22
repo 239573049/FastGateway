@@ -59,8 +59,20 @@ public class ConfigurationService
     {
         lock (_lockObject)
         {
-            var json = JsonSerializer.Serialize(_config, _jsonOptions);
-            File.WriteAllText(_configPath, json);
+            try
+            {
+                var json = JsonSerializer.Serialize(_config, _jsonOptions);
+
+                // 原子落盘：先写临时文件再替换，避免写入途中崩溃/断电损坏配置文件
+                var tempPath = _configPath + ".tmp";
+                File.WriteAllText(tempPath, json);
+                File.Move(tempPath, _configPath, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                // 磁盘满/权限/文件占用等异常不得冒泡为接口 500，仅记录；内存中的 _config 仍然生效
+                Console.WriteLine($"配置保存失败：{ex}");
+            }
         }
     }
 
