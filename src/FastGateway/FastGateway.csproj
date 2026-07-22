@@ -12,7 +12,6 @@
 
     <ItemGroup>
         <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
-        <PackageReference Include="Certes" Version="3.0.4" />
         <PackageReference Include="Dapper" Version="2.1.79" />
         <PackageReference Include="IP2Region.Net" Version="3.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
@@ -28,6 +27,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Core\Core.csproj" />
+        <ProjectReference Include="..\Certes\Certes.csproj" />
     </ItemGroup>
 
     <ItemGroup>
