@@ -37,7 +37,9 @@ public sealed class StandardForwarderHttpClientFactory : ForwarderHttpClientFact
         handler.UseCookies = false;
         handler.ActivityHeadersPropagator = new ReverseProxyPropagator(DistributedContextPropagator.Current);
         handler.RequestHeaderEncodingSelector = (_, _) => Encoding.UTF8;
-        handler.ConnectTimeout = TimeSpan.FromSeconds(1);
+        // 建连（TCP + TLS 握手）超时。1s 对跨境/高延迟/冷启动上游过短，会间歇性握手失败；
+        // 取 10s，落在 YARP 常见区间，避免误杀慢上游。
+        handler.ConnectTimeout = TimeSpan.FromSeconds(10);
         handler.PooledConnectionLifetime = TimeSpan.FromMinutes(10);
         handler.PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2);
         handler.ResponseDrainTimeout = TimeSpan.FromSeconds(10);
