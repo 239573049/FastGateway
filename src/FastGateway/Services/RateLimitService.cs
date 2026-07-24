@@ -34,7 +34,7 @@ public static class RateLimitService
                 options.EnableRegexRuleMatching = false;
                 options.EndpointWhitelist = endpointWhitelist;
                 options.IpWhitelist = ipWhitelist;
-                options.RealIpHeader = "X-Forwarded-For";
+                options.RealIpHeader = ClientIpHelper.ResolvedClientIpHeader;
                 options.RequestBlockedBehaviorAsync = async (context, _, _, _) =>
                 {
                     context.Items[StatisticsCollector.BlockReasonKey] = (byte)BlockReason.RateLimit;
@@ -57,7 +57,21 @@ public static class RateLimitService
     {
         if (rateLimits.Count == 0) return app;
 
+        app.Use(async (context, next) =>
+        {
+            var ip = ClientIpHelper.GetClientIp(context);
+            context.Request.Headers.Remove(ClientIpHelper.ResolvedClientIpHeader);
+            if (!string.IsNullOrWhiteSpace(ip))
+                context.Request.Headers[ClientIpHelper.ResolvedClientIpHeader] = ip;
+
+            await next(context);
+        });
         app.UseIpRateLimiting();
+        app.Use(async (context, next) =>
+        {
+            context.Request.Headers.Remove(ClientIpHelper.ResolvedClientIpHeader);
+            await next(context);
+        });
 
         return app;
     }

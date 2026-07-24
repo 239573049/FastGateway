@@ -1,25 +1,84 @@
+﻿using System.Collections.Concurrent;
 using System.Net;
+using Core.Entities;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
 namespace FastGateway.Infrastructure;
 
 public static class ClientIpHelper
 {
+    private static readonly ConcurrentDictionary<string, ClientIpSource> ServerSources = new();
+    private static readonly object ResolvedClientIpKey = new();
+
+    public const string ResolvedClientIpHeader = "X-FastGateway-Client-IP";
+
+    public static void SetClientIpSource(string serverId, ClientIpSource source)
+    {
+        if (string.IsNullOrWhiteSpace(serverId)) return;
+        ServerSources[serverId] = source;
+    }
+
+    public static void RemoveClientIpSource(string serverId)
+    {
+        if (string.IsNullOrWhiteSpace(serverId)) return;
+        ServerSources.TryRemove(serverId, out _);
+    }
+
+    public static IApplicationBuilder UseClientIpResolution(this IApplicationBuilder app, string serverId,
+        ClientIpSource defaultSource)
+    {
+        SetClientIpSource(serverId, defaultSource);
+
+        return app.Use(async (context, next) =>
+        {
+            context.Request.Headers.Remove(ResolvedClientIpHeader);
+
+            var source = ServerSources.TryGetValue(serverId, out var configuredSource)
+                ? configuredSource
+                : defaultSource;
+            context.Items[ResolvedClientIpKey] = GetClientIp(context, source);
+            await next(context);
+        });
+    }
+
     public static string GetClientIp(HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-        {
-            var raw = forwardedFor.ToString();
-            if (!string.IsNullOrWhiteSpace(raw))
-            {
-                var candidate = raw.Split(',')[0].Trim();
-                if (TryParseIp(candidate, out var ip))
-                {
-                    return ip;
-                }
-            }
-        }
+        if (context.Items.TryGetValue(ResolvedClientIpKey, out var value) && value is string ip)
+            return ip;
 
+        return GetClientIp(context, ClientIpSource.Default);
+    }
+
+    public static string GetClientIp(HttpContext context, ClientIpSource source)
+    {
+        return source switch
+        {
+            ClientIpSource.XForwardedFor => GetHeaderIpOrRemote(context, "X-Forwarded-For"),
+            ClientIpSource.XRealIp => GetHeaderIpOrRemote(context, "X-Real-IP"),
+            ClientIpSource.CfConnectingIp => GetHeaderIpOrRemote(context, "CF-Connecting-IP"),
+            _ => GetRemoteIp(context)
+        };
+    }
+
+    private static string GetHeaderIpOrRemote(HttpContext context, string headerName)
+    {
+        return TryGetHeaderIp(context, headerName, out var ip) ? ip : GetRemoteIp(context);
+    }
+
+    private static bool TryGetHeaderIp(HttpContext context, string headerName, out string ip)
+    {
+        ip = string.Empty;
+        if (!context.Request.Headers.TryGetValue(headerName, out var headerValue)) return false;
+
+        var raw = headerValue.ToString();
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+
+        return TryParseIp(raw.Split(',')[0].Trim(), out ip);
+    }
+
+    private static string GetRemoteIp(HttpContext context)
+    {
         var remote = context.Connection.RemoteIpAddress;
         return remote == null ? string.Empty : Normalize(remote);
     }

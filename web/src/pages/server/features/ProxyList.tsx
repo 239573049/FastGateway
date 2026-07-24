@@ -1,5 +1,5 @@
-import { deleteServer, enableServer, getServers, onlineServer, reloadServer } from "@/services/ServerService";
-import { Server } from "@/types";
+﻿import { deleteServer, enableServer, getServers, onlineServer, reloadServer } from "@/services/ServerService";
+import { getClientIpSourceShortLabel, Server } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -230,7 +230,8 @@ const ProxyList = memo(() => {
         return (
             <div
                 className={cn(
-                    "group flex flex-col gap-4 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-start sm:justify-between",
+                    "group flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md focus-within:border-primary/50 sm:flex-row sm:items-start sm:justify-between sm:p-5",
+                    selected && "border-primary/50 bg-primary/[0.03] ring-1 ring-primary/15",
                     !server.enable && "opacity-75"
                 )}
             >
@@ -250,7 +251,7 @@ const ProxyList = memo(() => {
                     ) : null}
                     <div
                         className={cn(
-                            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
+                            "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-transform duration-200 group-hover:scale-105",
                             server.onLine
                                 ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                                 : "bg-muted text-muted-foreground"
@@ -285,7 +286,7 @@ const ProxyList = memo(() => {
                                 navigate(`/server/${server.id}`);
                             }}
                             disabled={!server.id || batchMode}
-                            className="w-full text-left text-sm text-muted-foreground transition-colors hover:text-foreground line-clamp-2 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-full rounded-sm text-left text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 line-clamp-2 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {server.description || "暂无描述"}
                         </button>
@@ -294,6 +295,9 @@ const ProxyList = memo(() => {
                             <Badge variant="outline" className="h-6 gap-1 font-mono text-xs">
                                 <Globe className="h-3.5 w-3.5" />
                                 :{server.listen}
+                            </Badge>
+                            <Badge variant="outline" className="h-6 text-xs font-normal text-muted-foreground">
+                                IP · {getClientIpSourceShortLabel(server.clientIpSource)}
                             </Badge>
                             {hasFeatures ? (
                                 <div className="flex flex-wrap gap-1.5">
@@ -334,7 +338,7 @@ const ProxyList = memo(() => {
                 </div>
 
                 {batchMode ? null : (
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <div className="flex flex-wrap items-center gap-2 border-t pt-3 sm:shrink-0 sm:justify-end sm:border-t-0 sm:pt-0 sm:transition-transform sm:duration-200 sm:group-hover:translate-x-0.5">
                     <Button
                         size="sm"
                         variant="secondary"
@@ -618,13 +622,13 @@ const ProxyList = memo(() => {
                     ) : null}
                 </CardHeader>
 
-                <CardContent className="p-0">
+                <CardContent className="p-3 sm:p-4">
                     {isLoading ? (
-                        <div className="divide-y">
+                        <div className="grid gap-3">
                             {Array.from({ length: 6 }).map((_, index) => (
                                 <div
                                     key={index}
-                                    className="flex flex-col gap-4 p-4 sm:flex-row"
+                                    className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm sm:flex-row sm:p-5"
                                 >
                                     <Skeleton className="h-9 w-9 rounded-lg" />
                                     <div className="flex-1 space-y-3">
@@ -674,7 +678,7 @@ const ProxyList = memo(() => {
                             </Button>
                         </div>
                     ) : (
-                        <div className="divide-y">
+                        <div className="grid gap-3">
                             {filteredServers.map((server) => (
                                 <div key={server.id ?? server.name}>
                                     {renderServerRow(server)}

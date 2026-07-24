@@ -41,6 +41,7 @@ public static class ServerService
                     EnableBlacklist = x.EnableBlacklist,
                     EnableTunnel = x.EnableTunnel,
                     EnableWhitelist = x.EnableWhitelist,
+                    ClientIpSource = x.ClientIpSource,
                     Description = x.Description,
                     MaxRequestBodySize = x.MaxRequestBodySize,
                     Timeout = x.Timeout,
@@ -72,6 +73,7 @@ public static class ServerService
 
             server.Id = id;
             configService.UpdateServer(server);
+            ClientIpHelper.SetClientIpSource(server.Id, server.ClientIpSource);
         }).WithDescription("更新服务").WithDisplayName("更新服务").WithTags("服务");
 
         server.MapPut("{id}/enable", (ConfigurationService configService, string id) =>

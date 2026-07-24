@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { createServer } from "@/services/ServerService";
-import { Server } from "@/types";
+import { ClientIpSource, clientIpSourceOptions, Server } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +47,7 @@ export default function CreateServer({
             id: null,
             isHttps: false,
             onLine: false,
+            clientIpSource: ClientIpSource.Default,
             copyRequestHost: true,
             maxRequestBodySize: null,
             timeout: 900,
@@ -354,6 +356,39 @@ export default function CreateServer({
                         </TabsContent>
 
                         <TabsContent value="features" className="space-y-4">
+                            <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                                <FieldLabel
+                                    htmlFor="create-server-client-ip-source"
+                                    label="客户端 IP 获取方式"
+                                    tooltip="默认保持当前解析逻辑；使用请求头方式前，请确保可信前置代理会覆盖对应请求头。"
+                                />
+                                <Select
+                                    value={String(value.clientIpSource)}
+                                    onValueChange={(next) =>
+                                        setValue((prev) => ({
+                                            ...prev,
+                                            clientIpSource: Number(next) as ClientIpSource,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger id="create-server-client-ip-source">
+                                        <SelectValue placeholder="选择客户端 IP 获取方式" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {clientIpSourceOptions.map((option) => (
+                                            <SelectItem key={option.value} value={String(option.value)}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {clientIpSourceOptions.find(
+                                        (option) => option.value === value.clientIpSource
+                                    )?.description}
+                                </p>
+                            </div>
+
                             <div className="grid gap-3 md:grid-cols-2">
                                 <SettingSwitch
                                     id="create-server-enable"

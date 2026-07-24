@@ -1,5 +1,13 @@
 ﻿namespace Core.Entities;
 
+public enum ClientIpSource
+{
+    Default = 0,
+    XForwardedFor = 1,
+    XRealIp = 2,
+    CfConnectingIp = 3
+}
+
 /// <summary>
 /// 服务
 /// </summary>
@@ -56,6 +64,8 @@ public sealed class Server
     /// 启用白名单 （白名单优先级高，设置了白名单则忽略黑名单）
     /// </summary>
     public bool EnableWhitelist { get; set; }
+
+    public ClientIpSource ClientIpSource { get; set; } = ClientIpSource.Default;
     
     /// <summary>
     /// 是否复制请求域名

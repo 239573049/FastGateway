@@ -1,3 +1,44 @@
+﻿export enum ClientIpSource {
+    Default = 0,
+    XForwardedFor = 1,
+    XRealIp = 2,
+    CfConnectingIp = 3,
+}
+
+export const clientIpSourceOptions = [
+    {
+        value: ClientIpSource.Default,
+        label: "默认方式（直接获取 IP）",
+        shortLabel: "直连 IP",
+        description: "直接读取与网关建立连接的远端 IP，不读取转发请求头。",
+    },
+    {
+        value: ClientIpSource.XForwardedFor,
+        label: "X-Forwarded-For",
+        shortLabel: "XFF",
+        description: "读取 X-Forwarded-For 的首个 IP，缺失或无效时读取连接 IP。",
+    },
+    {
+        value: ClientIpSource.XRealIp,
+        label: "X-Real-IP",
+        shortLabel: "X-Real-IP",
+        description: "读取 X-Real-IP，缺失或无效时读取连接 IP。",
+    },
+    {
+        value: ClientIpSource.CfConnectingIp,
+        label: "CF-Connecting-IP",
+        shortLabel: "CF",
+        description: "读取 Cloudflare 写入的 CF-Connecting-IP，缺失或无效时读取连接 IP。",
+    },
+] as const;
+
+export function getClientIpSourceShortLabel(source: ClientIpSource | null | undefined) {
+    return (
+        clientIpSourceOptions.find((option) => option.value === source)?.shortLabel ??
+        clientIpSourceOptions[0].shortLabel
+    );
+}
+
 export interface Server {
     id: string | null;
     listen: number;
@@ -10,6 +51,7 @@ export interface Server {
     enableTunnel: boolean;
     enableBlacklist: boolean;
     enableWhitelist: boolean;
+    clientIpSource: ClientIpSource;
     onLine: boolean;
     copyRequestHost: boolean;
     maxRequestBodySize: number | null;

@@ -269,6 +269,8 @@ public static class Gateway
     /// <returns></returns>
     public static async Task<bool> CloseGateway(string serverId)
     {
+        ClientIpHelper.RemoveClientIpSource(serverId);
+
         if (GatewayWebApplications.TryRemove(serverId, out var webApplication))
         {
             await webApplication.StopAsync();
@@ -536,6 +538,7 @@ public static class Gateway
                     await next.Invoke();
                 });
 
+            app.UseClientIpResolution(server.Id, server.ClientIpSource);
             app.UseInitGatewayMiddleware();
 
             // 统计采集：在限流/黑名单之前挂载，next 之后记录，可观察到 403/429 短路后的最终状态

@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using Core.Entities;
 using Core.Entities.Core;
 using FastGateway.Dto;
@@ -48,6 +48,7 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(RenewStats))]
 [JsonSerializable(typeof(StreamProtocol))]
 [JsonSerializable(typeof(StreamLoadBalancing))]
+[JsonSerializable(typeof(ClientIpSource))]
 // ===== 展示 DTO =====
 [JsonSerializable(typeof(ServerDto))]
 [JsonSerializable(typeof(List<ServerDto>))]

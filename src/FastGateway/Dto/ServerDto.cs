@@ -1,4 +1,6 @@
-﻿namespace FastGateway.Dto;
+﻿using Core.Entities;
+
+namespace FastGateway.Dto;
 
 public class ServerDto
 {
@@ -53,6 +55,8 @@ public class ServerDto
     ///     启用白名单 （白名单优先级高，设置了白名单则忽略黑名单）
     /// </summary>
     public bool EnableWhitelist { get; set; }
+
+    public ClientIpSource ClientIpSource { get; set; } = ClientIpSource.Default;
 
     public bool OnLine { get; set; }
 
