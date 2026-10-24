@@ -3,6 +3,7 @@ using Core.Entities;
 using Core.Entities.Core;
 using FastGateway.Cluster;
 using FastGateway.Dto;
+using FastGateway.Risk.Model;
 using FastGateway.Services;
 using FastGateway.Tunnels;
 
@@ -146,6 +147,29 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(DnsChallengeRecordDto))]
 [JsonSerializable(typeof(CodeMessageDto))]
 [JsonSerializable(typeof(AuthorizationRequest))]
+[JsonSerializable(typeof(AdminSecurityStatusDto))]
+[JsonSerializable(typeof(RiskTagDto))]
+[JsonSerializable(typeof(List<RiskTagDto>))]
+[JsonSerializable(typeof(RiskDecisionDto))]
+[JsonSerializable(typeof(List<RiskDecisionDto>))]
+[JsonSerializable(typeof(IReadOnlyList<RiskDecisionDto>))]
+[JsonSerializable(typeof(RiskChallengeState))]
+[JsonSerializable(typeof(RiskClearancePayload))]
+[JsonSerializable(typeof(RiskPowChallengeDto))]
+[JsonSerializable(typeof(FastGateway.Risk.RiskSettings))]
+// ===== 风控模型（TypeSafe Jev）=====
+[JsonSerializable(typeof(RiskModelProviderSettings))]
+[JsonSerializable(typeof(RiskModelProviderView))]
+[JsonSerializable(typeof(RiskModelProviderInput))]
+[JsonSerializable(typeof(RiskModelStatusDto))]
+[JsonSerializable(typeof(RiskModelTestResult))]
+[JsonSerializable(typeof(RiskModelEvaluationDto))]
+[JsonSerializable(typeof(List<RiskModelEvaluationDto>))]
+[JsonSerializable(typeof(IReadOnlyList<RiskModelEvaluationDto>))]
+[JsonSerializable(typeof(List<JevModelInfo>))]
+[JsonSerializable(typeof(JevRequest))]
+[JsonSerializable(typeof(JevResponse))]
+[JsonSerializable(typeof(JevModelList))]
 [JsonSerializable(typeof(BotChallengeConfigDto))]
 [JsonSerializable(typeof(BotVerifyRequest))]
 [JsonSerializable(typeof(BotChallengeResponse))]

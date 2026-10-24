@@ -7,6 +7,12 @@ public sealed class AuthorizationRequest
     public string Password { get; set; } = string.Empty;
 
     public string? TurnstileToken { get; set; }
+
+    /// <summary>登录失败过多时要求的 PoW：服务端下发的挑战状态</summary>
+    public string? RiskState { get; set; }
+
+    /// <summary>PoW 解</summary>
+    public string? RiskSolution { get; set; }
 }
 
 public sealed class BotChallengeConfigDto

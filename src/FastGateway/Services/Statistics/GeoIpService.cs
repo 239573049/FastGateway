@@ -293,6 +293,28 @@ public static class GeoIpService
     }
 
     /// <summary>
+    ///     IPv4 的运营商（ip2region 的 ISP 字段），未知时返回空。不缓存：只用于风控模型的少量灰区来源
+    /// </summary>
+    public static string ResolveIsp(string ip)
+    {
+        var searcher = _searcher;
+        if (searcher == null || !IPAddress.TryParse(ip, out var address)) return string.Empty;
+        if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
+        if (address.AddressFamily != AddressFamily.InterNetwork || IsPrivate(address)) return string.Empty;
+
+        try
+        {
+            var parts = searcher.Search(address.ToString())?.Split('|');
+            var isp = parts is { Length: > 4 } ? parts[4] : null;
+            return string.IsNullOrEmpty(isp) || isp == "0" ? string.Empty : isp;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
     ///     将已入库的国家名统一为中文（兼容历史英文数据）。
     /// </summary>
     public static string NormalizeCountryName(string? country)

@@ -12,7 +12,9 @@ public enum BlockReason : byte
     RateLimit = 2,
     Whitelist = 3,
     Region = 4,
-    BotChallenge = 5
+    BotChallenge = 5,
+    RiskChallenge = 6,
+    RiskBlock = 7
 }
 
 /// <summary>

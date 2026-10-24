@@ -6,12 +6,23 @@ import { Label } from '@/components/ui/label';
 import { ThemeSwitch } from '@/components/ui/theme-switch';
 import { message } from '@/utils/toast';
 import { Activity, Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
-import { Auth, getAdminChallengeConfig, type BotChallengeConfig } from '@/services/AuthorizationService';
+import {
+    Auth,
+    getAdminChallengeConfig,
+    type BotChallengeConfig,
+    type PowChallenge,
+    type PowSolution,
+} from '@/services/AuthorizationService';
+import { solvePow } from '@/utils/pow';
 import TurnstileWidget from '@/components/TurnstileWidget';
 import { useNavigate } from 'react-router-dom';
 
+const isPowChallenge = (data: unknown): data is PowChallenge =>
+    typeof data === 'object' && data !== null && 'challenge' in data && 'difficulty' in data;
+
 const LoginPage = () => {
     const [loading, setLoading] = useState(false);
+    const [verifying, setVerifying] = useState(false);
     const navigate = useNavigate();
 
     const [password, setPassword] = useState('');
@@ -52,8 +63,21 @@ const LoginPage = () => {
 
         setLoading(true);
         try {
-            const token = await Auth(password, turnstileToken);
-            if (token.success) {
+            let token = await Auth(password, turnstileToken);
+
+            // 失败次数过多时服务端要求先完成 PoW：自动求解后用同一密码重试一次
+            const challenge = isPowChallenge(token.data) ? token.data : null;
+            if (!token.success && challenge) {
+                setVerifying(true);
+                const solution: PowSolution = {
+                    state: challenge.state,
+                    solution: await solvePow(challenge.challenge, challenge.difficulty),
+                };
+                setVerifying(false);
+                token = await Auth(password, turnstileToken, solution);
+            }
+
+            if (token.success && typeof token.data === 'string') {
                 localStorage.setItem('token', token.data);
                 navigate('/dashboard');
                 message.success('登录成功！');
@@ -63,8 +87,9 @@ const LoginPage = () => {
             }
         } catch (e) {
             setTurnstileToken(null);
-            message.error('登录失败，请稍后重试');
+            message.error(e instanceof Error && e.message ? e.message : '登录失败，请稍后重试');
         }
+        setVerifying(false);
         setLoading(false);
     };
 
@@ -225,7 +250,7 @@ const LoginPage = () => {
                                     {loading ? (
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
-                                            <span>正在登录</span>
+                                            <span>{verifying ? '正在进行安全验证' : '正在登录'}</span>
                                         </div>
                                     ) : (
                                         '登录'

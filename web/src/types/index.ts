@@ -83,6 +83,148 @@ export interface DomainName {
     root: string | null;
     /** 集群模式下指定由哪个节点访问上游：空 = 本节点直连；"master" = 主网关；其他 = 从节点 Id */
     accessNodeId?: string | null;
+    /** 登录风控（暴力破解、撞库防护） */
+    riskProtection?: RiskProtection | null;
+}
+
+export enum RiskBlockScope {
+    LoginOnly = 0,
+    WholeRoute = 1
+}
+
+export interface LoginEndpointRule {
+    method: string;
+    /** 访问者请求的完整路径（不含查询字符串） */
+    path: string;
+    /** 请求体中用户名所在字段，为空则不按账号统计 */
+    usernameField?: string | null;
+    failureStatusCodes: number[];
+    /** 上游声明登录结果的响应头（值为 fail / success） */
+    resultHeader?: string | null;
+}
+
+export interface RiskProtection {
+    enable: boolean;
+    blockScope: RiskBlockScope;
+    loginEndpoints: LoginEndpointRule[];
+}
+
+export interface RiskTag {
+    id: string;
+    /** block / account_under_attack / admin_lock */
+    kind: string;
+    /** ip / subnet / account */
+    subjectType: string;
+    subject: string;
+    host?: string | null;
+    reason: string;
+    score: number;
+    createdAt: string;
+    expiresAt: string;
+}
+
+export type RiskChallengeProvider = "pow" | "turnstile";
+
+export interface RiskSettings {
+    challengeThreshold: number;
+    strongChallengeThreshold: number;
+    blockThreshold: number;
+    mediumProvider: RiskChallengeProvider;
+    strongProvider: RiskChallengeProvider;
+    /** PoW 前导零位数，强验证在此基础上 +3 */
+    powDifficulty: number;
+    clearanceQuota: number;
+    clearanceMinutes: number;
+    failureDelay: boolean;
+    adminLoginChallenge: boolean;
+}
+
+/** 0 = 影子模式（只记录），1 = 参与决策 */
+export enum RiskModelMode {
+    Shadow = 0,
+    Enforce = 1
+}
+
+export interface RiskModelProvider {
+    enabled: boolean;
+    provider: string;
+    endpoint: string;
+    model: string;
+    mode: RiskModelMode;
+    timeoutMs: number;
+    maxRequestsPerSecond: number;
+    maxConcurrency: number;
+    dailyTokenBudget: number;
+    apiKeyConfigured: boolean;
+    apiKeyHint?: string | null;
+}
+
+/** apiKey 为空表示保留已保存的 Key */
+export interface RiskModelProviderInput extends Omit<RiskModelProvider, "apiKeyConfigured" | "apiKeyHint"> {
+    apiKey?: string | null;
+    clearApiKey?: boolean;
+}
+
+export interface RiskModelStatus {
+    enabled: boolean;
+    usable: boolean;
+    mode: RiskModelMode;
+    model: string;
+    tokensUsedToday: number;
+    dailyTokenBudget: number;
+    calls5m: number;
+    failures5m: number;
+    dropped: number;
+    skipped: number;
+    circuitOpenUntil?: string | null;
+    backoffUntil?: string | null;
+    lastError?: string | null;
+    lastErrorAt?: string | null;
+    lastSuccessAt?: string | null;
+}
+
+export interface RiskModelTestResult {
+    success: boolean;
+    latencyMs: number;
+    model?: string | null;
+    automated?: number | null;
+    message?: string | null;
+}
+
+export interface RiskModelInfo {
+    name: string;
+    description?: string | null;
+    releaseDate?: string | null;
+}
+
+export interface RiskModelEvaluation {
+    time: string;
+    ip: string;
+    host?: string | null;
+    model: string;
+    mode: RiskModelMode;
+    applied: boolean;
+    automated?: number | null;
+    credentialStuffing?: number | null;
+    passwordGuessing?: number | null;
+    modelScore?: number | null;
+    ruleScore: number;
+    latencyMs: number;
+    inputTokens?: number | null;
+    error?: string | null;
+    laterLoginSucceeded: boolean;
+    laterChallengePassed: boolean;
+}
+
+export interface RiskDecision {
+    time: string;
+    ip: string;
+    host: string;
+    path: string;
+    /** challenge / block */
+    action: string;
+    score: number;
+    reason: string;
 }
 
 export enum ServiceType {

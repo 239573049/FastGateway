@@ -41,6 +41,12 @@ export async function fetch(url: string, options: any) {
       window.location.href = "/login";
     }
 
+    // 登录失败次数过多等限流响应：透出服务端给出的等待提示
+    if (response.status === 429) {
+      const data = await response.json().catch(() => null);
+      throw new Error(data?.message || "请求过于频繁，请稍后重试");
+    }
+
     if (response.status === 400) {
       // 读取body内容
       const data = await response.json();

@@ -460,9 +460,9 @@ public sealed class StatisticsBackgroundService(
         if (isBlocked)
         {
             agg.Blocked++;
-            if (entry.Blocked == (byte)BlockReason.RateLimit) agg.Blocked429++;
+            if (entry.Blocked is (byte)BlockReason.RateLimit or (byte)BlockReason.RiskBlock) agg.Blocked429++;
             else agg.Blocked403++;
-            if (entry.Blocked == (byte)BlockReason.BotChallenge) agg.BlockedBot++;
+            if (entry.Blocked is (byte)BlockReason.BotChallenge or (byte)BlockReason.RiskChallenge) agg.BlockedBot++;
         }
 
         switch (entry.Status / 100)

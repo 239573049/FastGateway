@@ -2,6 +2,7 @@
 using Core.Entities;
 using FastGateway.Dto;
 using FastGateway.Infrastructure;
+using FastGateway.Risk;
 
 namespace FastGateway.Services;
 
@@ -20,6 +21,7 @@ public static class DomainNameService
         {
             domainName.Domains = domainName.Domains.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
             domainName.Domains = domainName.Domains.Distinct().ToArray();
+            RiskProtectionValidator.Normalize(domainName);
 
             configService.AddDomainName(domainName);
         }).WithDescription("创建域名").WithDisplayName("创建域名").WithTags("域名");
@@ -42,6 +44,7 @@ public static class DomainNameService
         {
             domainName.Domains = domainName.Domains.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
             domainName.Domains = domainName.Domains.Distinct().ToArray();
+            RiskProtectionValidator.Normalize(domainName);
 
             domainName.Id = id;
 

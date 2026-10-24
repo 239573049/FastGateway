@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeSwitch } from "@/components/ui/theme-switch";
 import { CommandPalette } from "@/components/CommandPalette";
+import { DefaultPasswordBanner } from "@/components/DefaultPasswordBanner";
 import { useUserStore } from "@/store/user";
 import type { ThemeMode } from "antd-style";
 import { Search } from "lucide-react";
@@ -23,6 +24,7 @@ const PAGE_TITLES: Record<string, string> = {
     "security/access": "访问控制",
     "security/rate-limit": "限流策略",
     "security/threats": "威胁检测",
+    "security/risk": "登录风控",
     "security/logs": "拦截日志",
     filestorage: "文件管理",
     setting: "系统设置",
@@ -144,6 +146,7 @@ const DesktopLayout = memo(() => {
                     ref={mainRef}
                     className="flex-1 overflow-auto bg-muted/15 p-4 md:p-6 [scrollbar-gutter:stable]"
                 >
+                    <DefaultPasswordBanner />
                     <PageTransition scrollRef={mainRef} />
                 </main>
 

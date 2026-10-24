@@ -20,6 +20,7 @@ export const PAGE_LOADERS = {
   "/security/access": () => import("@/pages/security/access"),
   "/security/rate-limit": () => import("@/pages/protect-config/rate-limit"),
   "/security/threats": () => import("@/pages/security/threats"),
+  "/security/risk": () => import("@/pages/security/risk"),
   "/security/logs": () => import("@/pages/security/logs"),
   "/cert": () => import("@/pages/cert/page"),
   "/filestorage": () => import("@/pages/filestorage/page"),

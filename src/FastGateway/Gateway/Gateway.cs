@@ -6,6 +6,7 @@ using FastGateway.Extensions;
 using FastGateway.Infrastructure;
 using FastGateway.Middleware;
 using FastGateway.Options;
+using FastGateway.Risk;
 using FastGateway.Services;
 using FastGateway.Tunnels;
 using Microsoft.AspNetCore.Connections;
@@ -687,6 +688,7 @@ public static class Gateway
 
             // 黑名单默认启用（安全防护），白名单按服务开关控制
             app.UseBlacklistMiddleware(blacklistAndWhitelists, enableBlacklist: true, enableWhitelist: server.EnableWhitelist);
+            app.UseRiskGuard();
             app.UseBotProtection();
 
             app.UseClusterRequestFailover(server.Id, gatewayVersion);
@@ -744,6 +746,7 @@ public static class Gateway
             }
 
             app.MapBotProtectionEndpoints();
+            app.MapRiskGuardEndpoints();
             app.MapReverseProxy();
 
             app.Lifetime.ApplicationStopping.Register(() => { GatewayWebApplications.Remove(server.Id, out _); });
@@ -780,8 +783,9 @@ public static class Gateway
             {
                 var separator = cookie.IndexOf('=');
                 var name = (separator >= 0 ? cookie[..separator] : cookie).Trim();
-                if (name.Length == 0 || string.Equals(name, BotProtectionService.ClearanceCookieName,
-                        StringComparison.Ordinal))
+                if (name.Length == 0 ||
+                    string.Equals(name, BotProtectionService.ClearanceCookieName, StringComparison.Ordinal) ||
+                    string.Equals(name, RiskGuardMiddleware.ClearanceCookieName, StringComparison.Ordinal))
                     continue;
 
                 retainedCookies.Add(cookie.Trim());
@@ -967,6 +971,9 @@ public static class Gateway
 
         foreach (var domainName in domainNames)
         {
+            // 路由 Id 即域名 Id，风控中间件按 RouteId 查找；中继路由同样在第一跳执行风控
+            RiskEngine.Shared.SetRouteProtection(domainName.Id, domainName.RiskProtection);
+
             var routePath = domainName.Path?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(routePath) || routePath == "/")
                 routePath = "/";

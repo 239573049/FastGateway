@@ -4,9 +4,13 @@ public class FastGatewayOptions
 {
     public const int DefaultMaxConnectionsPerUpstream = 4096;
 
+    public const string DefaultPassword = "Aa123456";
+
     public static string TunnelToken { get; set; } = "Aa123456.";
 
-    public static string Password { get; set; } = "Aa123456";
+    public static string Password { get; set; } = DefaultPassword;
+
+    public static bool IsDefaultPassword => Password == DefaultPassword;
 
     public static int MaxConnectionsPerUpstream { get; private set; } = DefaultMaxConnectionsPerUpstream;
 
@@ -30,7 +34,7 @@ public class FastGatewayOptions
 
         var password = configuration["Password"];
 
-        if (string.IsNullOrEmpty(password)) password = configuration["PASSWORD"] ?? "Aa123456";
+        if (string.IsNullOrEmpty(password)) password = configuration["PASSWORD"] ?? DefaultPassword;
 
         if (!string.IsNullOrEmpty(password))
             Password = password;

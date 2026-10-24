@@ -14,6 +14,9 @@ import {
   getSetting,
   setSetting,
 } from "@/services/SettingService";
+import AdminLoginProtectionCard from "./features/AdminLoginProtectionCard";
+import RiskModelProviderCard from "./features/RiskModelProviderCard";
+import RiskSettingsCard from "./features/RiskSettingsCard";
 
 const DEFAULT_RETENTION = "7";
 
@@ -115,6 +118,15 @@ export default function SystemSettingPage() {
           </div>
         </CardContent>
       </Card>
+      </Reveal>
+      <Reveal index={1}>
+        <AdminLoginProtectionCard />
+      </Reveal>
+      <Reveal index={2}>
+        <RiskSettingsCard />
+      </Reveal>
+      <Reveal index={3}>
+        <RiskModelProviderCard />
       </Reveal>
     </div>
   );

@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Core.Entities;
@@ -289,12 +288,7 @@ public sealed class BotProtectionService
 
     private string Sign<T>(T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
     {
-        if (!TryGetSigningKey(out var key)) return string.Empty;
-
-        var payload = JsonSerializer.SerializeToUtf8Bytes(value, typeInfo);
-        using var hmac = new HMACSHA256(key);
-        var signature = hmac.ComputeHash(payload);
-        return $"{Base64UrlEncode(payload)}.{Base64UrlEncode(signature)}";
+        return TryGetSigningKey(out var key) ? SignedToken.Sign(value, typeInfo, key) : string.Empty;
     }
 
     private bool TryReadSigned<T>(
@@ -303,33 +297,7 @@ public sealed class BotProtectionService
         out T value)
     {
         value = default!;
-        if (string.IsNullOrWhiteSpace(encoded) || !TryGetSigningKey(out var key)) return false;
-
-        var separator = encoded.IndexOf('.');
-        if (separator <= 0 || separator == encoded.Length - 1) return false;
-
-        try
-        {
-            var payload = Base64UrlDecode(encoded[..separator]);
-            var signature = Base64UrlDecode(encoded[(separator + 1)..]);
-            using var hmac = new HMACSHA256(key);
-            var expected = hmac.ComputeHash(payload);
-            if (!CryptographicOperations.FixedTimeEquals(signature, expected)) return false;
-
-            var deserialized = JsonSerializer.Deserialize(payload, typeInfo);
-            if (deserialized == null) return false;
-
-            value = deserialized;
-            return true;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
+        return TryGetSigningKey(out var key) && SignedToken.TryRead(encoded, typeInfo, key, out value);
     }
 
     private bool IsAllowedHostname(string? responseHostname, string requestHost)
@@ -396,21 +364,7 @@ public sealed class BotProtectionService
 
     private static string CreateNonce()
     {
-        Span<byte> bytes = stackalloc byte[16];
-        RandomNumberGenerator.Fill(bytes);
-        return Base64UrlEncode(bytes);
-    }
-
-    private static string Base64UrlEncode(ReadOnlySpan<byte> bytes)
-    {
-        return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-    }
-
-    private static byte[] Base64UrlDecode(string value)
-    {
-        var normalized = value.Replace('-', '+').Replace('_', '/');
-        normalized = normalized.PadRight(normalized.Length + (4 - normalized.Length % 4) % 4, '=');
-        return Convert.FromBase64String(normalized);
+        return SignedToken.CreateNonce();
     }
 }
 

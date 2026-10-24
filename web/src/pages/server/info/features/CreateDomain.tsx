@@ -20,6 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AccessNodeSelect from "./AccessNodeSelect";
+import LoginProtectionEditor from "./LoginProtectionEditor";
+import { normalizeRiskProtection, validateRiskProtection } from "./loginProtection";
 import { MultiSelect } from "@/components/ui/multi-select";
 import {
     Select,
@@ -50,6 +52,7 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
             tryFiles: [],
             enable: true,
             enableBotProtection: false,
+            riskProtection: null,
             service: "",
             upStreams: [],
             enableHealthCheck: false,
@@ -62,7 +65,7 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
         [id]
     );
 
-    const [tab, setTab] = useState<"basic" | "target" | "headers">("basic");
+    const [tab, setTab] = useState<"basic" | "target" | "headers" | "risk">("basic");
     const [isSaving, setIsSaving] = useState(false);
     const [value, setValue] = useState<DomainName>(fallbackValue);
 
@@ -219,6 +222,13 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
             service: x.service.trim(),
         }));
 
+        const riskError = validateRiskProtection(value.riskProtection);
+        if (riskError) {
+            toast.error(riskError);
+            setTab("risk");
+            return;
+        }
+
         setIsSaving(true);
         try {
             await createDomain({
@@ -233,6 +243,7 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
                 root: value.root?.trim() ?? "",
                 enableHealthCheck,
                 healthCheckPath: enableHealthCheck ? healthCheckPath : null,
+                riskProtection: normalizeRiskProtection(value.riskProtection),
             });
             toast.success("路由创建成功");
             onOk();
@@ -257,10 +268,11 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
                     onValueChange={(next) => setTab(next as typeof tab)}
                     className="w-full"
                 >
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="basic">基本</TabsTrigger>
                         <TabsTrigger value="target">目标</TabsTrigger>
                         <TabsTrigger value="headers">Headers</TabsTrigger>
+                        <TabsTrigger value="risk">登录保护</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="basic" className="space-y-4">
@@ -678,6 +690,16 @@ export default function CreateDomain({ visible, onClose, onOk }: CreateDomainPro
                                 </CardContent>
                             </Card>
                         ) : null}
+                    </TabsContent>
+
+                    <TabsContent value="risk" className="space-y-4">
+                        <LoginProtectionEditor
+                            idPrefix="create-domain"
+                            value={value.riskProtection}
+                            onChange={(riskProtection) =>
+                                setValue((prev) => ({ ...prev, riskProtection }))
+                            }
+                        />
                     </TabsContent>
 
                     <TabsContent value="headers" className="space-y-4">

@@ -5,6 +5,8 @@ using FastGateway.Cluster;
 using FastGateway.Infrastructure;
 using FastGateway.Middleware;
 using FastGateway.Options;
+using FastGateway.Risk;
+using FastGateway.Risk.Model;
 using FastGateway.Services;
 using FastGateway.Services.Statistics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -59,6 +61,13 @@ public static class Program
 
         builder.Services.AddTransient<JwtHelper>();
         builder.Services.AddScoped<SettingProvide>();
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<AdminLoginGuard>();
+        // 风控模型只在主宿主评估；失败已体现在模型状态中，去掉默认请求日志，避免每次提供商故障都刷异常堆栈
+        builder.Services.AddHttpClient(JevClient.HttpClientName).RemoveAllLoggers();
+        builder.Services.AddSingleton<JevClient>();
+        builder.Services.AddSingleton<RiskModelScorerService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<RiskModelScorerService>());
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -92,6 +101,11 @@ public static class Program
 
             // 集群中枢：订阅配置变更，主网关角色下自动向从节点推送
             ClusterHub.Initialize(configService, scope.ServiceProvider.GetRequiredService<ClusterStateService>());
+
+            // 登录风控签名密钥：网关子应用启动前就绪，首次启动自动生成
+            RiskSigningKey.Initialize(configService, scope.ServiceProvider.GetRequiredService<ClusterStateService>());
+            RiskSettingsStore.Initialize(configService);
+            RiskModelProviderStore.Initialize(configService);
 
             var certs = configService.GetActiveCerts();
             CertService.InitCert(certs);
@@ -154,7 +168,8 @@ public static class Program
             .MapTunnel()
             .MapSystem()
             .MapCluster()
-            .MapStatistics();
+            .MapStatistics()
+            .MapRisk();
 
         await app.RunAsync();
     }

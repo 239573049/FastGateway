@@ -56,6 +56,11 @@ public sealed class DomainName
     public bool EnableBotProtection { get; set; }
 
     /// <summary>
+    /// 登录风控（暴力破解、撞库防护）
+    /// </summary>
+    public RiskProtection? RiskProtection { get; set; }
+
+    /// <summary>
     /// 服务
     /// </summary>
     public string? Service { get; set; }

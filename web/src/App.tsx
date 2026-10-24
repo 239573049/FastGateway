@@ -14,6 +14,7 @@ const ServerInfoPage = lazy(PAGE_LOADERS['/server/:id'])
 const SecurityOverviewPage = lazy(PAGE_LOADERS['/security/overview'])
 const AccessControlPage = lazy(PAGE_LOADERS['/security/access'])
 const ThreatDetectionPage = lazy(PAGE_LOADERS['/security/threats'])
+const RiskEventsPage = lazy(PAGE_LOADERS['/security/risk'])
 const BlockedLogPage = lazy(PAGE_LOADERS['/security/logs'])
 const RateLimitPage = lazy(PAGE_LOADERS['/security/rate-limit'])
 const CertPage = lazy(PAGE_LOADERS['/cert'])
@@ -77,6 +78,13 @@ const router = createBrowserRouter([
             element:
               <Suspense fallback={<Loading fullscreen={false} />}>
                 <ThreatDetectionPage />
+              </Suspense>
+          },
+          {
+            path: 'security/risk',
+            element:
+              <Suspense fallback={<Loading fullscreen={false} />}>
+                <RiskEventsPage />
               </Suspense>
           },
           {

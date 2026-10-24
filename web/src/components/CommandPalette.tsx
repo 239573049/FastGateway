@@ -10,6 +10,7 @@ import {
   Lock,
   Gauge,
   Radar,
+  ShieldAlert,
   ScrollText,
   ShieldCheck,
   FileText,
@@ -146,6 +147,13 @@ export function CommandPalette({ open, onOpenChange, onLogout }: CommandPaletteP
           >
             <Radar className="mr-2 h-4 w-4" />
             <span>威胁检测 (异常 IP 追踪)</span>
+          </CommandItem>
+
+          <CommandItem
+            onSelect={() => runCommand(() => navigate("/security/risk"))}
+          >
+            <ShieldAlert className="mr-2 h-4 w-4" />
+            <span>登录风控 (暴力破解防护)</span>
           </CommandItem>
 
           <CommandItem

@@ -12,6 +12,9 @@ namespace FastGateway.Middleware;
 
 public sealed class BotProtectionMiddleware
 {
+    /// <summary>网关自身的内部端点（机器人验证、登录风控验证），不受业务路由保护规则拦截</summary>
+    public const string InternalPathPrefix = "/__fastgateway";
+
     public const string ChallengePath = "/__fastgateway/bot/challenge";
     public const string VerifyPath = "/__fastgateway/bot/verify";
     public const string BusinessAction = "business-access";
@@ -134,11 +137,10 @@ public sealed class BotProtectionMiddleware
         return HttpMethods.IsOptions(context.Request.Method) ||
                path.StartsWithSegments("/.well-known/acme-challenge", StringComparison.OrdinalIgnoreCase) ||
                path.StartsWithSegments("/internal/gateway", StringComparison.OrdinalIgnoreCase) ||
-               path.StartsWithSegments(ChallengePath, StringComparison.OrdinalIgnoreCase) ||
-               path.StartsWithSegments(VerifyPath, StringComparison.OrdinalIgnoreCase);
+               path.StartsWithSegments(InternalPathPrefix, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsTrustedRelay(HttpContext context)
+    internal static bool IsTrustedRelay(HttpContext context)
     {
         return context.Request.Headers.ContainsKey(ClusterRelay.RelayCountHeader) &&
                ClusterRelay.ValidateRelayToken(context.Request.Headers[ClusterRelay.RelayTokenHeader]);
@@ -343,7 +345,7 @@ public static class BotProtectionMiddlewareExtensions
         context.Response.Headers.Location = state.ReturnUrl;
     }
 
-    private static async Task<BotVerifyRequest?> ReadVerifyRequestAsync(
+    internal static async Task<BotVerifyRequest?> ReadVerifyRequestAsync(
         HttpRequest request,
         CancellationToken cancellationToken)
     {
@@ -359,7 +361,7 @@ public static class BotProtectionMiddlewareExtensions
         };
     }
 
-    private static async Task WriteEndpointResponseAsync(HttpContext context, int statusCode,
+    internal static async Task WriteEndpointResponseAsync(HttpContext context, int statusCode,
         BotChallengeResponse payload)
     {
         context.Response.StatusCode = statusCode;
@@ -369,13 +371,15 @@ public static class BotProtectionMiddlewareExtensions
     }
 
     internal static async Task WriteChallengePageAsync(HttpContext context, BotProtectionService botProtection,
-        string state)
+        string state, string verifyPath = BotProtectionMiddleware.VerifyPath,
+        string action = BotProtectionMiddleware.BusinessAction)
     {
         var nonce = CreateNonce();
         var siteKey = botProtection.GetAdminChallengeConfig().SiteKey;
         var encodedState = WebUtility.HtmlEncode(state);
         var encodedSiteKey = WebUtility.HtmlEncode(siteKey);
-        var encodedVerifyPath = WebUtility.HtmlEncode(BotProtectionMiddleware.VerifyPath);
+        var encodedVerifyPath = WebUtility.HtmlEncode(verifyPath);
+        var encodedAction = WebUtility.HtmlEncode(action);
 
         context.Response.StatusCode = StatusCodes.Status200OK;
         context.Response.ContentType = "text/html; charset=utf-8";
@@ -398,7 +402,7 @@ public static class BotProtectionMiddlewareExtensions
               <main>
                 <h1>请完成安全验证</h1>
                 <p>验证完成后将自动返回原页面。</p>
-                <div id="turnstile" data-site-key="__SITE_KEY__" data-state="__STATE__" data-verify="__VERIFY_PATH__"></div>
+                <div id="turnstile" data-site-key="__SITE_KEY__" data-state="__STATE__" data-action="__ACTION__"></div>
                 <form id="verify-form" method="post" action="__VERIFY_PATH__" hidden></form>
               </main>
               <script nonce="__NONCE__">
@@ -408,7 +412,7 @@ public static class BotProtectionMiddlewareExtensions
                   if (!root || !form) return;
                   const render = () => {
                     if (!window.turnstile) return;
-                    window.turnstile.render(root, { sitekey: root.dataset.siteKey, action: 'business-access', callback: (token) => {
+                    window.turnstile.render(root, { sitekey: root.dataset.siteKey, action: root.dataset.action, callback: (token) => {
                       const tokenInput = document.createElement('input'); tokenInput.name = 'token'; tokenInput.type = 'hidden'; tokenInput.value = token;
                       const stateInput = document.createElement('input'); stateInput.name = 'state'; stateInput.type = 'hidden'; stateInput.value = root.dataset.state || '';
                       form.append(tokenInput, stateInput); form.submit();
@@ -425,6 +429,7 @@ public static class BotProtectionMiddlewareExtensions
             .Replace("__SITE_KEY__", encodedSiteKey, StringComparison.Ordinal)
             .Replace("__STATE__", encodedState, StringComparison.Ordinal)
             .Replace("__VERIFY_PATH__", encodedVerifyPath, StringComparison.Ordinal)
+            .Replace("__ACTION__", encodedAction, StringComparison.Ordinal)
             .Replace("__NONCE__", nonce, StringComparison.Ordinal);
 
         await context.Response.WriteAsync(html);
