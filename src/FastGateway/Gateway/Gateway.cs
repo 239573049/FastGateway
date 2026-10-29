@@ -528,13 +528,22 @@ public static class Gateway
                     if (context.Route.Metadata!.TryGetValue(Root, out var root))
                     {
                         var tryFiles = context.Cluster!.Metadata!.Select(p => p.Key).ToArray();
+                        var rootFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
                         context.AddRequestTransform(async transformContext =>
                         {
                             var httpContext = transformContext.HttpContext;
                             var response = httpContext.Response;
 
-                            // FileInfo 单次 stat 同时拿到存在性/长度/修改时间，替代 File.Exists + 打开文件的两次系统调用
-                            var file = new FileInfo(Path.Combine(root, transformContext.Path.Value![1..]));
+                            // FileInfo 单次 stat 同时拿到存在性/长度/修改时间，替代 File.Exists + 打开文件的两次系统调用；
+                            // 路径必须解析后仍在站点根目录内（//etc/passwd、C:/、..\ 等都会逃逸出 root）
+                            var file = TryResolveStaticFile(rootFull, transformContext.Path.Value, out var resolved)
+                                ? new FileInfo(resolved)
+                                : null;
+                            if (file == null)
+                            {
+                                response.StatusCode = 404;
+                                return;
+                            }
 
                             if (!file.Exists)
                             {
@@ -721,9 +730,21 @@ public static class Gateway
                         var auth = TunnelNodeStore.Authenticate(dto.Name, credential);
                         if (!auth.Success)
                         {
+                            // 失败延迟，拖慢对弱 Token 的暴力尝试
+                            await Task.Delay(TimeSpan.FromSeconds(1), context.RequestAborted);
                             context.Response.StatusCode = auth.StatusCode;
                             await context.Response.WriteAsJsonAsync(
                                 new CodeMessageDto { Code = auth.StatusCode, Message = auth.Message },
+                                AppJsonContext.Default.CodeMessageDto);
+                            return;
+                        }
+
+                        // Route 会拼进上游地址 http://node_{name}{route}，含 @、//、\ 等字符可改写真实主机，形成 SSRF
+                        if (dto.Proxy?.Any(p => !IsSafeTunnelRoute(p.Route)) == true)
+                        {
+                            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                            await context.Response.WriteAsJsonAsync(
+                                new CodeMessageDto { Code = 400, Message = "代理规则的 Route 不合法" },
                                 AppJsonContext.Default.CodeMessageDto);
                             return;
                         }
@@ -851,6 +872,46 @@ public static class Gateway
     /// <summary>
     ///     If-None-Match 匹配：支持多值与 "*"，弱校验前缀 W/ 一并比对
     /// </summary>
+    /// <summary>
+    ///     隧道路由只允许以 / 开头的普通路径字符，禁止 //、..、@、\、?、# 等能改变 URL 结构的内容；为空表示 catch-all
+    /// </summary>
+    public static bool IsSafeTunnelRoute(string? route)
+    {
+        if (string.IsNullOrEmpty(route)) return true;
+        if (route[0] != '/' || route.Length > 256 || route.Contains("//") || route.Contains("..")) return false;
+
+        foreach (var c in route)
+        {
+            if (char.IsAsciiLetterOrDigit(c) || c is '/' or '-' or '_' or '.' or '~') continue;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    ///     把请求路径解析为 root 下的物理路径；解析结果不在 root 内（绝对路径、盘符、../、反斜杠穿越）时返回 false
+    /// </summary>
+    public static bool TryResolveStaticFile(string rootFull, string? requestPath, out string fullPath)
+    {
+        fullPath = string.Empty;
+        var relative = (requestPath ?? string.Empty).TrimStart('/', '\\');
+        if (relative.Contains('\0')) return false;
+
+        try
+        {
+            fullPath = Path.GetFullPath(Path.Combine(rootFull, relative));
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var prefix = Path.EndsInDirectorySeparator(rootFull) ? rootFull : rootFull + Path.DirectorySeparatorChar;
+        return fullPath.StartsWith(prefix, comparison) || string.Equals(fullPath, rootFull, comparison);
+    }
+
     private static bool IsEtagMatch(StringValues ifNoneMatch, string etag)
     {
         for (var i = 0; i < ifNoneMatch.Count; i++)

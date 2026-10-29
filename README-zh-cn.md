@@ -187,7 +187,7 @@ docker run -d --restart=always --name=fast-gateway \
   aidotnet/fast-gateway:latest
 ```
 
-容器启动后访问 `http://localhost:8080`。如果没有提供密码，当前源码回退到 `Aa123456`；将管理端口暴露到公网前请务必修改密码。HTTP/3 需要映射 `443/udp`。
+容器启动后访问 `http://localhost:8080`。如果没有提供密码，首次启动会生成随机初始密码并保存到 `data/admin-password`（启动日志中也会提示路径）；将管理端口暴露到公网前请务必通过 `PASSWORD` 设置正式密码。HTTP/3 需要映射 `443/udp`。
 
 发布镜像为 Native AOT，基于 chiseled 精简根文件系统（无 shell）。基础镜像默认非 root（UID 1654），本仓库镜像与 Compose 以 `user: "0:0"` 运行，这样挂载 `data`/`certs` 才能写入统计库和证书。`aidotnet/fast-gateway` 为多架构镜像，同时支持 `linux/amd64` 与 `linux/arm64`。
 

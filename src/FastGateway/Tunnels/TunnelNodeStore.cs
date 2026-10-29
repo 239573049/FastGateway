@@ -105,7 +105,8 @@ public static class TunnelNodeStore
     /// <summary>
     ///     节点认证：
     ///     1) 节点存在且密钥匹配 → 通过；
-    ///     2) 凭据等于全局 TunnelToken → 兼容旧客户端：节点不存在时自动创建（标记自动注册）；
+    ///     2) 已配置全局 TunnelToken 且凭据匹配 → 兼容旧客户端：节点不存在时自动创建（标记自动注册），
+    ///        已存在时仅限自动注册的节点；
     ///     3) 其余 → 拒绝。节点被禁用时返回 403。
     /// </summary>
     public static TunnelAuthResult Authenticate(string nodeName, string? credential)
@@ -124,7 +125,9 @@ public static class TunnelNodeStore
                 : TunnelAuthResult.Fail(StatusCodes.Status403Forbidden, "节点已被禁用");
         }
 
-        if (credential == FastGatewayOptions.TunnelToken)
+        var globalToken = FastGatewayOptions.TunnelToken;
+        if (globalToken != null && CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(credential), Encoding.UTF8.GetBytes(globalToken)))
         {
             if (node == null)
             {
@@ -144,6 +147,10 @@ public static class TunnelNodeStore
                 AddNode(node);
                 return TunnelAuthResult.Ok(node);
             }
+
+            // 面板手动创建的节点只认自己的节点密钥，全局 Token 不能冒用其节点名
+            if (!node.AutoRegistered)
+                return TunnelAuthResult.Fail(StatusCodes.Status401Unauthorized, "节点凭据无效");
 
             return node.Enabled
                 ? TunnelAuthResult.Ok(node)

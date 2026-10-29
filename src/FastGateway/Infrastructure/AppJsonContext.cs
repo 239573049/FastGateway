@@ -148,6 +148,8 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(CodeMessageDto))]
 [JsonSerializable(typeof(AuthorizationRequest))]
 [JsonSerializable(typeof(AdminSecurityStatusDto))]
+[JsonSerializable(typeof(SliderChallengeDto))]
+[JsonSerializable(typeof(SliderVerifyRequest))]
 [JsonSerializable(typeof(RiskTagDto))]
 [JsonSerializable(typeof(List<RiskTagDto>))]
 [JsonSerializable(typeof(RiskDecisionDto))]

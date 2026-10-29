@@ -187,7 +187,7 @@ docker run -d --restart=always --name=fast-gateway \
   aidotnet/fast-gateway:latest
 ```
 
-Open `http://localhost:8080` after the container starts. If no password is supplied, the current fallback is `Aa123456`; replace it before exposing the management endpoint. `443/udp` is required for HTTP/3.
+Open `http://localhost:8080` after the container starts. If no password is supplied, a random initial password is generated and saved to `data/admin-password` (the path is also logged at startup); set `PASSWORD` before exposing the management endpoint. `443/udp` is required for HTTP/3.
 
 The published image is a Native AOT build on a chiseled base (no shell). The base image defaults to UID 1654; this repo's image and Compose run as `user: "0:0"` so bind-mounted `data`/`certs` stay writable. `aidotnet/fast-gateway` is a multi-arch image for `linux/amd64` and `linux/arm64`.
 

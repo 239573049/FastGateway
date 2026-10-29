@@ -162,6 +162,17 @@ export default function RiskSettingsCard() {
                   onCheckedChange={(adminLoginChallenge) => update({ adminLoginChallenge })}
                 />
               </div>
+              <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-3 py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="risk-admin-slider">管理后台滑块验证</Label>
+                  <div className="text-xs text-muted-foreground">每次登录管理后台前都要先拖动滑块完成拼图</div>
+                </div>
+                <Switch
+                  id="risk-admin-slider"
+                  checked={value.adminLoginSlider}
+                  onCheckedChange={(adminLoginSlider) => update({ adminLoginSlider })}
+                />
+              </div>
             </div>
           </>
         )}

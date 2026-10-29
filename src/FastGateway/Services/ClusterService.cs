@@ -235,6 +235,13 @@ public static class ClusterService
                 return;
             }
 
+            if (!stateService.TryConsumeInvite(token))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsync("接入码无效或已过期");
+                return;
+            }
+
             var node = new ClusterNode
             {
                 Id = Guid.NewGuid().ToString(),

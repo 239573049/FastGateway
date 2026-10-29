@@ -15,6 +15,7 @@ import {
 } from '@/services/AuthorizationService';
 import { solvePow } from '@/utils/pow';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import SliderCaptcha from '@/components/SliderCaptcha';
 import { useNavigate } from 'react-router-dom';
 
 const isPowChallenge = (data: unknown): data is PowChallenge =>
@@ -30,6 +31,10 @@ const LoginPage = () => {
     const [challengeConfig, setChallengeConfig] = useState<BotChallengeConfig | null>(null);
     const [challengeConfigLoading, setChallengeConfigLoading] = useState(true);
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+    const [sliderTicket, setSliderTicket] = useState<string | null>(null);
+    // 票据每次登录都会被服务端消费，失败后换 key 重建滑块
+    const [sliderKey, setSliderKey] = useState(0);
+    const sliderRequired = Boolean(challengeConfig?.sliderEnabled);
     const isDev = import.meta.env.DEV;
 
     useEffect(() => {
@@ -50,10 +55,22 @@ const LoginPage = () => {
         };
     }, []);
 
+    const resetChallenges = () => {
+        setTurnstileToken(null);
+        if (sliderRequired) {
+            setSliderTicket(null);
+            setSliderKey((key) => key + 1);
+        }
+    };
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!password) {
             message.error('请输入管理员密码');
+            return;
+        }
+        if (sliderRequired && !sliderTicket) {
+            message.error('请先完成滑块验证');
             return;
         }
         if (challengeConfig?.enabled && !turnstileToken) {
@@ -63,7 +80,7 @@ const LoginPage = () => {
 
         setLoading(true);
         try {
-            let token = await Auth(password, turnstileToken);
+            let token = await Auth(password, turnstileToken, null, sliderTicket);
 
             // 失败次数过多时服务端要求先完成 PoW：自动求解后用同一密码重试一次
             const challenge = isPowChallenge(token.data) ? token.data : null;
@@ -74,7 +91,7 @@ const LoginPage = () => {
                     solution: await solvePow(challenge.challenge, challenge.difficulty),
                 };
                 setVerifying(false);
-                token = await Auth(password, turnstileToken, solution);
+                token = await Auth(password, turnstileToken, solution, sliderTicket);
             }
 
             if (token.success && typeof token.data === 'string') {
@@ -82,11 +99,11 @@ const LoginPage = () => {
                 navigate('/dashboard');
                 message.success('登录成功！');
             } else {
-                setTurnstileToken(null);
+                resetChallenges();
                 message.error(token.message);
             }
         } catch (e) {
-            setTurnstileToken(null);
+            resetChallenges();
             message.error(e instanceof Error && e.message ? e.message : '登录失败，请稍后重试');
         }
         setVerifying(false);
@@ -226,6 +243,13 @@ const LoginPage = () => {
                                         </Button>
                                     </div>
                                 </div>
+
+                                {!challengeConfigLoading && sliderRequired ? (
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">安全验证</Label>
+                                        <SliderCaptcha key={sliderKey} onTicket={setSliderTicket} disabled={loading} />
+                                    </div>
+                                ) : null}
 
                                 {challengeConfigLoading ? (
                                     <div className="text-sm text-muted-foreground">正在加载人机验证…</div>

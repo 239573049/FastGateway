@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
@@ -7,13 +8,15 @@ namespace FastGateway.Infrastructure;
 /// <summary>
 ///     HMAC-SHA256 签名的 JSON 令牌：<c>base64url(payload).base64url(signature)</c>，
 ///     用于挑战状态与 clearance cookie。只防篡改，不加密，payload 不得包含机密。
+///     签名覆盖 payload 类型名做域分隔：挑战状态与 clearance 字段高度重叠且共用密钥，
+///     不区分类型时挑战状态可直接当 clearance 使用。
 /// </summary>
 public static class SignedToken
 {
     public static string Sign<T>(T value, JsonTypeInfo<T> typeInfo, byte[] key)
     {
         var payload = JsonSerializer.SerializeToUtf8Bytes(value, typeInfo);
-        var signature = HMACSHA256.HashData(key, payload);
+        var signature = ComputeSignature(key, typeInfo, payload);
         return $"{Base64UrlEncode(payload)}.{Base64UrlEncode(signature)}";
     }
 
@@ -29,7 +32,7 @@ public static class SignedToken
         {
             var payload = Base64UrlDecode(encoded[..separator]);
             var signature = Base64UrlDecode(encoded[(separator + 1)..]);
-            var expected = HMACSHA256.HashData(key, payload);
+            var expected = ComputeSignature(key, typeInfo, payload);
             if (!CryptographicOperations.FixedTimeEquals(signature, expected)) return false;
 
             var deserialized = JsonSerializer.Deserialize(payload, typeInfo);
@@ -46,6 +49,15 @@ public static class SignedToken
         {
             return false;
         }
+    }
+
+    private static byte[] ComputeSignature(byte[] key, JsonTypeInfo typeInfo, byte[] payload)
+    {
+        using var hmac = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA256, key);
+        hmac.AppendData(Encoding.UTF8.GetBytes(typeInfo.Type.FullName ?? typeInfo.Type.Name));
+        hmac.AppendData([0]);
+        hmac.AppendData(payload);
+        return hmac.GetHashAndReset();
     }
 
     public static string CreateNonce()

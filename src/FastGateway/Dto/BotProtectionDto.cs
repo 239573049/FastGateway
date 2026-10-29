@@ -13,6 +13,9 @@ public sealed class AuthorizationRequest
 
     /// <summary>PoW 解</summary>
     public string? RiskSolution { get; set; }
+
+    /// <summary>滑块验证通过后换取的一次性票据</summary>
+    public string? SliderTicket { get; set; }
 }
 
 public sealed class BotChallengeConfigDto
@@ -22,6 +25,9 @@ public sealed class BotChallengeConfigDto
     public bool Configured { get; set; }
 
     public string SiteKey { get; set; } = string.Empty;
+
+    /// <summary>管理后台登录是否要求滑块验证（仅后台登录使用）</summary>
+    public bool SliderEnabled { get; set; }
 }
 
 public sealed class BotVerifyRequest

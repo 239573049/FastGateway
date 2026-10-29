@@ -242,7 +242,6 @@ public class ClusterRelayAgentService(ClusterStateService stateService, Configur
     {
         var webSocket = new ClientWebSocket();
         webSocket.Options.AddSubProtocol(Constant.Protocol);
-        webSocket.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
         webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
 
         try

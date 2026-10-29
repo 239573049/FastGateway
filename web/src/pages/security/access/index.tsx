@@ -8,9 +8,10 @@ import { DeleteBlacklist, GetBlacklist } from "@/services/BlacklistAndWhitelistS
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { ArrowRight, Ban, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowRight, Ban, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
+import { BlacklistAndWhitelistItem } from "@/types";
 
 type AccessKind = "deny" | "allow";
 
@@ -20,6 +21,7 @@ const AccessControlPage = memo(() => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
+  const [editing, setEditing] = useState<BlacklistAndWhitelistItem | null>(null);
 
   const isBlacklist = kind === "deny";
 
@@ -128,6 +130,17 @@ const AccessControlPage = memo(() => {
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setEditing(item);
+                  setCreateVisible(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => handleDelete(item.id)}
               >
@@ -156,7 +169,12 @@ const AccessControlPage = memo(() => {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">访问控制</h1>
           <p className="mt-2 text-muted-foreground">统一管理 IP 黑名单与白名单，控制哪些来源可以访问网关。</p>
         </div>
-        <Button onClick={() => setCreateVisible(true)}>
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setCreateVisible(true);
+          }}
+        >
           <Plus className="mr-2 h-4 w-4" />
           新增{isBlacklist ? "黑名单" : "白名单"}
         </Button>
@@ -256,6 +274,7 @@ const AccessControlPage = memo(() => {
       <CreateBlacklistAndWhitelist
         isBlacklist={isBlacklist}
         visible={createVisible}
+        editing={editing}
         onClose={() => setCreateVisible(false)}
         onOk={() => {
           setCreateVisible(false);

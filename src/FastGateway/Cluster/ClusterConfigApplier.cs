@@ -58,7 +58,11 @@ public static class ClusterConfigApplier
         {
             if (!files.TryGetValue(cert.Id, out var file)) continue;
 
-            var localPath = Path.Combine(certDir, file.FileName);
+            // 文件名来自主网关下发，只取纯文件名，防止绝对路径或 ../ 写到证书目录之外
+            var fileName = Path.GetFileName(file.FileName);
+            if (string.IsNullOrEmpty(fileName) || fileName is "." or "..") continue;
+
+            var localPath = Path.Combine(certDir, fileName);
             try
             {
                 File.WriteAllBytes(localPath, file.Data);
