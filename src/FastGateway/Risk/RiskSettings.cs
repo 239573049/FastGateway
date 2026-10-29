@@ -43,6 +43,9 @@ public sealed class RiskSettings
     /// <summary>管理后台登录失败达到延迟阈值后，每次登录都要先完成 PoW</summary>
     public bool AdminLoginChallenge { get; set; } = true;
 
+    /// <summary>管理后台每次登录都要先完成滑块验证</summary>
+    public bool AdminLoginSlider { get; set; } = true;
+
     [JsonIgnore]
     public int StrongPowDifficulty => Math.Min(PowDifficulty + 3, ProofOfWork.MaxDifficulty);
 

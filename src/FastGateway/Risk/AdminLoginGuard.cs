@@ -26,6 +26,15 @@ public sealed class AdminLoginGuard
     // 锁定时长必须长于统计窗口：解锁时旧失败记录已全部滑出窗口，不会解锁后立即再次锁定
     public static readonly TimeSpan LockDuration = TimeSpan.FromMinutes(15);
 
+    /// <summary>
+    ///     同一来源在上次解锁后 <see cref="LockHistoryWindow" /> 内再次被锁时逐级加长，限制"等解锁再试"的慢速爆破。
+    ///     从解锁时刻起算：若从加锁起算，24 小时锁结束时历史恰好过期，会退回 15 分钟形成循环
+    /// </summary>
+    public static readonly TimeSpan[] LockDurations =
+        [LockDuration, TimeSpan.FromHours(1), TimeSpan.FromHours(6), TimeSpan.FromHours(24)];
+
+    public static readonly TimeSpan LockHistoryWindow = TimeSpan.FromHours(24);
+
     public const int DelayThreshold = LoginFailureDelay.Threshold;
     public const int IpLockThreshold = 20;
     public const int SubnetLockThreshold = 60;
@@ -38,6 +47,9 @@ public sealed class AdminLoginGuard
 
     private readonly ConcurrentDictionary<string, FailureEntry> _ips = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, FailureEntry> _subnets = new(StringComparer.Ordinal);
+
+    // 锁定历史独立于失败记录：失败记录在解锁且空闲后会被淘汰，升级信息不能跟着丢
+    private readonly ConcurrentDictionary<string, LockHistory> _lockHistory = new(StringComparer.Ordinal);
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<AdminLoginGuard> _logger;
     private int _recordCounter;
@@ -82,23 +94,25 @@ public sealed class AdminLoginGuard
         if ((Interlocked.Increment(ref _recordCounter) & (CleanupEveryRecords - 1)) == 0) Cleanup(now);
 
         var key = NormalizeKey(ip);
-        var ipRecord = Record(_ips, key, now, IpLockThreshold);
-        if (ipRecord.LockedNow)
+        var ipRecord = Record(_ips, key, IpHistoryKey(key), now, IpLockThreshold);
+        if (ipRecord.LockedFor is { } ipLock)
             _logger.LogWarning("管理后台登录：{Ip} 在 {Window} 分钟内失败 {Count} 次，锁定 {Lock} 分钟",
-                key, Window.TotalMinutes, ipRecord.Count, LockDuration.TotalMinutes);
+                key, Window.TotalMinutes, ipRecord.Count, ipLock.TotalMinutes);
 
         var subnet = GetSubnetKey(key);
-        var subnetLocked = false;
+        TimeSpan? subnetLock = null;
         if (subnet != null)
         {
-            var subnetRecord = Record(_subnets, subnet, now, SubnetLockThreshold);
-            subnetLocked = subnetRecord.LockedNow;
-            if (subnetLocked)
+            var subnetRecord = Record(_subnets, subnet, SubnetHistoryKey(subnet), now, SubnetLockThreshold);
+            subnetLock = subnetRecord.LockedFor;
+            if (subnetLock != null)
                 _logger.LogWarning("管理后台登录：子网 {Subnet} 在 {Window} 分钟内失败 {Count} 次，锁定 {Lock} 分钟",
-                    subnet, Window.TotalMinutes, subnetRecord.Count, LockDuration.TotalMinutes);
+                    subnet, Window.TotalMinutes, subnetRecord.Count, subnetLock.Value.TotalMinutes);
         }
 
-        TimeSpan? lockedFor = ipRecord.LockedNow || subnetLocked ? LockDuration : null;
+        var lockedFor = ipRecord.LockedFor is { } a && subnetLock is { } b
+            ? a > b ? a : b
+            : ipRecord.LockedFor ?? subnetLock;
         return new AdminLoginFailure(ipRecord.Count, GetDelay(ipRecord.Count), lockedFor);
     }
 
@@ -107,7 +121,9 @@ public sealed class AdminLoginGuard
     /// </summary>
     public void RecordSuccess(string? ip)
     {
-        _ips.TryRemove(NormalizeKey(ip), out _);
+        var key = NormalizeKey(ip);
+        _ips.TryRemove(key, out _);
+        _lockHistory.TryRemove(IpHistoryKey(key), out _);
     }
 
     public Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
@@ -135,20 +151,21 @@ public sealed class AdminLoginGuard
         {
             foreach (var (key, entry) in entries)
             {
-                var lockedUntil = entry.LockedUntil;
+                var (lockedAt, lockedUntil) = entry.LockPeriod;
                 if (lockedUntil > now)
                     result.Add(new AdminLoginLock(key, isSubnet,
-                        new DateTimeOffset(lockedUntil - LockDuration.Ticks, TimeSpan.Zero),
+                        new DateTimeOffset(lockedAt, TimeSpan.Zero),
                         new DateTimeOffset(lockedUntil, TimeSpan.Zero)));
             }
         }
     }
 
     /// <summary>
-    ///     手动解除锁定并清空失败记录
+    ///     手动解除锁定并清空失败记录与锁定升级历史
     /// </summary>
     public bool Unlock(string subject, bool isSubnet)
     {
+        _lockHistory.TryRemove(isSubnet ? SubnetHistoryKey(subject) : IpHistoryKey(subject), out _);
         return (isSubnet ? _subnets : _ips).TryRemove(subject, out _);
     }
 
@@ -167,6 +184,31 @@ public sealed class AdminLoginGuard
         return IpSubnet.GetKey(ip);
     }
 
+    private static string IpHistoryKey(string ip) => "ip:" + ip;
+
+    private static string SubnetHistoryKey(string subnet) => "subnet:" + subnet;
+
+    private TimeSpan NextLockDuration(string historyKey, long now)
+    {
+        var level = _lockHistory.TryGetValue(historyKey, out var history) &&
+                    now - history.LockedUntil < LockHistoryWindow.Ticks
+            ? history.Level + 1
+            : 1;
+        return LockDurations[Math.Min(level, LockDurations.Length) - 1];
+    }
+
+    private void RecordLock(string historyKey, long now, long lockedUntil)
+    {
+        if (_lockHistory.Count >= MaxEntries && !_lockHistory.ContainsKey(historyKey)) return;
+
+        _lockHistory.AddOrUpdate(historyKey,
+            static (_, state) => new LockHistory(1, state.lockedUntil),
+            static (_, history, state) => new LockHistory(
+                state.now - history.LockedUntil < LockHistoryWindow.Ticks ? history.Level + 1 : 1,
+                state.lockedUntil),
+            (now, lockedUntil));
+    }
+
     private static string NormalizeKey(string? ip)
     {
         return string.IsNullOrWhiteSpace(ip) ? UnknownIp : ip;
@@ -181,27 +223,37 @@ public sealed class AdminLoginGuard
         return lockedUntil > now ? TimeSpan.FromTicks(lockedUntil - now) : null;
     }
 
-    private (int Count, bool LockedNow) Record(ConcurrentDictionary<string, FailureEntry> entries, string key,
-        long now, int threshold)
+    private (int Count, TimeSpan? LockedFor) Record(ConcurrentDictionary<string, FailureEntry> entries,
+        string key, string historyKey, long now, int threshold)
     {
         if (!entries.TryGetValue(key, out var entry))
         {
             if (entries.Count >= MaxEntries)
             {
                 Cleanup(now);
-                if (entries.Count >= MaxEntries) return (0, false);
+                if (entries.Count >= MaxEntries) return (0, null);
             }
 
             entry = entries.GetOrAdd(key, _ => new FailureEntry(threshold));
         }
 
-        return entry.Record(now, Window.Ticks, LockDuration.Ticks);
+        var lockDuration = NextLockDuration(historyKey, now);
+        var (count, lockedNow) = entry.Record(now, Window.Ticks, lockDuration.Ticks);
+        if (!lockedNow) return (count, null);
+
+        RecordLock(historyKey, now, now + lockDuration.Ticks);
+        return (count, lockDuration);
     }
 
     private void Cleanup(long now)
     {
         Evict(_ips, now);
         Evict(_subnets, now);
+
+        foreach (var (key, history) in _lockHistory)
+        {
+            if (now - history.LockedUntil >= LockHistoryWindow.Ticks) _lockHistory.TryRemove(key, out _);
+        }
     }
 
     private static void Evict(ConcurrentDictionary<string, FailureEntry> entries, long now)
@@ -212,6 +264,8 @@ public sealed class AdminLoginGuard
         }
     }
 
+    private readonly record struct LockHistory(int Level, long LockedUntil);
+
     private sealed class FailureEntry(int threshold)
     {
         private readonly Lock _sync = new();
@@ -219,10 +273,19 @@ public sealed class AdminLoginGuard
         // 只需判断窗口内是否达到阈值，因此最多保留最近 threshold 次失败的时间
         private readonly long[] _failures = new long[threshold];
         private int _next;
+        private long _lockedAt;
         private long _lockedUntil;
         private long _lastFailure;
 
         public long LockedUntil => Volatile.Read(ref _lockedUntil);
+
+        public (long LockedAt, long LockedUntil) LockPeriod
+        {
+            get
+            {
+                lock (_sync) return (_lockedAt, _lockedUntil);
+            }
+        }
 
         public (int Count, bool LockedNow) Record(long now, long windowTicks, long lockTicks)
         {
@@ -240,6 +303,7 @@ public sealed class AdminLoginGuard
 
                 if (count < _failures.Length || _lockedUntil > now) return (count, false);
 
+                _lockedAt = now;
                 Volatile.Write(ref _lockedUntil, now + lockTicks);
                 return (count, true);
             }

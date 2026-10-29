@@ -73,7 +73,9 @@ export default function AdminLoginProtectionCard() {
         </CardTitle>
         <CardDescription>
           同一 IP 在 10 分钟内登录失败 5 次后，每次失败的响应会逐步变慢；失败 20 次锁定该 IP 15 分钟。
-          同一网段（IPv4 /24、IPv6 /64）累计失败 60 次锁定整个网段。锁定期内即使密码正确也无法登录。
+          24 小时内再次被锁定时，锁定时长逐级升为 1 小时、6 小时、24 小时。
+          同一网段（IPv4 /24、IPv6 /64）累计失败 60 次锁定整个网段。滑块验证失败也计入失败次数。
+          锁定期内即使密码正确也无法登录，可在风控事件页手动解除。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

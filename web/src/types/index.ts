@@ -137,6 +137,7 @@ export interface RiskSettings {
     clearanceMinutes: number;
     failureDelay: boolean;
     adminLoginChallenge: boolean;
+    adminLoginSlider: boolean;
 }
 
 /** 0 = 影子模式（只记录），1 = 参与决策 */
@@ -334,4 +335,14 @@ export interface AbnormalIp {
     lastMethod?: string | null;
     lastStatusCode?: number | null;
     lastServerId?: string | null;
+}
+
+export interface BlacklistAndWhitelistItem {
+    id: string;
+    name: string;
+    description?: string;
+    ips?: string[];
+    regions?: string[];
+    enable: boolean;
+    isBlacklist: boolean;
 }

@@ -150,6 +150,61 @@ public sealed class AdminLoginGuardTests
         Assert.Empty(guard.GetActiveLocks());
     }
 
+    [Fact]
+    public void RecordFailure_RepeatedLocksWithinHistory_EscalatesDuration()
+    {
+        var guard = CreateGuard(out var time);
+
+        foreach (var expected in AdminLoginGuard.LockDurations.Append(AdminLoginGuard.LockDurations[^1]))
+        {
+            AdminLoginFailure last = default;
+            for (var i = 0; i < AdminLoginGuard.IpLockThreshold; i++) last = guard.RecordFailure("203.0.113.10");
+
+            Assert.Equal(expected, last.LockedFor);
+            Assert.Equal(expected, guard.GetLockRemaining("203.0.113.10"));
+            time.Advance(expected);
+        }
+    }
+
+    [Fact]
+    public void RecordFailure_LockAfterHistoryWindow_ResetsToFirstLevel()
+    {
+        var guard = CreateGuard(out var time);
+        for (var i = 0; i < AdminLoginGuard.IpLockThreshold; i++) guard.RecordFailure("203.0.113.10");
+
+        // 历史从解锁时刻起算
+        time.Advance(AdminLoginGuard.LockDuration + AdminLoginGuard.LockHistoryWindow);
+
+        AdminLoginFailure last = default;
+        for (var i = 0; i < AdminLoginGuard.IpLockThreshold; i++) last = guard.RecordFailure("203.0.113.10");
+        Assert.Equal(AdminLoginGuard.LockDuration, last.LockedFor);
+    }
+
+    [Fact]
+    public void Unlock_ClearsEscalationHistory()
+    {
+        var guard = CreateGuard(out _);
+        for (var i = 0; i < AdminLoginGuard.IpLockThreshold; i++) guard.RecordFailure("203.0.113.10");
+
+        guard.Unlock("203.0.113.10", isSubnet: false);
+
+        AdminLoginFailure last = default;
+        for (var i = 0; i < AdminLoginGuard.IpLockThreshold; i++) last = guard.RecordFailure("203.0.113.10");
+        Assert.Equal(AdminLoginGuard.LockDuration, last.LockedFor);
+    }
+
+    [Fact]
+    public void GetActiveLocks_EscalatedLock_ReportsActualPeriod()
+    {
+        var guard = CreateGuard(out var time);
+        for (var i = 0; i < AdminLoginGuard.IpLockThreshold; i++) guard.RecordFailure("203.0.113.10");
+        time.Advance(AdminLoginGuard.LockDuration);
+        for (var i = 0; i < AdminLoginGuard.IpLockThreshold; i++) guard.RecordFailure("203.0.113.10");
+
+        var ipLock = Assert.Single(guard.GetActiveLocks(), x => !x.IsSubnet);
+        Assert.Equal(AdminLoginGuard.LockDurations[1], ipLock.LockedUntil - ipLock.LockedAt);
+    }
+
     [Theory]
     [InlineData("203.0.113.57", "203.0.113.0/24")]
     [InlineData("::ffff:203.0.113.57", "203.0.113.0/24")]

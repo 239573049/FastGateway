@@ -4,25 +4,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { message } from '@/utils/toast';
 import { useEffect, useMemo, useState } from "react";
-import { CreateBlacklist, GetRegions, RegionCatalog } from "@/services/BlacklistAndWhitelistService";
+import { CreateBlacklist, UpdateBlacklist, GetRegions, RegionCatalog } from "@/services/BlacklistAndWhitelistService";
 import { Badge } from "@/components/ui/badge";
 import { X, Shield, ShieldCheck, Globe2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { BlacklistAndWhitelistItem } from "@/types";
 import { Switch } from "@/components/ui/switch";
 import { MultiSelect } from "@/components/ui/multi-select";
+
+const IPV4 = String.raw`(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)`;
+// 单个 IPv4、CIDR（5.34.219.0/24）、区间（10.0.0.1-10.0.0.255）
+const IPV4_RULE = new RegExp(`^${IPV4}(?:/(?:3[0-2]|[12]?\\d)|-${IPV4})?$`);
+
+function isValidIpRule(rule: string) {
+    if (IPV4_RULE.test(rule)) return true;
+    // IPv6 单地址或 CIDR
+    const [addr, prefix, ...rest] = rule.split('/');
+    if (rest.length || !addr.includes(':') || !/^[0-9a-fA-F:.]+$/.test(addr)) return false;
+    return prefix === undefined || (/^\d{1,3}$/.test(prefix) && Number(prefix) <= 128);
+}
 
 interface CreateBlacklistAndWhitelistProps {
     isBlacklist: boolean;
     visible: boolean;
     onClose: () => void;
     onOk: () => void;
+    /** 传入则为编辑模式，并以其内容回填表单 */
+    editing?: BlacklistAndWhitelistItem | null;
 }
 
 const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = ({
     visible,
     onClose,
     onOk,
-    isBlacklist
+    isBlacklist,
+    editing
 }: CreateBlacklistAndWhitelistProps) => {
     const [value, setValue] = useState({
         ips: [] as string[],
@@ -33,6 +49,31 @@ const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = 
         isBlacklist: isBlacklist,
     });
     const [ipInput, setIpInput] = useState('');
+
+    useEffect(() => {
+        if (!visible) return;
+        setIpInput('');
+        setValue({
+            ips: editing?.ips ?? [],
+            regions: editing?.regions ?? [],
+            name: editing?.name ?? '',
+            description: editing?.description ?? '',
+            enable: editing?.enable ?? true,
+            isBlacklist: isBlacklist,
+        });
+    }, [visible, editing, isBlacklist]);
+
+    const addIp = () => {
+        const rule = ipInput.trim();
+        if (!isValidIpRule(rule)) {
+            message.error('请输入正确的IP格式，如 1.2.3.4、1.2.3.0/24 或 1.2.3.1-1.2.3.9');
+            return;
+        }
+        if (!value.ips.includes(rule)) {
+            setValue({ ...value, ips: [...value.ips, rule] });
+        }
+        setIpInput('');
+    };
     const [regionCatalog, setRegionCatalog] = useState<RegionCatalog | null>(null);
 
     useEffect(() => {
@@ -74,12 +115,14 @@ const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = 
             return
         }
 
-        CreateBlacklist({ ...value, regions: isBlacklist ? value.regions : undefined })
+        const body = { ...value, regions: isBlacklist ? value.regions : undefined };
+        const action = editing ? '更新' : '新增';
+        (editing ? UpdateBlacklist(editing.id, body) : CreateBlacklist(body))
             .then(() => {
-                message.success('新增成功');
+                message.success(`${action}成功`);
                 onOk();
             }).catch(() => {
-                message.error('新增失败');
+                message.error(`${action}失败`);
             });
 
     }
@@ -94,7 +137,7 @@ const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = 
                             <ShieldCheck className="h-5 w-5 text-green-600" />
                         }
                         <DialogTitle className="text-xl font-semibold">
-                            {isBlacklist ? '新增黑名单' : '新增白名单'}
+                            {`${editing ? '编辑' : '新增'}${isBlacklist ? '黑名单' : '白名单'}`}
                         </DialogTitle>
                     </div>
                 </DialogHeader>
@@ -164,19 +207,11 @@ const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = 
                                 <Input
                                     value={ipInput}
                                     onChange={(e) => setIpInput(e.target.value)}
-                                    placeholder="请输入IP地址 (如: 192.168.1.1)"
+                                    placeholder="请输入IP、CIDR 或区间 (如: 192.168.1.1 / 5.34.219.0/24)"
                                     onKeyPress={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();
-                                            const reg = /^(\d{1,3}\.){3}\d{1,3}$/;
-                                            if (!reg.test(ipInput.trim())) {
-                                                message.error('请输入正确的IP格式');
-                                                return;
-                                            }
-                                            if (!value.ips.includes(ipInput.trim())) {
-                                                setValue({ ...value, ips: [...value.ips, ipInput.trim()] });
-                                            }
-                                            setIpInput('');
+                                            addIp();
                                         }
                                     }}
                                     className="flex-1"
@@ -186,15 +221,7 @@ const CreateBlacklistAndWhitelist: React.FC<CreateBlacklistAndWhitelistProps> = 
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                        const reg = /^(\d{1,3}\.){3}\d{1,3}$/;
-                                        if (!reg.test(ipInput.trim())) {
-                                            message.error('请输入正确的IP格式');
-                                            return;
-                                        }
-                                        if (!value.ips.includes(ipInput.trim())) {
-                                            setValue({ ...value, ips: [...value.ips, ipInput.trim()] });
-                                        }
-                                        setIpInput('');
+                                        addIp();
                                     }}
                                 >
                                     添加
