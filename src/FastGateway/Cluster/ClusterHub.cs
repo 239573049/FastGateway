@@ -77,7 +77,7 @@ public static class ClusterHub
         var token = context.Request.Query["token"].ToString();
 
         var node = string.IsNullOrEmpty(nodeId) ? null : _stateService.FindNode(nodeId);
-        if (node == null || string.IsNullOrEmpty(token) || node.Token != token)
+        if (node == null || string.IsNullOrEmpty(token) || !ClusterStateService.TokenEquals(node.Token, token))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;

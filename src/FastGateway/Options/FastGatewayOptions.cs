@@ -1,4 +1,6 @@
-﻿namespace FastGateway.Options;
+﻿using FastGateway.Infrastructure;
+
+namespace FastGateway.Options;
 
 public class FastGatewayOptions
 {
@@ -6,9 +8,24 @@ public class FastGatewayOptions
 
     public const string DefaultPassword = "Aa123456";
 
-    public static string TunnelToken { get; set; } = "Aa123456.";
+    /// <summary>
+    ///     历史版本内置的 TunnelToken，公开可见，视同未配置
+    /// </summary>
+    public const string LegacyDefaultTunnelToken = "Aa123456.";
+
+    public const string GeneratedPasswordFileName = "admin-password";
+
+    /// <summary>
+    ///     全局 TunnelToken；未配置（或仍为历史默认值）时为 null，此时只接受节点级密钥
+    /// </summary>
+    public static string? TunnelToken { get; set; }
 
     public static string Password { get; set; } = DefaultPassword;
+
+    /// <summary>
+    ///     未配置密码时本次启动新生成了随机初始密码（需在日志中提示管理员）
+    /// </summary>
+    public static bool PasswordGenerated { get; private set; }
 
     public static bool IsDefaultPassword => Password == DefaultPassword;
 
@@ -27,18 +44,21 @@ public class FastGatewayOptions
         MaxConnectionsPerUpstream = maxConnections;
 
         var tunnelToken = configuration["TunnelToken"];
-        if (!string.IsNullOrEmpty(tunnelToken))
-            TunnelToken = tunnelToken;
-        else
-            throw new ArgumentNullException(nameof(TunnelToken), "TunnelToken cannot be null or empty.");
+        TunnelToken = string.IsNullOrEmpty(tunnelToken) || tunnelToken == LegacyDefaultTunnelToken
+            ? null
+            : tunnelToken;
 
         var password = configuration["Password"];
-
-        if (string.IsNullOrEmpty(password)) password = configuration["PASSWORD"] ?? DefaultPassword;
+        if (string.IsNullOrEmpty(password)) password = configuration["PASSWORD"];
 
         if (!string.IsNullOrEmpty(password))
+        {
             Password = password;
+        }
         else
-            throw new ArgumentNullException(nameof(Password), "Password cannot be null or empty.");
+        {
+            // 未配置时不再回退到公开的默认密码，而是生成随机初始密码写入 data/admin-password
+            (Password, PasswordGenerated) = LocalSecretStore.GetOrCreate(GeneratedPasswordFileName, 16);
+        }
     }
 }

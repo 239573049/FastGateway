@@ -32,7 +32,13 @@ public static class Program
 
         FastGatewayOptions.Initialize(builder.Configuration);
 
-        builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Name));
+        var jwtOptions = builder.Configuration.GetSection(JwtOptions.Name).Get<JwtOptions>() ?? new JwtOptions();
+        jwtOptions.ResolveSecret();
+        builder.Services.Configure<JwtOptions>(options =>
+        {
+            options.Secret = jwtOptions.Secret;
+            options.ExpireDay = jwtOptions.ExpireDay;
+        });
         builder.Services.AddBotProtection(builder.Configuration);
 
         builder.Services.AddHttpClient();
@@ -40,8 +46,6 @@ public static class Program
         // 判断是否window，
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             builder.Services.AddWindowsService(option => { option.ServiceName = "FastGateway"; });
-
-        var jwtOptions = builder.Configuration.GetSection(JwtOptions.Name).Get<JwtOptions>();
 
         builder.Services
             .AddAuthorization()
@@ -54,7 +58,7 @@ public static class Program
                     ValidateAudience = false,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ClockSkew = TimeSpan.FromDays(jwtOptions.ExpireDay),
+                    ClockSkew = TimeSpan.FromMinutes(5),
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret))
                 };
             });
@@ -91,6 +95,13 @@ public static class Program
         builder.Services.AddHostedService<ClusterRelayAgentService>();
 
         var app = builder.Build();
+
+        if (FastGatewayOptions.PasswordGenerated)
+            app.Logger.LogWarning(
+                "未配置管理员密码（Password / PASSWORD），已生成随机初始密码并保存在 {Path}，请登录后通过环境变量设置正式密码",
+                Path.Combine(LocalSecretStore.DataDirectory, FastGatewayOptions.GeneratedPasswordFileName));
+        if (FastGatewayOptions.TunnelToken == null)
+            app.Logger.LogWarning("未配置 TunnelToken（或仍为历史默认值），全局 Token 注册已禁用，隧道节点只能使用面板生成的节点密钥");
 
         using (var scope = app.Services.CreateScope())
         {

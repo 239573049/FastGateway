@@ -72,13 +72,14 @@ public static class ClientIpHelper
         if (!context.Request.Headers.TryGetValue(headerName, out var headerValue) || headerValue.Count == 0)
             return false;
 
-        // 客户端 IP 位于首个头值的首段，直接按 Span 切片，避免 ToString 拼接与 Split 分配
-        var raw = headerValue[0];
+        // 取最后一个头值的最后一段：代理只会在末尾追加它看到的对端地址，前面的段可由客户端任意伪造。
+        // 直接按 Span 切片，避免 ToString 拼接与 Split 分配
+        var raw = headerValue[^1];
         if (string.IsNullOrEmpty(raw)) return false;
 
         var span = raw.AsSpan();
-        var comma = span.IndexOf(',');
-        if (comma >= 0) span = span[..comma];
+        var comma = span.LastIndexOf(',');
+        if (comma >= 0) span = span[(comma + 1)..];
 
         return TryParseIp(span.Trim(), out ip);
     }

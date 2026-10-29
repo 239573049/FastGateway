@@ -51,6 +51,15 @@ public sealed class BotProtectionServiceTests
     }
 
     [Fact]
+    public void ValidateClearance_WithChallengeState_Rejects()
+    {
+        var service = CreateService();
+        var state = service.CreateChallengeState("example.com", "route-a", "/", "/", "business-access");
+
+        Assert.False(service.ValidateClearance(state, "example.com", "route-a", "/", "203.0.113.10"));
+    }
+
+    [Fact]
     public void CreateRouteMetadata_DefaultsOffAndPreservesExistingMetadata()
     {
         var existing = new Dictionary<string, string> { ["existing"] = "value" };

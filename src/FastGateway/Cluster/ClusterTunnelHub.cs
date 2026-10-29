@@ -119,6 +119,6 @@ public static class ClusterTunnelHub
         var nodeId = nodeName["cluster-".Length..lastDash];
         var node = state.Nodes.FirstOrDefault(n => n.Id == nodeId);
 
-        return node != null && node.Token == token;
+        return node != null && ClusterStateService.TokenEquals(node.Token, token);
     }
 }

@@ -127,7 +127,7 @@ public static class ClusterRelay
         return snapshot.Role switch
         {
             ClusterRole.Master => snapshot.TokenSet.Contains(token),
-            ClusterRole.Worker => token == snapshot.NodeToken,
+            ClusterRole.Worker => ClusterStateService.TokenEquals(snapshot.NodeToken, token),
             _ => false
         };
     }

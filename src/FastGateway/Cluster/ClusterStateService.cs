@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace FastGateway.Cluster;
@@ -91,7 +93,30 @@ public class ClusterStateService
         lock (_lockObject)
         {
             _state.Invites.RemoveAll(i => i.ExpiresAt < DateTime.Now);
-            return _state.Invites.Any(i => i.Token == token);
+            return _state.Invites.Any(i => TokenEquals(i.Token, token));
         }
+    }
+
+    /// <summary>消费邀请令牌：邀请码一次性有效，泄露后不能被反复用来接入节点</summary>
+    public bool TryConsumeInvite(string token)
+    {
+        var consumed = false;
+        Update(s =>
+        {
+            s.Invites.RemoveAll(i => i.ExpiresAt < DateTime.Now);
+            var index = s.Invites.FindIndex(i => TokenEquals(i.Token, token));
+            if (index < 0) return;
+
+            s.Invites.RemoveAt(index);
+            consumed = true;
+        });
+        return consumed;
+    }
+
+    public static bool TokenEquals(string? expected, string? actual)
+    {
+        return !string.IsNullOrEmpty(expected) && actual != null &&
+               CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected),
+                   Encoding.UTF8.GetBytes(actual));
     }
 }
