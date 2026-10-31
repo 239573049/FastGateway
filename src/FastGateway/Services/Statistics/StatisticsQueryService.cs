@@ -446,6 +446,98 @@ public static class StatisticsQueryService
         return new PagingDto<RequestLogItemDto>(total, items);
     }
 
+    public static PagingDto<VisitorSummaryDto> GetVisitors(
+        string? range, string? host, int page, int pageSize)
+    {
+        if (!StatisticsDb.IsAvailable) return new PagingDto<VisitorSummaryDto>();
+
+        var info = ResolveRange(range);
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var conditions = "ts >= @StartTs";
+        if (!string.IsNullOrEmpty(host)) conditions += " AND host = @host";
+
+        var parameters = new List<P>
+        {
+            new("@StartTs", info.StartTs),
+            new("@take", pageSize),
+            new("@skip", (page - 1) * pageSize)
+        };
+        if (!string.IsNullOrEmpty(host)) parameters.Add(new P("@host", host));
+        var paramArray = parameters.ToArray();
+
+        using var connection = StatisticsDb.OpenReadConnection();
+        var total = ExecuteScalarInt(connection,
+            $"SELECT COUNT(DISTINCT ip) FROM request_log WHERE {conditions}", parameters: paramArray);
+
+        var items = Query(connection,
+            $"""
+             WITH filtered AS (
+                 SELECT id, ts, host, path, ip, country, province, status, referer_host, referer_url, blocked,
+                        ROW_NUMBER() OVER (PARTITION BY ip ORDER BY ts DESC, id DESC) AS row_num,
+                        MAX(ts) OVER (PARTITION BY ip) AS last_visit_at,
+                        COUNT(*) OVER (PARTITION BY ip) AS request_count,
+                        MAX(CASE WHEN blocked <> 0 THEN 1 ELSE 0 END) OVER (PARTITION BY ip) AS blocked_any,
+                        MAX(CASE WHEN blocked IN (6, 7) THEN 1 ELSE 0 END) OVER (PARTITION BY ip) AS risk_triggered,
+                        MAX(CASE WHEN blocked = 2 THEN 1 ELSE 0 END) OVER (PARTITION BY ip) AS rate_limited
+                 FROM request_log
+                 WHERE {conditions}
+             ),
+             latest AS (
+                 SELECT * FROM filtered WHERE row_num = 1
+             ),
+             latest_block AS (
+                 SELECT ip, blocked,
+                        ROW_NUMBER() OVER (PARTITION BY ip ORDER BY ts DESC, id DESC) AS row_num
+                 FROM request_log
+                 WHERE {conditions} AND blocked <> 0
+             )
+             SELECT l.ip AS Ip, l.last_visit_at AS LastVisitAt, l.country AS Country,
+                    l.province AS Province, l.status AS Status, l.referer_host AS RefererHost, l.referer_url AS RefererUrl,
+                    l.host AS Host, l.path AS Path, l.blocked_any AS Blocked,
+                    COALESCE(b.blocked, 0) AS BlockReason, l.risk_triggered AS RiskTriggered,
+                    l.rate_limited AS RateLimited, l.request_count AS RequestCount
+             FROM latest l
+             LEFT JOIN latest_block b ON b.ip = l.ip AND b.row_num = 1
+             ORDER BY l.last_visit_at DESC, l.ip ASC
+             LIMIT @take OFFSET @skip
+             """,
+            r => new VisitorSummaryDto
+            {
+                Ip = r.GetStringOrEmpty(0),
+                LastVisitAt = r.GetLong(1),
+                Country = r.GetStringOrEmpty(2),
+                Province = r.GetStringOrEmpty(3),
+                Status = r.GetInt(4),
+                RefererHost = r.GetStringOrEmpty(5),
+                RefererUrl = r.GetStringOrEmpty(6),
+                Host = r.GetStringOrEmpty(7),
+                Path = r.GetStringOrEmpty(8),
+                Blocked = r.GetInt(9) != 0,
+                BlockReason = r.GetInt(10),
+                RiskTriggered = r.GetInt(11) != 0,
+                RateLimited = r.GetInt(12) != 0,
+                RequestCount = r.GetLong(13)
+            },
+            parameters: paramArray);
+
+        var abnormalIps = global::FastGateway.Services.AbnormalIpMonitor.GetAbnormalIps()
+            .Select(x => x.Ip)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in items)
+        {
+            item.AbnormalIp = abnormalIps.Contains(item.Ip);
+
+            // 统计历史可能早于 GeoIP 修复；优先使用当前数据库重新解析。
+            var resolved = GeoIpService.Resolve(item.Ip);
+            if (!string.IsNullOrWhiteSpace(resolved.Country)) item.Country = resolved.Country;
+            if (!string.IsNullOrWhiteSpace(resolved.Province)) item.Province = resolved.Province;
+        }
+
+        return new PagingDto<VisitorSummaryDto>(total, items);
+    }
+
     private static GeoItemDto MapGeoItem(Microsoft.Data.Sqlite.SqliteDataReader r) => new()
     {
         Name = r.GetStringOrEmpty(0),

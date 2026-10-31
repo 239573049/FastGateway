@@ -92,6 +92,7 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(PagingDto<RateLimit>))]
 [JsonSerializable(typeof(PagingDto<RankingItemDto>))]
 [JsonSerializable(typeof(PagingDto<RequestLogItemDto>))]
+[JsonSerializable(typeof(PagingDto<VisitorSummaryDto>))]
 // ===== 异常 IP =====
 [JsonSerializable(typeof(AbnormalIpSnapshot))]
 [JsonSerializable(typeof(List<AbnormalIpSnapshot>))]
@@ -107,6 +108,8 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(List<RankingItemDto>))]
 [JsonSerializable(typeof(RequestLogItemDto))]
 [JsonSerializable(typeof(List<RequestLogItemDto>))]
+[JsonSerializable(typeof(VisitorSummaryDto))]
+[JsonSerializable(typeof(List<VisitorSummaryDto>))]
 // ===== QPS 实时监控 =====
 [JsonSerializable(typeof(QpsRealtimeDto))]
 [JsonSerializable(typeof(QpsHistoryPointDto))]

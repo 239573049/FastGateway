@@ -58,3 +58,27 @@ export const getStatisticsRequests = (
   params: { host?: string; ip?: string; status?: number; blocked?: boolean; page?: number; pageSize?: number },
   opts?: Opts
 ) => get(`${baseUrl}/requests?${qs({ range, ...params })}`, opts);
+
+export interface VisitorSummary {
+  ip: string;
+  lastVisitAt: number;
+  country: string;
+  province: string;
+  status: number;
+  refererHost: string;
+  refererUrl: string;
+  host: string;
+  path: string;
+  blocked: boolean;
+  blockReason: number;
+  abnormalIp: boolean;
+  riskTriggered: boolean;
+  rateLimited: boolean;
+  requestCount: number;
+}
+
+export const getStatisticsVisitors = (
+  range: StatRange,
+  params: { host?: string; page?: number; pageSize?: number },
+  opts?: Opts
+) => get(`${baseUrl}/visitors?${qs({ range, ...params })}`, opts);
