@@ -2,6 +2,7 @@ import { Fragment, memo, useEffect, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Ban,
+  BrainCircuit,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -25,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { message } from "@/utils/toast";
 import { AddAbnormalIpToBlacklist } from "@/services/AbnormalIpService";
+import { getJevThreatStatus, startJevThreatScan } from "@/services/RiskService";
 import {
   getStatisticsRequests,
   getStatisticsVisitors,
@@ -48,6 +50,7 @@ const BLOCK_LABELS: Record<number, string> = {
   5: "机器人挑战",
   6: "风控验证",
   7: "风控封禁",
+  8: "自适应拦截",
 };
 
 function blockReasonLabel(value: number) {
@@ -207,6 +210,7 @@ const VisitorDetailsPage = memo(() => {
   const [total, setTotal] = useState(0);
   const [items, setItems] = useState<VisitorSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [jevScanning, setJevScanning] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [expandedIps, setExpandedIps] = useState<Set<string>>(() => new Set());
   const [banningIp, setBanningIp] = useState<string | null>(null);
@@ -216,6 +220,26 @@ const VisitorDetailsPage = memo(() => {
     setRange("1h");
     setRangeReady(true);
   }, [setRange]);
+
+  useEffect(() => {
+    let live = true;
+    const refreshTaskState = async () => {
+      try {
+        const response = await getJevThreatStatus();
+        const status = response?.data;
+        if (live) setJevScanning(status?.status === "queued" || status?.status === "running");
+      } catch {
+        // 后台任务状态不影响访客数据加载
+      }
+    };
+
+    void refreshTaskState();
+    const timer = window.setInterval(refreshTaskState, 5000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     setPage(1);
@@ -272,6 +296,24 @@ const VisitorDetailsPage = memo(() => {
     }
   }
 
+  async function handleJevScan() {
+    setJevScanning(true);
+    try {
+      const started = await startJevThreatScan();
+      if (!started?.success || !started.data) {
+        setJevScanning(false);
+        message.error(started?.message || "启动 Jev 判断失败");
+        return;
+      }
+
+      setJevScanning(true);
+      message.success("Jev 判断已转入后台运行，可安全切换或关闭页面");
+    } catch (error: any) {
+      setJevScanning(false);
+      message.error(error?.message || "启动 Jev 判断失败");
+    }
+  }
+
   return (
     <div className="container mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
       <Reveal className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -287,6 +329,10 @@ const VisitorDetailsPage = memo(() => {
           <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>
             <RefreshCw className="h-3.5 w-3.5" />
             刷新
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 gap-2" onClick={handleJevScan} disabled={jevScanning} title="在后台运行，可安全切换或关闭页面">
+            <BrainCircuit className="h-3.5 w-3.5" />
+            {jevScanning ? "判断中..." : "Jev 判断"}
           </Button>
         </div>
       </Reveal>
@@ -348,7 +394,20 @@ const VisitorDetailsPage = memo(() => {
                             </Button>
                           </TableCell>
                           <TableCell><span className="whitespace-nowrap font-mono text-xs text-muted-foreground">{formatTs(item.lastVisitAt)}</span></TableCell>
-                          <TableCell><Badge variant="outline" className="font-mono text-xs">{item.ip}</Badge></TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                              <Badge variant="outline" className="font-mono text-xs">{item.ip}</Badge>
+                              {item.blacklisted ? (
+                                <Badge
+                                  variant="destructive"
+                                  className="cursor-help text-[10px]"
+                                  title={`所在黑名单：${item.blacklistNames.join("、")}`}
+                                >
+                                  封禁
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </TableCell>
                           <TableCell><span className="whitespace-nowrap text-xs">{geo}</span></TableCell>
                           <TableCell><span className="font-mono text-xs">{item.status || "-"}</span></TableCell>
                           <TableCell><div className="max-w-[160px] truncate font-mono text-xs" title={item.host}>{item.host || "-"}</div></TableCell>
@@ -362,9 +421,9 @@ const VisitorDetailsPage = memo(() => {
                           <TableCell>{boolBadge(item.rateLimited, "已触发", "未触发")}</TableCell>
                           <TableCell className={ACTION_CELL_CLASS}>
                             <div className="flex items-center gap-2 whitespace-nowrap">
-                              <Button size="sm" variant="destructive" className="h-8 gap-1.5" disabled={busy} onClick={() => handleBan(item.ip)}>
+                              <Button size="sm" variant="destructive" className="h-8 gap-1.5" title={item.blacklisted ? `所在黑名单：${item.blacklistNames.join("、")}` : undefined} disabled={busy || item.blacklisted} onClick={() => handleBan(item.ip)}>
                                 <Ban className="h-3.5 w-3.5" />
-                                {busy ? "处理中" : "封禁"}
+                                {item.blacklisted ? "已封禁" : busy ? "处理中" : "封禁"}
                               </Button>
                               <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setSelected(item)}>
                                 <Eye className="h-3.5 w-3.5" />
@@ -414,6 +473,8 @@ const VisitorDetailsPage = memo(() => {
             <div className="grid gap-3 text-sm sm:grid-cols-2">
               {[
                 ["访客 IP", selected.ip],
+                ["当前是否已封禁", selected.blacklisted ? "是" : "否"],
+                ["所在黑名单", selected.blacklistNames.join("、") || "-"],
                 ["最近访问时间", formatTs(selected.lastVisitAt)],
                 ["IP 地理", [selected.country, selected.province].filter(Boolean).join(" · ") || "-"],
                 ["Status code", String(selected.status || "-")],

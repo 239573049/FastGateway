@@ -88,6 +88,8 @@ public sealed class VisitorSummaryDto
     public string RefererUrl { get; set; } = string.Empty;
     public string Host { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
+    public bool Blacklisted { get; set; }
+    public List<string> BlacklistNames { get; set; } = [];
     public bool Blocked { get; set; }
     public int BlockReason { get; set; }
     public bool AbnormalIp { get; set; }

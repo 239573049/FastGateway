@@ -11,17 +11,20 @@ public static class BlacklistAndWhitelistService
     private sealed record IpPolicySnapshot(
         IpPolicyMatcher Whitelist,
         IpPolicyMatcher Blacklist,
-        IpPolicyMatcher RegionBlacklist);
+        IpPolicyMatcher RegionBlacklist,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> BlacklistNames);
 
     private static IpPolicySnapshot _snapshot =
-        new(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty);
+        new(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty,
+            new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase));
 
     public static void RefreshCache(IEnumerable<BlacklistAndWhitelist> blacklistAndWhitelists)
     {
         if (blacklistAndWhitelists == null)
         {
             Volatile.Write(ref _snapshot,
-                new IpPolicySnapshot(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty));
+                new IpPolicySnapshot(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty,
+                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)));
             return;
         }
 
@@ -33,8 +36,8 @@ public static class BlacklistAndWhitelistService
             .Where(x => !string.IsNullOrWhiteSpace(x));
 
         // 黑名单强制启用，不受 Enable 开关影响（安全防护不可关闭）
-        var blacklist = items
-            .Where(x => x.IsBlacklist)
+        var blacklistGroups = items.Where(x => x.IsBlacklist).ToList();
+        var blacklist = blacklistGroups
             .SelectMany(x => x.Ips ?? [])
             .Where(x => !string.IsNullOrWhiteSpace(x));
 
@@ -50,8 +53,18 @@ public static class BlacklistAndWhitelistService
             ? IpPolicyMatcher.Empty
             : IpPolicyMatcher.BuildFromRanges(RegionIpRangeProvider.GetRanges(regionRules));
 
+        var blacklistNames = blacklistGroups
+            .SelectMany(group => (group.Ips ?? [])
+                .Where(ip => !string.IsNullOrWhiteSpace(ip))
+                .Select(ip => (Ip: ip.Trim(), Name: group.Name)))
+            .GroupBy(x => x.Ip, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key,
+                x => (IReadOnlyList<string>)x.Select(y => y.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
         Volatile.Write(ref _snapshot,
-            new IpPolicySnapshot(IpPolicyMatcher.Build(whitelist), IpPolicyMatcher.Build(blacklist), regionMatcher));
+            new IpPolicySnapshot(IpPolicyMatcher.Build(whitelist), IpPolicyMatcher.Build(blacklist), regionMatcher,
+                blacklistNames));
     }
 
     public static void RefreshCache(ConfigurationService configService)
@@ -81,6 +94,27 @@ public static class BlacklistAndWhitelistService
             return false;
 
         return true;
+    }
+
+    public static bool IsWhitelisted(string? ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return false;
+        return Volatile.Read(ref _snapshot).Whitelist.Contains(ip);
+    }
+
+    public static bool IsBlacklisted(string? ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return false;
+        var snapshot = Volatile.Read(ref _snapshot);
+        return snapshot.Blacklist.Contains(ip) || snapshot.RegionBlacklist.Contains(ip);
+    }
+
+    public static IReadOnlyList<string> GetBlacklistNames(string? ip)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return [];
+        var snapshot = Volatile.Read(ref _snapshot);
+        if (snapshot.BlacklistNames.TryGetValue(ip, out var names) && names.Count > 0) return names;
+        return snapshot.RegionBlacklist.Contains(ip) ? ["地区封禁"] : [];
     }
 
     public static WebApplication UseBlacklistMiddleware(this WebApplication app,

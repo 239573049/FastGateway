@@ -1,4 +1,5 @@
 using FastGateway.Dto;
+using FastGateway.Security;
 using static FastGateway.Services.Statistics.SqlRunner;
 
 namespace FastGateway.Services.Statistics;
@@ -524,10 +525,15 @@ public static class StatisticsQueryService
 
         var abnormalIps = global::FastGateway.Services.AbnormalIpMonitor.GetAbnormalIps()
             .Select(x => x.Ip)
+            .Concat(AdaptiveThreatStore.GetActiveSnapshots().Select(x => x.Ip))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var item in items)
         {
             item.AbnormalIp = abnormalIps.Contains(item.Ip);
+            item.BlacklistNames = BlacklistAndWhitelistService.GetBlacklistNames(item.Ip).ToList();
+            if (AdaptiveThreatStore.IsBlocked(item.Ip)) item.BlacklistNames.Add("自适应临时隔离");
+            item.BlacklistNames = item.BlacklistNames.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            item.Blacklisted = item.BlacklistNames.Count > 0;
 
             // 统计历史可能早于 GeoIP 修复；优先使用当前数据库重新解析。
             var resolved = GeoIpService.Resolve(item.Ip);

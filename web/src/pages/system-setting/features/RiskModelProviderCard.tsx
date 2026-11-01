@@ -28,13 +28,28 @@ import {
 
 const DEFAULT_MODELS = ["jev-latest", "jev-1.14.0", "jev-1.13.0"];
 
-type NumberField = "timeoutMs" | "maxRequestsPerSecond" | "maxConcurrency" | "dailyTokenBudget";
+type NumberField =
+  | "timeoutMs"
+  | "maxRequestsPerSecond"
+  | "maxConcurrency"
+  | "dailyTokenBudget"
+  | "httpThreatThreshold"
+  | "httpThreatIntervalHours"
+  | "httpThreatLookbackHours"
+  | "httpThreatMaxIpsPerRun";
 
 const NUMBER_FIELDS: { key: NumberField; label: string; hint: string }[] = [
   { key: "timeoutMs", label: "超时（毫秒）", hint: "500-10000，超时按失败处理" },
   { key: "maxRequestsPerSecond", label: "每秒请求上限", hint: "超出时跳过评估，只用规则" },
   { key: "maxConcurrency", label: "并发上限", hint: "同时进行的评估数" },
   { key: "dailyTokenBudget", label: "每日 token 预算", hint: "按输入 token 计，0 表示不限" },
+];
+
+const THREAT_NUMBER_FIELDS: { key: NumberField; label: string; hint: string; step?: string }[] = [
+  { key: "httpThreatThreshold", label: "恶意请求阈值", hint: "0.5-1，默认 0.8，概率达到后直接封禁", step: "0.05" },
+  { key: "httpThreatIntervalHours", label: "自动判断周期（小时）", hint: "默认 4 小时", step: "1" },
+  { key: "httpThreatLookbackHours", label: "请求回看范围（小时）", hint: "只聚合尚未判断的新请求，默认 24", step: "1" },
+  { key: "httpThreatMaxIpsPerRun", label: "单轮 IP 上限", hint: "默认 20，避免一次消耗过多模型额度", step: "1" },
 ];
 
 const toInput = (view: RiskModelProvider): RiskModelProviderInput => ({
@@ -47,6 +62,11 @@ const toInput = (view: RiskModelProvider): RiskModelProviderInput => ({
   maxRequestsPerSecond: view.maxRequestsPerSecond,
   maxConcurrency: view.maxConcurrency,
   dailyTokenBudget: view.dailyTokenBudget,
+  httpThreatEnabled: view.httpThreatEnabled,
+  httpThreatThreshold: view.httpThreatThreshold,
+  httpThreatIntervalHours: view.httpThreatIntervalHours,
+  httpThreatLookbackHours: view.httpThreatLookbackHours,
+  httpThreatMaxIpsPerRun: view.httpThreatMaxIpsPerRun,
   apiKey: "",
   clearApiKey: false,
 });
@@ -163,8 +183,8 @@ export default function RiskModelProviderCard() {
           AI 风控模型（TypeSafe Jev）
         </CardTitle>
         <CardDescription>
-          对规则拿不准的登录来源，在后台调用模型判断是否为脚本、撞库或猜密码，不影响登录请求的速度；模型不可用时完全回落到规则。
-          启用后，登录次数、失败率、请求间隔等统计特征会发送到所配置的服务地址，不发送 IP、用户名和请求原文。
+          既可在后台判断规则拿不准的登录来源，也可按周期或手动批量判断尚未处理过的 HTTP 恶意请求。模型不可用时完全回落到本地规则。
+          启用后，登录统计或聚合后的请求状态、路径样本、域名和方法会发送到所配置的服务地址，不发送 IP、用户名和请求原文。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -287,6 +307,37 @@ export default function RiskModelProviderCard() {
                   <p className="text-xs text-muted-foreground">{field.hint}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="space-y-4 rounded-lg border bg-muted/20 p-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="jev-http-threat-enabled">启用 Jev 恶意请求定时识别</Label>
+                  <div className="text-xs text-muted-foreground">
+                    仅处理水位线之后的新请求；默认每 4 小时判断一轮，手动判断不受此开关限制
+                  </div>
+                </div>
+                <Switch
+                  id="jev-http-threat-enabled"
+                  checked={value.httpThreatEnabled}
+                  onCheckedChange={(httpThreatEnabled) => update({ httpThreatEnabled })}
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-4">
+                {THREAT_NUMBER_FIELDS.map((field) => (
+                  <div key={field.key} className="space-y-1.5">
+                    <Label htmlFor={`risk-model-${field.key}`}>{field.label}</Label>
+                    <Input
+                      id={`risk-model-${field.key}`}
+                      type="number"
+                      step={field.step ?? "1"}
+                      value={value[field.key]}
+                      onChange={(e) => update({ [field.key]: Number(e.target.value) })}
+                    />
+                    <p className="text-xs text-muted-foreground">{field.hint}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {testResult ? (

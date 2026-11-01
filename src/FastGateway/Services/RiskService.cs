@@ -140,6 +140,16 @@ public static class RiskService
             .WithDescription("获取最近的模型评估记录")
             .WithDisplayName("获取模型评估");
 
+        risk.MapPost("http-threat-scan", (JevThreatDetectionService detectionService) =>
+                detectionService.StartManual())
+            .WithDescription("立即使用 Jev 判断尚未处理过的 HTTP 恶意请求记录")
+            .WithDisplayName("立即判断恶意请求");
+
+        risk.MapGet("http-threat-status", (JevThreatDetectionService detectionService) =>
+                detectionService.GetLatestStatus())
+            .WithDescription("获取最近一次 Jev 恶意请求判断任务状态")
+            .WithDisplayName("获取恶意请求判断状态");
+
         return app;
     }
 

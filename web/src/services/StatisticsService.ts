@@ -69,6 +69,8 @@ export interface VisitorSummary {
   refererUrl: string;
   host: string;
   path: string;
+  blacklisted: boolean;
+  blacklistNames: string[];
   blocked: boolean;
   blockReason: number;
   abnormalIp: boolean;

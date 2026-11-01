@@ -49,6 +49,21 @@ public sealed partial class RiskModelProviderSettings
     /// <summary>每日输入 token 上限，0 表示不限</summary>
     public long DailyTokenBudget { get; set; } = 5_000_000;
 
+    /// <summary>是否启用 Jev HTTP 恶意请求定时识别。手动判断不受此开关限制。</summary>
+    public bool HttpThreatEnabled { get; set; }
+
+    /// <summary>Jev 恶意请求概率达到该值时自动封禁，默认 0.8。</summary>
+    public double HttpThreatThreshold { get; set; } = 0.8;
+
+    /// <summary>自动判断周期，默认 4 小时。</summary>
+    public int HttpThreatIntervalHours { get; set; } = 4;
+
+    /// <summary>聚合新请求时回看的小时数。</summary>
+    public int HttpThreatLookbackHours { get; set; } = 24;
+
+    /// <summary>单轮最多评估的 IP 数，避免一次消耗过多模型额度。</summary>
+    public int HttpThreatMaxIpsPerRun { get; set; } = 20;
+
     [JsonIgnore]
     public bool IsUsable => Enabled && !string.IsNullOrEmpty(ApiKey);
 
@@ -81,6 +96,10 @@ public sealed partial class RiskModelProviderSettings
         if (MaxRequestsPerSecond is < 1 or > 100) throw new ValidationException("每秒请求上限需在 1-100 之间");
         if (MaxConcurrency is < 1 or > 32) throw new ValidationException("并发上限需在 1-32 之间");
         if (DailyTokenBudget < 0) throw new ValidationException("每日 token 预算不能为负数");
+        if (HttpThreatThreshold is < 0.5 or > 1) throw new ValidationException("恶意请求阈值需在 0.5-1 之间");
+        if (HttpThreatIntervalHours is < 1 or > 168) throw new ValidationException("自动判断周期需在 1-168 小时之间");
+        if (HttpThreatLookbackHours is < 1 or > 168) throw new ValidationException("请求回看范围需在 1-168 小时之间");
+        if (HttpThreatMaxIpsPerRun is < 1 or > 200) throw new ValidationException("单轮 IP 上限需在 1-200 之间");
         if (Enabled && ApiKey.Length == 0) throw new ValidationException("启用前请先填写 API Key");
     }
 
@@ -161,7 +180,12 @@ public static class RiskModelProviderStore
             TimeoutMs = input.TimeoutMs,
             MaxRequestsPerSecond = input.MaxRequestsPerSecond,
             MaxConcurrency = input.MaxConcurrency,
-            DailyTokenBudget = input.DailyTokenBudget
+            DailyTokenBudget = input.DailyTokenBudget,
+            HttpThreatEnabled = input.HttpThreatEnabled,
+            HttpThreatThreshold = input.HttpThreatThreshold,
+            HttpThreatIntervalHours = input.HttpThreatIntervalHours,
+            HttpThreatLookbackHours = input.HttpThreatLookbackHours,
+            HttpThreatMaxIpsPerRun = input.HttpThreatMaxIpsPerRun
         };
         merged.Normalize();
         return merged;
@@ -194,6 +218,11 @@ public static class RiskModelProviderStore
             MaxRequestsPerSecond = settings.MaxRequestsPerSecond,
             MaxConcurrency = settings.MaxConcurrency,
             DailyTokenBudget = settings.DailyTokenBudget,
+            HttpThreatEnabled = settings.HttpThreatEnabled,
+            HttpThreatThreshold = settings.HttpThreatThreshold,
+            HttpThreatIntervalHours = settings.HttpThreatIntervalHours,
+            HttpThreatLookbackHours = settings.HttpThreatLookbackHours,
+            HttpThreatMaxIpsPerRun = settings.HttpThreatMaxIpsPerRun,
             ApiKeyConfigured = settings.ApiKey.Length > 0,
             ApiKeyHint = settings.ApiKey.Length >= 8 ? "****" + settings.ApiKey[^4..] : settings.ApiKey.Length > 0 ? "****" : null
         };
@@ -243,6 +272,11 @@ public sealed class RiskModelProviderView
     public int MaxRequestsPerSecond { get; set; }
     public int MaxConcurrency { get; set; }
     public long DailyTokenBudget { get; set; }
+    public bool HttpThreatEnabled { get; set; }
+    public double HttpThreatThreshold { get; set; }
+    public int HttpThreatIntervalHours { get; set; }
+    public int HttpThreatLookbackHours { get; set; }
+    public int HttpThreatMaxIpsPerRun { get; set; }
     public bool ApiKeyConfigured { get; set; }
     public string? ApiKeyHint { get; set; }
 }
@@ -261,4 +295,9 @@ public sealed class RiskModelProviderInput
     public int MaxRequestsPerSecond { get; set; } = 5;
     public int MaxConcurrency { get; set; } = 4;
     public long DailyTokenBudget { get; set; } = 5_000_000;
+    public bool HttpThreatEnabled { get; set; }
+    public double HttpThreatThreshold { get; set; } = 0.8;
+    public int HttpThreatIntervalHours { get; set; } = 4;
+    public int HttpThreatLookbackHours { get; set; } = 24;
+    public int HttpThreatMaxIpsPerRun { get; set; } = 20;
 }

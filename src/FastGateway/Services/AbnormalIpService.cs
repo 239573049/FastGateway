@@ -3,6 +3,7 @@ using System.Net;
 using Core.Entities;
 using FastGateway.Dto;
 using FastGateway.Infrastructure;
+using FastGateway.Security;
 
 namespace FastGateway.Services;
 
@@ -24,7 +25,13 @@ public static class AbnormalIpService
                 page = page < 1 ? 1 : page;
                 pageSize = pageSize < 1 ? 10 : pageSize;
 
-                var all = AbnormalIpMonitor.GetAbnormalIps();
+                var all = AbnormalIpMonitor.GetAbnormalIps()
+                    .Concat(AdaptiveThreatStore.GetActiveSnapshots().Select(ToAbnormalSnapshot))
+                    .GroupBy(x => x.Ip, StringComparer.OrdinalIgnoreCase)
+                    .Select(x => x.OrderByDescending(y => y.WindowErrorCount).ThenByDescending(y => y.LastSeen).First())
+                    .OrderByDescending(x => x.WindowErrorCount)
+                    .ThenByDescending(x => x.LastSeen)
+                    .ToList();
                 var total = all.Count;
                 var result = all
                     .Skip((page - 1) * pageSize)
@@ -35,6 +42,19 @@ public static class AbnormalIpService
             })
             .WithDescription("获取异常IP列表")
             .WithDisplayName("获取异常IP列表")
+            .WithTags("异常IP");
+
+        abnormalIp.MapDelete("adaptive", (string ip) =>
+            {
+                ip = NormalizeIp(ip);
+                if (string.IsNullOrWhiteSpace(ip) || !IPAddress.TryParse(ip, out _))
+                    throw new ValidationException("IP格式不正确");
+
+                var released = AdaptiveThreatStore.Release(ip);
+                return ResultDto.CreateSuccess(released ? "已解除临时隔离" : "IP不在临时隔离中");
+            })
+            .WithDescription("解除自适应威胁产生的临时隔离")
+            .WithDisplayName("解除临时隔离")
             .WithTags("异常IP");
 
         abnormalIp.MapPost("blacklist", (ConfigurationService configService, AddAbnormalIpToBlacklistInput input) =>
@@ -119,6 +139,24 @@ public static class AbnormalIpService
             .WithTags("异常IP");
 
         return app;
+    }
+
+    private static AbnormalIpSnapshot ToAbnormalSnapshot(AdaptiveThreatSnapshot item)
+    {
+        return new AbnormalIpSnapshot
+        {
+            Ip = item.Ip,
+            WindowErrorCount = item.Score,
+            TotalErrorCount = item.TotalRequests,
+            FirstSeen = item.FirstSeen.LocalDateTime,
+            LastSeen = item.LastSeen.LocalDateTime,
+            LastErrorDescription = item.Reason,
+            TopErrorDescription = item.Reason,
+            LastPath = item.LastPath,
+            LastMethod = item.LastMethod,
+            LastStatusCode = item.LastStatus,
+            LastServerId = item.ServerId
+        };
     }
 
     private static string NormalizeIp(string raw)
