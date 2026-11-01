@@ -2,15 +2,6 @@
 # 本 Dockerfile 已切换为 Native AOT 发布：产出自包含原生可执行文件，无需 .NET 运行时。
 # 最终镜像使用 chiseled-extra（无 shell/apt、非 root）以显著缩小体积，同时保留 glibc 性能与多架构。
 
-# 前端构建阶段：始终在构建机架构($BUILDPLATFORM)上运行。
-# 前端产物为架构无关的静态文件，这样多架构构建时无需在 QEMU 模拟下重复构建前端。
-FROM --platform=$BUILDPLATFORM node:22-slim AS web
-WORKDIR /web
-COPY web/package.json ./
-RUN npm install
-COPY web/ ./
-RUN npm run build
-
 # 生成阶段：随目标平台($TARGETPLATFORM)运行，保证 Native AOT 在目标架构上原生编译
 # （AOT 交叉编译复杂，buildx 会为每个目标架构分别执行此阶段）。
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
@@ -29,8 +20,8 @@ COPY ["src/Certes/Certes.csproj", "src/Certes/"]
 RUN RID=$([ "$TARGETARCH" = "arm64" ] && echo linux-arm64 || echo linux-x64) \
     && dotnet restore "./src/FastGateway/FastGateway.csproj" -r $RID
 COPY . .
-# 将前端构建产物复制到 wwwroot，随 dotnet publish 一起打包
-COPY --from=web /web/dist ./src/FastGateway/wwwroot
+# 前端必须在构建镜像前于本机完成 npm run build；镜像内不再安装 Node 或重复构建。
+COPY ["web/dist/", "src/FastGateway/wwwroot/"]
 WORKDIR "/src/src/FastGateway"
 RUN RID=$([ "$TARGETARCH" = "arm64" ] && echo linux-arm64 || echo linux-x64) \
     && dotnet publish "./FastGateway.csproj" -c $BUILD_CONFIGURATION -r $RID \

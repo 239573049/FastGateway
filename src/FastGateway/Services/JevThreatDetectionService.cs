@@ -57,7 +57,7 @@ public sealed class JevThreatDetectionService(
         ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md", ".csv"
     };
 
-    private readonly SemaphoreSlim _runLock = new(1, 1);
+    private readonly SemaphoreSlim _queueLock = new(1, 1);
 
     public static string BuildBlacklistName(DateTimeOffset startedAt, JevThreatTrigger trigger)
     {
@@ -103,46 +103,134 @@ public sealed class JevThreatDetectionService(
         var settings = RiskModelProviderStore.Current;
         if (!settings.IsUsable)
             throw new ValidationException("请先启用 AI 风控模型并配置 API Key");
-        if (!_runLock.Wait(0))
-            throw new ValidationException("已有 Jev 恶意请求判断任务正在运行");
+        StatisticsDb.Initialize();
+        if (!StatisticsDb.IsAvailable)
+            throw new InvalidOperationException(StatisticsDb.UnavailableReason ?? "统计数据库不可用");
+        if (!_queueLock.Wait(0))
+            throw new ValidationException("Jev 恶意请求判断任务正在提交，请稍后重试");
 
-        var startedAt = DateTimeOffset.Now;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await RunLockedAsync(JevThreatTrigger.Manual, startedAt, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "手动 Jev 恶意请求判断失败");
-            }
-            finally
-            {
-                _runLock.Release();
-            }
-        }, CancellationToken.None);
-
-        return new JevThreatRunStatusDto
-        {
-            TriggerType = "manual",
-            StartedAt = startedAt,
-            Status = "queued",
-            Threshold = settings.HttpThreatThreshold
-        };
-    }
-
-    public async Task<JevThreatRunStatusDto?> RunAutoAsync(CancellationToken cancellationToken)
-    {
-        if (!await _runLock.WaitAsync(0, cancellationToken)) return null;
         try
         {
-            return await RunLockedAsync(JevThreatTrigger.Auto, DateTimeOffset.Now, cancellationToken);
+            using var connection = StatisticsDb.OpenWriteConnection();
+            var active = ExecuteScalarInt(connection,
+                "SELECT COUNT(1) FROM jev_threat_batch WHERE status IN ('queued', 'running');");
+            if (active > 0)
+                throw new ValidationException("已有 Jev 恶意请求判断任务排队或正在运行");
+
+            return InsertQueuedBatch(connection, JevThreatTrigger.Manual, settings, DateTimeOffset.Now);
         }
         finally
         {
-            _runLock.Release();
+            _queueLock.Release();
         }
+    }
+
+    public JevThreatRunStatusDto? QueueAutomatic()
+    {
+        var settings = RiskModelProviderStore.Current;
+        if (settings is not { HttpThreatEnabled: true, IsUsable: true }) return null;
+        StatisticsDb.Initialize();
+        if (!StatisticsDb.IsAvailable) return null;
+        if (!_queueLock.Wait(0)) return null;
+
+        try
+        {
+            using var connection = StatisticsDb.OpenWriteConnection();
+            var latest = Query(connection,
+                    """
+                    SELECT id, trigger_type, started_at, finished_at, threshold, total_candidates,
+                           evaluated_ips, blocked_ips, failed_ips, blacklist_name, status, error
+                    FROM jev_threat_batch
+                    WHERE trigger_type = 'auto'
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                    """,
+                    MapStatus)
+                .FirstOrDefault();
+            var interval = TimeSpan.FromHours(Math.Clamp(settings.HttpThreatIntervalHours, 1, 168));
+            if (latest != null && latest.StartedAt > DateTimeOffset.Now - interval) return null;
+
+            return InsertQueuedBatch(connection, JevThreatTrigger.Auto, settings, DateTimeOffset.Now);
+        }
+        finally
+        {
+            _queueLock.Release();
+        }
+    }
+
+    public JevThreatRunStatusDto? ClaimNextQueuedBatch()
+    {
+        StatisticsDb.Initialize();
+        if (!StatisticsDb.IsAvailable) return null;
+
+        using var connection = StatisticsDb.OpenWriteConnection();
+        using var transaction = connection.BeginTransaction();
+        var queued = Query(connection,
+                """
+                SELECT id, trigger_type, started_at, finished_at, threshold, total_candidates,
+                       evaluated_ips, blocked_ips, failed_ips, blacklist_name, status, error
+                FROM jev_threat_batch
+                WHERE status = 'queued'
+                ORDER BY started_at, id
+                LIMIT 1
+                """,
+                MapStatus,
+                transaction)
+            .FirstOrDefault();
+        if (queued == null)
+        {
+            transaction.Commit();
+            return null;
+        }
+
+        var claimed = Execute(connection,
+            "UPDATE jev_threat_batch SET status = 'running' WHERE id = @id AND status = 'queued'",
+            transaction,
+            new P("@id", queued.BatchId));
+        if (claimed == 0)
+        {
+            transaction.Rollback();
+            return null;
+        }
+
+        transaction.Commit();
+        queued.Status = "running";
+        return queued;
+    }
+
+    public async Task<JevThreatRunStatusDto> RunClaimedBatchAsync(
+        JevThreatRunStatusDto queued, CancellationToken cancellationToken)
+    {
+        var trigger = string.Equals(queued.TriggerType, "auto", StringComparison.OrdinalIgnoreCase)
+            ? JevThreatTrigger.Auto
+            : JevThreatTrigger.Manual;
+        try
+        {
+            return await RunLockedAsync(trigger, queued.StartedAt, queued.BatchId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            MarkBatchFailed(queued.BatchId, $"后台任务失败：{ex.Message}");
+            throw;
+        }
+    }
+
+    public void FailInterruptedRunningJobs()
+    {
+        StatisticsDb.Initialize();
+        if (!StatisticsDb.IsAvailable) return;
+        using var connection = StatisticsDb.OpenWriteConnection();
+        Execute(connection,
+            """
+            UPDATE jev_threat_batch
+            SET status = 'failed', finished_at = @finished, error = @error
+            WHERE status = 'running'
+            """,
+            parameters:
+            [
+                new P("@finished", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                new P("@error", "网关进程在任务完成前退出，任务已标记失败；尚未处理的排队任务会继续")
+            ]);
     }
 
     public JevThreatRunStatusDto? GetLatestStatus(string? triggerType = null)
@@ -170,6 +258,7 @@ public sealed class JevThreatDetectionService(
     private async Task<JevThreatRunStatusDto> RunLockedAsync(
         JevThreatTrigger trigger,
         DateTimeOffset startedAt,
+        string batchId,
         CancellationToken cancellationToken)
     {
         var settings = RiskModelProviderStore.Current;
@@ -180,23 +269,7 @@ public sealed class JevThreatDetectionService(
         if (!StatisticsDb.IsAvailable)
             throw new InvalidOperationException(StatisticsDb.UnavailableReason ?? "统计数据库不可用");
 
-        var batchId = Guid.NewGuid().ToString("N");
-        var triggerType = trigger == JevThreatTrigger.Manual ? "manual" : "auto";
-        var startedUnix = startedAt.ToUnixTimeSeconds();
         using var connection = StatisticsDb.OpenWriteConnection();
-        Execute(connection,
-            """
-            INSERT INTO jev_threat_batch
-                (id, trigger_type, started_at, threshold, status)
-            VALUES (@id, @trigger, @started, @threshold, 'running')
-            """,
-            parameters:
-            [
-                new P("@id", batchId),
-                new P("@trigger", triggerType),
-                new P("@started", startedUnix),
-                new P("@threshold", settings.HttpThreatThreshold)
-            ]);
 
         try
         {
@@ -298,14 +371,88 @@ public sealed class JevThreatDetectionService(
             throw;
         }
 
-        return GetLatestStatus(triggerType) ?? new JevThreatRunStatusDto
+        return GetStatus(batchId) ?? new JevThreatRunStatusDto
+        {
+            BatchId = batchId,
+            TriggerType = trigger == JevThreatTrigger.Manual ? "manual" : "auto",
+            StartedAt = startedAt,
+            Threshold = settings.HttpThreatThreshold,
+            Status = "completed"
+        };
+    }
+
+    private static JevThreatRunStatusDto InsertQueuedBatch(
+        SqliteConnection connection,
+        JevThreatTrigger trigger,
+        RiskModelProviderSettings settings,
+        DateTimeOffset startedAt)
+    {
+        var batchId = Guid.NewGuid().ToString("N");
+        var triggerType = trigger == JevThreatTrigger.Manual ? "manual" : "auto";
+        Execute(connection,
+            """
+            INSERT INTO jev_threat_batch
+                (id, trigger_type, started_at, threshold, status)
+            VALUES (@id, @trigger, @started, @threshold, 'queued')
+            """,
+            parameters:
+            [
+                new P("@id", batchId),
+                new P("@trigger", triggerType),
+                new P("@started", startedAt.ToUnixTimeSeconds()),
+                new P("@threshold", settings.HttpThreatThreshold)
+            ]);
+
+        return new JevThreatRunStatusDto
         {
             BatchId = batchId,
             TriggerType = triggerType,
             StartedAt = startedAt,
             Threshold = settings.HttpThreatThreshold,
-            Status = "completed"
+            Status = "queued"
         };
+    }
+
+    private static JevThreatRunStatusDto? GetStatus(string batchId)
+    {
+        StatisticsDb.Initialize();
+        if (!StatisticsDb.IsAvailable) return null;
+        using var connection = StatisticsDb.OpenReadConnection();
+        return Query(connection,
+                """
+                SELECT id, trigger_type, started_at, finished_at, threshold, total_candidates,
+                       evaluated_ips, blocked_ips, failed_ips, blacklist_name, status, error
+                FROM jev_threat_batch
+                WHERE id = @id
+                LIMIT 1
+                """,
+                MapStatus,
+                parameters: [new P("@id", batchId)])
+            .FirstOrDefault();
+    }
+
+    private void MarkBatchFailed(string batchId, string error)
+    {
+        try
+        {
+            using var connection = StatisticsDb.OpenWriteConnection();
+            Execute(connection,
+                """
+                UPDATE jev_threat_batch
+                SET status = 'failed', finished_at = @finished, error = @error
+                WHERE id = @id AND status <> 'completed'
+                """,
+                parameters:
+                [
+                    new P("@finished", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                    new P("@error", error),
+                    new P("@id", batchId)
+                ]);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "更新 Jev 后台任务失败状态时出错，批次 {BatchId}", batchId);
+        }
     }
 
     private List<ThreatCandidate> LoadCandidates(SqliteConnection connection, int lookbackHours)

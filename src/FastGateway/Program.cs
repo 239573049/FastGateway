@@ -74,6 +74,7 @@ public static class Program
         builder.Services.AddHostedService(sp => sp.GetRequiredService<RiskModelScorerService>());
         builder.Services.AddSingleton<JevThreatDetectionService>();
         builder.Services.AddHostedService<JevThreatBackgroundService>();
+        builder.Services.AddHostedService<JevThreatWorkerService>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
