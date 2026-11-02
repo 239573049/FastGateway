@@ -15,6 +15,10 @@ public static class SystemService
             .WithTags("系统")
             .WithDescription("系统信息管理")
             .AddEndpointFilter<ResultFilter>()
+            // 安全加固（本地补丁）：本组的 version / info / resources 原先均可匿名访问，
+            // 会泄露内部主机名、进程 ID、启动时间、.NET 与 YARP 版本、实时连接数等信息。
+            // 与其余 15 个管理接口保持一致，改为必须携带有效 JWT 才能访问。
+            .RequireAuthorization()
             .WithDisplayName("系统");
 
         system.MapGet("version", GetVersion)

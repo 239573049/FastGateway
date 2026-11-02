@@ -5,6 +5,7 @@ using System.Text.Json;
 using FastGateway.Infrastructure;
 using FastGateway.Risk;
 using FastGateway.Risk.Model;
+using FastGateway.Services;
 using Xunit;
 
 namespace FastGateway.Tests;
@@ -330,6 +331,30 @@ public sealed class RiskModelTests
     public void ClassifyClient_UserAgent_MapsToFixedEnum(string userAgent, string expected)
     {
         Assert.Equal(expected, LoginRequestInspector.ClassifyClient(userAgent));
+    }
+
+    [Fact]
+    public void Merge_HttpThreatSettings_UsesConfiguredThresholdAndSchedule()
+    {
+        var input = Input(apiKey: null);
+        input.HttpThreatEnabled = true;
+
+        var merged = RiskModelProviderStore.Merge(Saved(), input);
+
+        Assert.True(merged.HttpThreatEnabled);
+        Assert.Equal(0.8, merged.HttpThreatThreshold);
+        Assert.Equal(4, merged.HttpThreatIntervalHours);
+        Assert.Equal(24, merged.HttpThreatLookbackHours);
+        Assert.Equal(20, merged.HttpThreatMaxIpsPerRun);
+    }
+
+    [Theory]
+    [InlineData("2026-11-01T12:34:56+08:00", JevThreatTrigger.Manual, "jev-20261101-123456-人工")]
+    [InlineData("2026-11-01T12:34:56+08:00", JevThreatTrigger.Auto, "jev-20261101-123456-自动")]
+    public void BuildBlacklistName_UsesBatchTimestampAndTrigger(string timestamp, JevThreatTrigger trigger,
+        string expected)
+    {
+        Assert.Equal(expected, JevThreatDetectionService.BuildBlacklistName(DateTimeOffset.Parse(timestamp), trigger));
     }
 
     private static RiskModelProviderSettings Saved()

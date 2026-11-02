@@ -156,8 +156,28 @@ export interface RiskModelProvider {
     maxRequestsPerSecond: number;
     maxConcurrency: number;
     dailyTokenBudget: number;
+    httpThreatEnabled: boolean;
+    httpThreatThreshold: number;
+    httpThreatIntervalHours: number;
+    httpThreatLookbackHours: number;
+    httpThreatMaxIpsPerRun: number;
     apiKeyConfigured: boolean;
     apiKeyHint?: string | null;
+}
+
+export interface JevThreatRunStatus {
+    batchId: string;
+    triggerType: "auto" | "manual" | string;
+    startedAt: string;
+    finishedAt?: string | null;
+    threshold: number;
+    totalCandidates: number;
+    evaluatedIps: number;
+    blockedIps: number;
+    failedIps: number;
+    blacklistName?: string | null;
+    status: "queued" | "running" | "completed" | "failed" | string;
+    error?: string | null;
 }
 
 /** apiKey 为空表示保留已保存的 Key */

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using TunnelClient;
 using TunnelClient.Model;
 using AppContext = System.AppContext;
@@ -26,6 +27,12 @@ catch (ArgumentException e)
 }
 
 var localPort = tunnel.ResolveLocalPort();
+
+// 网关到客户端的请求链路固定使用 h2c。明文端点无法用 ALPN 协商，
+// 必须显式只监听 HTTP/2，否则 Kestrel 会退回 HTTP/1.1 并导致 502。
+builder.WebHost.ConfigureKestrel(options =>
+    options.ListenLocalhost(localPort, listenOptions =>
+        listenOptions.Protocols = HttpProtocols.Http2));
 
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 {
@@ -64,4 +71,4 @@ if (enabledProxyCount == 0)
     Console.WriteLine("  提示　　：当前没有启用的代理规则，节点上线后可在面板查看状态，稍后可补充规则");
 Console.WriteLine("===========================================");
 
-await app.RunAsync("http://localhost:" + localPort);
+await app.RunAsync();

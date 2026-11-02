@@ -72,6 +72,9 @@ public static class Program
         builder.Services.AddSingleton<JevClient>();
         builder.Services.AddSingleton<RiskModelScorerService>();
         builder.Services.AddHostedService(sp => sp.GetRequiredService<RiskModelScorerService>());
+        builder.Services.AddSingleton<JevThreatDetectionService>();
+        builder.Services.AddHostedService<JevThreatBackgroundService>();
+        builder.Services.AddHostedService<JevThreatWorkerService>();
 
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -136,17 +139,7 @@ public static class Program
                 _ = Gateway.StreamProxyManager.StartAsync(item);
         }
 
-        app.Use(async (context, next) =>
-        {
-            await next();
-
-            if (context.Response.StatusCode == 404)
-            {
-                context.Request.Path = "/index.html";
-                await next();
-            }
-        });
-
+        app.UseDefaultFiles();
         app.UseResponseCompression();
         
         app.UsePerformanceMonitoring();
@@ -181,6 +174,8 @@ public static class Program
             .MapCluster()
             .MapStatistics()
             .MapRisk();
+
+        app.MapFallbackToFile("index.html");
 
         await app.RunAsync();
     }

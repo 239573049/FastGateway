@@ -7,6 +7,7 @@ import type {
   RiskModelProviderInput,
   RiskModelStatus,
   RiskModelTestResult,
+  JevThreatRunStatus,
   RiskSettings,
   RiskTag,
 } from "@/types";
@@ -65,4 +66,12 @@ export const getRiskModelStatus = (): Promise<RiskResponse<RiskModelStatus>> => 
 
 export const getRiskModelEvaluations = (): Promise<RiskResponse<RiskModelEvaluation[]>> => {
   return get(`${baseUrl}/model-evaluations`);
+};
+
+export const startJevThreatScan = (): Promise<RiskResponse<JevThreatRunStatus>> => {
+  return postJson(`${baseUrl}/http-threat-scan`, {});
+};
+
+export const getJevThreatStatus = (): Promise<RiskResponse<JevThreatRunStatus | null>> => {
+  return get(`${baseUrl}/http-threat-status`);
 };

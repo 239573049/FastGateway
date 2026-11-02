@@ -40,6 +40,12 @@ public static class StatisticsService
             .WithDescription("请求明细")
             .WithDisplayName("请求明细");
 
+        statistics.MapGet("visitors",
+                (string? range, string? host, int? page, int? pageSize) =>
+                StatisticsQueryService.GetVisitors(range, host, page ?? 1, pageSize ?? 20))
+            .WithDescription("按访客 IP 聚合的最新访问明细")
+            .WithDisplayName("访客详情");
+
         return app;
     }
 }

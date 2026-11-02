@@ -30,7 +30,7 @@
 
     <ItemGroup>
         <PackageReference Include="IP2Region.Net" Version="3.0.2" />
-        <PackageReference Include="MessagePack" Version="3.1.8" />
+        <PackageReference Include="MessagePack" Version="3.1.12" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
         <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
         <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />

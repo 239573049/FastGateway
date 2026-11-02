@@ -21,6 +21,7 @@ export const PAGE_LOADERS = {
   "/security/rate-limit": () => import("@/pages/protect-config/rate-limit"),
   "/security/threats": () => import("@/pages/security/threats"),
   "/security/risk": () => import("@/pages/security/risk"),
+  "/security/visitors": () => import("@/pages/security/visitors"),
   "/security/logs": () => import("@/pages/security/logs"),
   "/cert": () => import("@/pages/cert/page"),
   "/filestorage": () => import("@/pages/filestorage/page"),

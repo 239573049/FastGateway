@@ -76,3 +76,24 @@ public sealed class RequestLogItemDto
     public string RefererUrl { get; set; } = string.Empty;
     public int Blocked { get; set; }
 }
+
+public sealed class VisitorSummaryDto
+{
+    public string Ip { get; set; } = string.Empty;
+    public long LastVisitAt { get; set; }
+    public string Country { get; set; } = string.Empty;
+    public string Province { get; set; } = string.Empty;
+    public int Status { get; set; }
+    public string RefererHost { get; set; } = string.Empty;
+    public string RefererUrl { get; set; } = string.Empty;
+    public string Host { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public bool Blacklisted { get; set; }
+    public List<string> BlacklistNames { get; set; } = [];
+    public bool Blocked { get; set; }
+    public int BlockReason { get; set; }
+    public bool AbnormalIp { get; set; }
+    public bool RiskTriggered { get; set; }
+    public bool RateLimited { get; set; }
+    public long RequestCount { get; set; }
+}

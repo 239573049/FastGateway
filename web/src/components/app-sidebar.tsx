@@ -17,6 +17,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  Users,
   Waypoints,
 } from "lucide-react"
 
@@ -69,6 +70,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "安全中心",
     items: [
       { key: "security-overview", title: "安全总览", to: "/security/overview", icon: Activity },
+      { key: "security-visitors", title: "访客详情", to: "/security/visitors", icon: Users },
       { key: "security-access", title: "访问控制", to: "/security/access", icon: Lock },
       { key: "security-rate-limit", title: "限流策略", to: "/security/rate-limit", icon: Gauge },
       { key: "security-threats", title: "威胁检测", to: "/security/threats", icon: Radar },

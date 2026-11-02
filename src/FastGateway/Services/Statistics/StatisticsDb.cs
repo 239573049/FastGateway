@@ -10,7 +10,7 @@ namespace FastGateway.Services.Statistics;
 /// </summary>
 public static class StatisticsDb
 {
-    private const int SchemaVersion = 2;
+    private const int SchemaVersion = 3;
     private const int RetryIntervalMs = 5_000;
 
     private static readonly string DbPath = Path.Combine(AppContext.BaseDirectory, "data", "stats.db");
@@ -232,6 +232,49 @@ public static class StatisticsDb
                 key   TEXT PRIMARY KEY,
                 value TEXT
             ) WITHOUT ROWID;
+
+            CREATE TABLE IF NOT EXISTS jev_threat_state (
+                ip             TEXT PRIMARY KEY,
+                last_request_id INTEGER NOT NULL DEFAULT 0,
+                last_evaluated_at INTEGER,
+                last_risk      REAL,
+                last_batch_id  TEXT,
+                last_blocked   INTEGER NOT NULL DEFAULT 0
+            ) WITHOUT ROWID;
+
+            CREATE TABLE IF NOT EXISTS jev_threat_batch (
+                id             TEXT PRIMARY KEY,
+                trigger_type   TEXT NOT NULL,
+                started_at     INTEGER NOT NULL,
+                finished_at    INTEGER,
+                threshold      REAL NOT NULL,
+                total_candidates INTEGER NOT NULL DEFAULT 0,
+                evaluated_ips  INTEGER NOT NULL DEFAULT 0,
+                blocked_ips    INTEGER NOT NULL DEFAULT 0,
+                failed_ips     INTEGER NOT NULL DEFAULT 0,
+                blacklist_name TEXT,
+                status         TEXT NOT NULL,
+                error          TEXT
+            ) WITHOUT ROWID;
+
+            CREATE TABLE IF NOT EXISTS jev_threat_evaluation (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                batch_id       TEXT NOT NULL,
+                ip             TEXT NOT NULL,
+                evaluated_at   INTEGER NOT NULL,
+                first_request_id INTEGER NOT NULL,
+                last_request_id INTEGER NOT NULL,
+                request_count  INTEGER NOT NULL,
+                malicious_probability REAL,
+                automated_probability REAL,
+                blocked        INTEGER NOT NULL DEFAULT 0,
+                model          TEXT NOT NULL,
+                latency_ms     INTEGER NOT NULL,
+                input_tokens   INTEGER,
+                error          TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_jev_threat_eval_batch ON jev_threat_evaluation (batch_id);
+            CREATE INDEX IF NOT EXISTS idx_jev_threat_eval_ip ON jev_threat_evaluation (ip, evaluated_at);
             """);
 
         var version = ExecuteScalarLong(connection, "PRAGMA user_version;");

@@ -25,6 +25,7 @@ const PAGE_TITLES: Record<string, string> = {
     "security/rate-limit": "限流策略",
     "security/threats": "威胁检测",
     "security/risk": "登录风控",
+    "security/visitors": "访客详情",
     "security/logs": "拦截日志",
     filestorage: "文件管理",
     setting: "系统设置",

@@ -14,7 +14,8 @@ public enum BlockReason : byte
     Region = 4,
     BotChallenge = 5,
     RiskChallenge = 6,
-    RiskBlock = 7
+    RiskBlock = 7,
+    AdaptiveThreat = 8
 }
 
 /// <summary>

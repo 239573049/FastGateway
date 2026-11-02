@@ -386,7 +386,10 @@ public static class Gateway
                             adapterOptions.ServerCertificateSelector = ServerCertificateSelector;
                         };
 
-                        if (is80) listenOptions.UseHttps(configure);
+                        // 本地补丁：非 80 的 HTTPS 服务同样要启用 TLS。
+                        // 原实现只在 Listen == 80 时调 UseHttps，导致 listen=12301 且
+                        // IsHttps=true 的服务实际以明文监听 12301，https://host:12301 无法建立 TLS。
+                        listenOptions.UseHttps(configure);
 
                         listenOptions.Protocols = HttpProtocols.Http1AndHttp2AndHttp3;
                     });
@@ -406,10 +409,21 @@ public static class Gateway
                 options.MultipartHeadersLengthLimit = int.MaxValue;
             });
 
+            var corsOrigins = builder.Configuration
+                .GetSection("Cors:AllowedOrigins")
+                .GetChildren()
+                .Select(x => x.Value)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!)
+                .ToArray();
+            if (corsOrigins.Length == 0)
+                corsOrigins = new[] { "https://gateway.towuhu.com:12301" };
+
             builder.Services.AddWebSockets(options =>
             {
                 options.KeepAliveTimeout = TimeSpan.FromSeconds(120);
-                options.AllowedOrigins.Add("*");
+                foreach (var origin in corsOrigins)
+                    options.AllowedOrigins.Add(origin);
             });
 
             builder.WebHost.ConfigureKestrel((kestrel =>
@@ -425,9 +439,9 @@ public static class Gateway
             builder.Services
                 .AddCors(options =>
                 {
-                    options.AddPolicy("AllowAll",
-                        builder => builder
-                            .SetIsOriginAllowed(_ => true)
+                    options.AddPolicy("GatewayOrigins",
+                        policy => policy
+                            .WithOrigins(corsOrigins)
                             .AllowAnyMethod()
                             .AllowAnyHeader()
                             .AllowCredentials());
@@ -611,7 +625,25 @@ public static class Gateway
 
             var app = builder.Build();
 
-            app.UseCors("AllowAll");
+            if (server.IsHttps)
+            {
+                app.Use(async (context, next) =>
+                {
+                    context.Response.OnStarting(() =>
+                    {
+                        var headers = context.Response.Headers;
+                        headers["X-Content-Type-Options"] = "nosniff";
+                        headers["X-Frame-Options"] = "DENY";
+                        headers["Referrer-Policy"] = "no-referrer";
+                        headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+                        headers["Strict-Transport-Security"] = "max-age=31536000";
+                        return Task.CompletedTask;
+                    });
+                    await next(context);
+                });
+            }
+
+            app.UseCors("GatewayOrigins");
 
             app.UseWebSockets();
 
@@ -693,6 +725,7 @@ public static class Gateway
                 await next(context);
             });
 
+            app.UseAdaptiveThreatProtection(server.Id);
             app.UseRateLimitMiddleware(rateLimits);
 
             // 黑名单默认启用（安全防护），白名单按服务开关控制

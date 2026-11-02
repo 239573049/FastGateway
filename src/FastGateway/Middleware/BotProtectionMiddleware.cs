@@ -396,29 +396,30 @@ public static class BotProtectionMiddlewareExtensions
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <title>正在验证访问</title>
-              <style>body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f8fafc; color: #0f172a; font: 16px system-ui, sans-serif; } main { width: min(92vw, 30rem); padding: 2rem; border: 1px solid #e2e8f0; border-radius: 1rem; background: white; box-shadow: 0 15px 45px rgba(15, 23, 42, .12); } h1 { margin-top: 0; font-size: 1.35rem; } p { color: #475569; line-height: 1.6; } #turnstile { min-height: 65px; }</style>
+              <style>body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f8fafc; color: #0f172a; font: 16px system-ui, sans-serif; } main { width: min(92vw, 30rem); padding: 2rem; border: 1px solid #e2e8f0; border-radius: 1rem; background: white; box-shadow: 0 15px 45px rgba(15, 23, 42, .12); } h1 { margin-top: 0; font-size: 1.35rem; } p { color: #475569; line-height: 1.6; } #turnstile-widget { min-height: 65px; }</style>
             </head>
             <body>
               <main>
                 <h1>请完成安全验证</h1>
                 <p>验证完成后将自动返回原页面。</p>
-                <div id="turnstile" data-site-key="__SITE_KEY__" data-state="__STATE__" data-action="__ACTION__"></div>
+                <div id="turnstile-widget" data-site-key="__SITE_KEY__" data-state="__STATE__" data-action="__ACTION__"></div>
                 <form id="verify-form" method="post" action="__VERIFY_PATH__" hidden></form>
               </main>
               <script nonce="__NONCE__">
                 (() => {
-                  const root = document.getElementById('turnstile');
+                  const root = document.getElementById('turnstile-widget');
                   const form = document.getElementById('verify-form');
                   if (!root || !form) return;
+                  const ready = () => typeof window.turnstile?.render === 'function';
                   const render = () => {
-                    if (!window.turnstile) return;
+                    if (!ready()) return;
                     window.turnstile.render(root, { sitekey: root.dataset.siteKey, action: root.dataset.action, callback: (token) => {
                       const tokenInput = document.createElement('input'); tokenInput.name = 'token'; tokenInput.type = 'hidden'; tokenInput.value = token;
                       const stateInput = document.createElement('input'); stateInput.name = 'state'; stateInput.type = 'hidden'; stateInput.value = root.dataset.state || '';
                       form.append(tokenInput, stateInput); form.submit();
                     } });
                   };
-                  if (window.turnstile) render(); else { const script = document.createElement('script'); script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; script.async = true; script.defer = true; script.onload = render; document.head.appendChild(script); }
+                  if (ready()) render(); else { const script = document.createElement('script'); script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; script.async = true; script.defer = true; script.onload = render; document.head.appendChild(script); }
                 })();
               </script>
             </body>

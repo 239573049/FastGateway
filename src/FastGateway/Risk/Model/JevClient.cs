@@ -59,6 +59,29 @@ public sealed class JevClient(IHttpClientFactory httpClientFactory)
         }
     }
 
+    public async Task<JevResult> EvaluateHttpThreatAsync(RiskModelProviderSettings settings,
+        JevHttpThreatRequest request, CancellationToken cancellationToken)
+    {
+        var content = new ByteArrayContent(JsonSerializer.SerializeToUtf8Bytes(request,
+            AppJsonContext.Default.JevHttpThreatRequest));
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+        var result = await SendAsync(settings, HttpMethod.Post, "/v1/systemone", content, cancellationToken);
+        if (result.Error != JevErrorKind.None) return result.Result;
+
+        try
+        {
+            var response = JsonSerializer.Deserialize(result.Body, AppJsonContext.Default.JevResponse);
+            return response?.Answers == null
+                ? result.Result with { Error = JevErrorKind.BadResponse, Message = "响应缺少 answers" }
+                : result.Result with { Response = response };
+        }
+        catch (JsonException)
+        {
+            return result.Result with { Error = JevErrorKind.BadResponse, Message = "响应不是有效的 JSON" };
+        }
+    }
+
     public async Task<(JevResult Result, List<JevModelInfo> Models)> ListModelsAsync(
         RiskModelProviderSettings settings, CancellationToken cancellationToken)
     {
