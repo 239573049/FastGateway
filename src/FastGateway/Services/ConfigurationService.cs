@@ -314,6 +314,142 @@ public class ConfigurationService
         }
     }
 
+    /// <summary>
+    ///     在锁内把 IP 追加到指定名称的黑名单分组，分组不存在时创建。
+    ///     替换为新实例而非原地修改 Ips，避免与持有旧列表引用的读取方并发冲突。
+    /// </summary>
+    /// <returns>IP 是否为新增（已存在时返回 false 且不落盘）</returns>
+    public bool AddIpToBlacklistGroup(string groupName, string description, string ip)
+    {
+        lock (_lockObject)
+        {
+            var index = _config.BlacklistAndWhitelists.FindIndex(x =>
+                x.IsBlacklist && string.Equals(x.Name, groupName, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                _config.BlacklistAndWhitelists.Add(new BlacklistAndWhitelist
+                {
+                    Id = NextBlacklistAndWhitelistId(),
+                    Name = groupName,
+                    Description = description,
+                    Enable = true,
+                    IsBlacklist = true,
+                    Ips = [ip]
+                });
+                SaveConfig();
+                return true;
+            }
+
+            var group = _config.BlacklistAndWhitelists[index];
+            var ips = group.Ips ?? [];
+            if (ips.Contains(ip, StringComparer.OrdinalIgnoreCase)) return false;
+
+            _config.BlacklistAndWhitelists[index] = CloneWithIps(group, [..ips, ip]);
+            SaveConfig();
+            return true;
+        }
+    }
+
+    /// <summary>
+    ///     从指定名称的黑名单分组中移除 IP；分组 IP 与地区规则都为空时删除该分组。
+    /// </summary>
+    /// <returns>移除的条目数</returns>
+    public int RemoveIpFromBlacklistGroups(IReadOnlyCollection<string> groupNames, string ip)
+    {
+        lock (_lockObject)
+        {
+            var removed = 0;
+            for (var i = _config.BlacklistAndWhitelists.Count - 1; i >= 0; i--)
+            {
+                var group = _config.BlacklistAndWhitelists[i];
+                if (!group.IsBlacklist || !groupNames.Contains(group.Name, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
+                var ips = group.Ips ?? [];
+                var remaining = ips.Where(x => !string.Equals(x, ip, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (remaining.Count == ips.Count) continue;
+
+                removed += ips.Count - remaining.Count;
+                if (remaining.Count == 0 && (group.Regions?.Count ?? 0) == 0)
+                    _config.BlacklistAndWhitelists.RemoveAt(i);
+                else
+                    _config.BlacklistAndWhitelists[i] = CloneWithIps(group, remaining);
+            }
+
+            if (removed > 0) SaveConfig();
+            return removed;
+        }
+    }
+
+    /// <summary>
+    ///     把满足条件的黑名单分组的 IP 合并进目标分组并删除原分组（用于旧版按批次建组的数据迁移）。
+    /// </summary>
+    /// <returns>被合并删除的分组数</returns>
+    public int MergeBlacklistGroups(Func<BlacklistAndWhitelist, bool> sourcePredicate, string targetName,
+        string description)
+    {
+        lock (_lockObject)
+        {
+            var sources = _config.BlacklistAndWhitelists
+                .Where(x => x.IsBlacklist &&
+                            !string.Equals(x.Name, targetName, StringComparison.OrdinalIgnoreCase) &&
+                            sourcePredicate(x))
+                .ToList();
+            if (sources.Count == 0) return 0;
+
+            var targetIndex = _config.BlacklistAndWhitelists.FindIndex(x =>
+                x.IsBlacklist && string.Equals(x.Name, targetName, StringComparison.OrdinalIgnoreCase));
+            var target = targetIndex >= 0 ? _config.BlacklistAndWhitelists[targetIndex] : null;
+            var merged = (target?.Ips ?? [])
+                .Concat(sources.SelectMany(x => x.Ips ?? []))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            _config.BlacklistAndWhitelists.RemoveAll(x => sources.Contains(x));
+            if (target != null)
+            {
+                var index = _config.BlacklistAndWhitelists.IndexOf(target);
+                _config.BlacklistAndWhitelists[index] = CloneWithIps(target, merged);
+            }
+            else if (merged.Count > 0)
+            {
+                _config.BlacklistAndWhitelists.Add(new BlacklistAndWhitelist
+                {
+                    Id = NextBlacklistAndWhitelistId(),
+                    Name = targetName,
+                    Description = description,
+                    Enable = true,
+                    IsBlacklist = true,
+                    Ips = merged
+                });
+            }
+
+            SaveConfig();
+            return sources.Count;
+        }
+    }
+
+    private long NextBlacklistAndWhitelistId()
+    {
+        return _config.BlacklistAndWhitelists.Count > 0 ? _config.BlacklistAndWhitelists.Max(b => b.Id) + 1 : 1;
+    }
+
+    private static BlacklistAndWhitelist CloneWithIps(BlacklistAndWhitelist source, List<string> ips)
+    {
+        return new BlacklistAndWhitelist
+        {
+            Id = source.Id,
+            Name = source.Name,
+            Description = source.Description,
+            Enable = source.Enable,
+            IsBlacklist = source.IsBlacklist,
+            Regions = source.Regions?.ToList(),
+            Ips = ips
+        };
+    }
+
     // RateLimit operations
     public List<RateLimit> GetRateLimits()
     {

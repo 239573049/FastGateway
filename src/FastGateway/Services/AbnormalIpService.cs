@@ -11,6 +11,9 @@ public static class AbnormalIpService
 {
     private const string AutoBlacklistName = "自动黑名单";
 
+    private static readonly string[] SystemManagedBlacklistNames =
+        [AutoBlacklistName, JevThreatDetectionService.BlacklistGroupName];
+
     public static IEndpointRouteBuilder MapAbnormalIp(this IEndpointRouteBuilder app)
     {
         var abnormalIp = app.MapGroup("/api/v1/abnormal-ip")
@@ -63,34 +66,7 @@ public static class AbnormalIpService
                 if (string.IsNullOrWhiteSpace(ip)) throw new ValidationException("IP不能为空");
                 if (!IPAddress.TryParse(ip, out _)) throw new ValidationException("IP格式不正确");
 
-                var allItems = configService.GetBlacklistAndWhitelists();
-                var autoBlacklist = allItems.FirstOrDefault(x =>
-                    x is { IsBlacklist: true } &&
-                    string.Equals(x.Name, AutoBlacklistName, StringComparison.OrdinalIgnoreCase));
-
-                if (autoBlacklist == null)
-                {
-                    autoBlacklist = new BlacklistAndWhitelist
-                    {
-                        Name = AutoBlacklistName,
-                        Description = "由异常IP监控自动加入",
-                        Enable = true,
-                        IsBlacklist = true,
-                        Ips = new List<string> { ip }
-                    };
-
-                    configService.AddBlacklistAndWhitelist(autoBlacklist);
-                }
-                else
-                {
-                    autoBlacklist.Ips ??= new List<string>();
-                    if (!autoBlacklist.Ips.Contains(ip, StringComparer.OrdinalIgnoreCase))
-                    {
-                        autoBlacklist.Ips.Add(ip);
-                        configService.UpdateBlacklistAndWhitelist(autoBlacklist);
-                    }
-                }
-
+                configService.AddIpToBlacklistGroup(AutoBlacklistName, "由异常IP监控自动加入", ip);
                 BlacklistAndWhitelistService.RefreshCache(configService);
 
                 return ResultDto.CreateSuccess("已加入黑名单");
@@ -105,29 +81,11 @@ public static class AbnormalIpService
                 if (string.IsNullOrWhiteSpace(ip)) throw new ValidationException("IP不能为空");
                 if (!IPAddress.TryParse(ip, out _)) throw new ValidationException("IP格式不正确");
 
-                var allItems = configService.GetBlacklistAndWhitelists();
-                var autoBlacklist = allItems.FirstOrDefault(x =>
-                    x is { IsBlacklist: true } &&
-                    string.Equals(x.Name, AutoBlacklistName, StringComparison.OrdinalIgnoreCase));
-
-                if (autoBlacklist == null || autoBlacklist.Ips == null || autoBlacklist.Ips.Count == 0)
-                {
-                    return ResultDto.CreateSuccess("IP不在黑名单");
-                }
-
-                var removedCount = autoBlacklist.Ips.RemoveAll(x => string.Equals(x, ip, StringComparison.OrdinalIgnoreCase));
+                // 只解封系统自动维护的分组（手动封禁 + Jev 封禁），用户自建分组需在黑白名单页面管理
+                var removedCount = configService.RemoveIpFromBlacklistGroups(SystemManagedBlacklistNames, ip);
                 if (removedCount <= 0)
                 {
                     return ResultDto.CreateSuccess("IP不在黑名单");
-                }
-
-                if (autoBlacklist.Ips.Count == 0)
-                {
-                    configService.DeleteBlacklistAndWhitelist(autoBlacklist.Id);
-                }
-                else
-                {
-                    configService.UpdateBlacklistAndWhitelist(autoBlacklist);
                 }
 
                 BlacklistAndWhitelistService.RefreshCache(configService);
