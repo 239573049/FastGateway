@@ -124,6 +124,7 @@ public static class Program
             var certs = configService.GetActiveCerts();
             CertService.InitCert(certs);
 
+            JevThreatDetectionService.MigrateLegacyBlacklistGroups(configService);
             var blacklistAndWhitelists = configService.GetBlacklistAndWhitelists();
             var rateLimits = configService.GetRateLimits();
 
