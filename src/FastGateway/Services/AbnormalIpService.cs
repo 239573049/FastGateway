@@ -11,9 +11,6 @@ public static class AbnormalIpService
 {
     private const string AutoBlacklistName = "自动黑名单";
 
-    private static readonly string[] SystemManagedBlacklistNames =
-        [AutoBlacklistName, JevThreatDetectionService.BlacklistGroupName];
-
     public static IEndpointRouteBuilder MapAbnormalIp(this IEndpointRouteBuilder app)
     {
         var abnormalIp = app.MapGroup("/api/v1/abnormal-ip")
@@ -75,14 +72,16 @@ public static class AbnormalIpService
             .WithDisplayName("将异常IP加入黑名单")
             .WithTags("异常IP");
 
-        abnormalIp.MapDelete("blacklist", (ConfigurationService configService, string ip) =>
+        abnormalIp.MapDelete("blacklist", (ConfigurationService configService, JevBanService jevBanService, string ip) =>
             {
                 ip = NormalizeIp(ip);
                 if (string.IsNullOrWhiteSpace(ip)) throw new ValidationException("IP不能为空");
                 if (!IPAddress.TryParse(ip, out _)) throw new ValidationException("IP格式不正确");
 
-                // 只解封系统自动维护的分组（手动封禁 + Jev 封禁），用户自建分组需在黑白名单页面管理
-                var removedCount = configService.RemoveIpFromBlacklistGroups(SystemManagedBlacklistNames, ip);
+                // 只解封系统自动维护的分组（手动封禁 + Jev 封禁），用户自建分组需在黑白名单页面管理；
+                // Jev 解封会同时记录豁免期，避免同一误判被下一轮重新封禁
+                var removedCount = configService.RemoveIpFromBlacklistGroups([AutoBlacklistName], ip) +
+                                   jevBanService.Unban(ip);
                 if (removedCount <= 0)
                 {
                     return ResultDto.CreateSuccess("IP不在黑名单");

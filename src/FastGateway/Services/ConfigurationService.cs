@@ -356,6 +356,17 @@ public class ConfigurationService
     /// <returns>移除的条目数</returns>
     public int RemoveIpFromBlacklistGroups(IReadOnlyCollection<string> groupNames, string ip)
     {
+        return RemoveIpsFromBlacklistGroups(groupNames, [ip]);
+    }
+
+    /// <summary>
+    ///     从指定名称的黑名单分组中批量移除 IP；分组 IP 与地区规则都为空时删除该分组。
+    /// </summary>
+    /// <returns>移除的条目数</returns>
+    public int RemoveIpsFromBlacklistGroups(IReadOnlyCollection<string> groupNames, IReadOnlyCollection<string> ips)
+    {
+        if (ips.Count == 0) return 0;
+        var targets = new HashSet<string>(ips, StringComparer.OrdinalIgnoreCase);
         lock (_lockObject)
         {
             var removed = 0;
@@ -365,11 +376,11 @@ public class ConfigurationService
                 if (!group.IsBlacklist || !groupNames.Contains(group.Name, StringComparer.OrdinalIgnoreCase))
                     continue;
 
-                var ips = group.Ips ?? [];
-                var remaining = ips.Where(x => !string.Equals(x, ip, StringComparison.OrdinalIgnoreCase)).ToList();
-                if (remaining.Count == ips.Count) continue;
+                var current = group.Ips ?? [];
+                var remaining = current.Where(x => !targets.Contains(x)).ToList();
+                if (remaining.Count == current.Count) continue;
 
-                removed += ips.Count - remaining.Count;
+                removed += current.Count - remaining.Count;
                 if (remaining.Count == 0 && (group.Regions?.Count ?? 0) == 0)
                     _config.BlacklistAndWhitelists.RemoveAt(i);
                 else

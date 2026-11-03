@@ -36,7 +36,10 @@ type NumberField =
   | "httpThreatThreshold"
   | "httpThreatIntervalHours"
   | "httpThreatLookbackHours"
-  | "httpThreatMaxIpsPerRun";
+  | "httpThreatMaxIpsPerRun"
+  | "httpThreatBanHours"
+  | "httpThreatBanMaxHours"
+  | "httpThreatExemptDays";
 
 const NUMBER_FIELDS: { key: NumberField; label: string; hint: string }[] = [
   { key: "timeoutMs", label: "超时（毫秒）", hint: "500-10000，超时按失败处理" },
@@ -46,10 +49,13 @@ const NUMBER_FIELDS: { key: NumberField; label: string; hint: string }[] = [
 ];
 
 const THREAT_NUMBER_FIELDS: { key: NumberField; label: string; hint: string; step?: string }[] = [
-  { key: "httpThreatThreshold", label: "恶意请求阈值", hint: "0.5-1，默认 0.8，概率达到后直接封禁", step: "0.05" },
+  { key: "httpThreatThreshold", label: "恶意请求阈值", hint: "0.5-1，默认 0.8，概率达到后封禁", step: "0.05" },
   { key: "httpThreatIntervalHours", label: "自动判断周期（小时）", hint: "默认 4 小时", step: "1" },
   { key: "httpThreatLookbackHours", label: "请求回看范围（小时）", hint: "只聚合尚未判断的新请求，默认 24", step: "1" },
   { key: "httpThreatMaxIpsPerRun", label: "单轮 IP 上限", hint: "默认 20，避免一次消耗过多模型额度", step: "1" },
+  { key: "httpThreatBanHours", label: "首次封禁时长（小时）", hint: "默认 24，再犯翻倍；0 为永久封禁", step: "1" },
+  { key: "httpThreatBanMaxHours", label: "封禁时长上限（小时）", hint: "默认 720（30 天）", step: "1" },
+  { key: "httpThreatExemptDays", label: "解封豁免（天）", hint: "手动解封后不再判断，默认 7；0 为不豁免", step: "1" },
 ];
 
 const toInput = (view: RiskModelProvider): RiskModelProviderInput => ({
@@ -67,6 +73,10 @@ const toInput = (view: RiskModelProvider): RiskModelProviderInput => ({
   httpThreatIntervalHours: view.httpThreatIntervalHours,
   httpThreatLookbackHours: view.httpThreatLookbackHours,
   httpThreatMaxIpsPerRun: view.httpThreatMaxIpsPerRun,
+  httpThreatShadow: view.httpThreatShadow,
+  httpThreatBanHours: view.httpThreatBanHours,
+  httpThreatBanMaxHours: view.httpThreatBanMaxHours,
+  httpThreatExemptDays: view.httpThreatExemptDays,
   apiKey: "",
   clearApiKey: false,
 });
@@ -321,6 +331,19 @@ export default function RiskModelProviderCard() {
                   id="jev-http-threat-enabled"
                   checked={value.httpThreatEnabled}
                   onCheckedChange={(httpThreatEnabled) => update({ httpThreatEnabled })}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="jev-http-threat-shadow">观察模式</Label>
+                  <div className="text-xs text-muted-foreground">
+                    只记录判断结果、不封禁，适合上线初期校准阈值；日志会记录本应封禁的 IP
+                  </div>
+                </div>
+                <Switch
+                  id="jev-http-threat-shadow"
+                  checked={value.httpThreatShadow}
+                  onCheckedChange={(httpThreatShadow) => update({ httpThreatShadow })}
                 />
               </div>
               <div className="grid gap-4 sm:grid-cols-4">
