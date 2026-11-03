@@ -486,8 +486,8 @@ public sealed partial class JevThreatDetectionService(
         var bySubject = new Dictionary<string, ThreatCandidate>(StringComparer.OrdinalIgnoreCase);
         foreach (var row in rows)
         {
-            if (!AdaptiveThreatDetector.ShouldTrackIp(row.Ip)) continue;
-            if (ShouldIgnoreForJev(row.Path)) continue;
+            if (!HttpThreatSignals.ShouldTrackIp(row.Ip)) continue;
+            if (ShouldIgnoreForJev(row.Path) || settings.IsHostExcluded(row.Host)) continue;
             var subnet = settings.HttpThreatAggregateIpv6 ? GetIpv6Subnet(row.Ip) : null;
             var subject = subnet ?? row.Ip;
             if (!bySubject.TryGetValue(subject, out var candidate))
@@ -820,7 +820,7 @@ public sealed partial class JevThreatDetectionService(
             _targets[target] = _targets.GetValueOrDefault(target) + 1;
             _timestamps.Add(row.Ts);
 
-            var signature = AdaptiveThreatDetector.AnalyzePath(row.Path, row.Method);
+            var signature = HttpThreatSignals.AnalyzePath(row.Path, row.Method);
             if (signature.Weight <= 0) return;
             SuspiciousHits++;
             if (_suspiciousExamples.Count < 8) _suspiciousExamples.Add(Truncate(row.Path, 180));

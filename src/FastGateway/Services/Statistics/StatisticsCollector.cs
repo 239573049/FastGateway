@@ -15,6 +15,7 @@ public enum BlockReason : byte
     BotChallenge = 5,
     RiskChallenge = 6,
     RiskBlock = 7,
+    // 已移除的自适应威胁拦截；保留取值以便历史日志仍能识别
     AdaptiveThreat = 8
 }
 
@@ -39,7 +40,7 @@ public readonly struct RequestStatEntry
 
 /// <summary>
 ///     全局静态采集通道。必须为静态：每个网关 Server 是独立 DI 容器的 WebApplication，
-///     与 QpsService/AbnormalIpMonitor 同模式；唯一消费者为 StatisticsBackgroundService。
+///     与 QpsService 同模式；唯一消费者为 StatisticsBackgroundService。
 /// </summary>
 public static class StatisticsCollector
 {

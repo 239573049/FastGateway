@@ -86,7 +86,6 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(FileContentDto))]
 [JsonSerializable(typeof(FilePropertyDto))]
 // ===== 分页 =====
-[JsonSerializable(typeof(PagingDto<AbnormalIpSnapshot>))]
 [JsonSerializable(typeof(PagingDto<BlacklistAndWhitelist>))]
 [JsonSerializable(typeof(PagingDto<Cert>))]
 [JsonSerializable(typeof(PagingDto<RateLimit>))]
@@ -94,8 +93,6 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(PagingDto<RequestLogItemDto>))]
 [JsonSerializable(typeof(PagingDto<VisitorSummaryDto>))]
 // ===== 异常 IP =====
-[JsonSerializable(typeof(AbnormalIpSnapshot))]
-[JsonSerializable(typeof(List<AbnormalIpSnapshot>))]
 [JsonSerializable(typeof(AddAbnormalIpToBlacklistInput))]
 // ===== 统计 =====
 [JsonSerializable(typeof(StatisticsOverviewDto))]

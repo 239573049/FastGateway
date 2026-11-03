@@ -82,12 +82,30 @@ public sealed partial class RiskModelProviderSettings
     /// <summary>IPv6 来源按 /64 聚合评估与封禁，防止在同一网段内轮换地址绕过。</summary>
     public bool HttpThreatAggregateIpv6 { get; set; } = true;
 
+    /// <summary>
+    ///     不受 Jev 影响的域名：这些域名的请求不交给 Jev 判断，被 Jev 封禁的 IP 访问它们时也放行。
+    ///     支持精确域名和 "*.example.com" 通配（通配同时匹配 example.com 本身）。
+    /// </summary>
+    public List<string> HttpThreatExcludedHosts { get; set; } = [];
+
+    private HostMatcher? _excludedHostMatcher;
+
+    /// <summary>请求 Host（可带端口）是否在 <see cref="HttpThreatExcludedHosts" /> 中。</summary>
+    public bool IsHostExcluded(string? host)
+    {
+        if (HttpThreatExcludedHosts.Count == 0 || string.IsNullOrWhiteSpace(host)) return false;
+        var matcher = _excludedHostMatcher ??= new HostMatcher(HttpThreatExcludedHosts);
+        return matcher.IsMatch(host);
+    }
+
     [JsonIgnore]
     public bool IsUsable => Enabled && !string.IsNullOrEmpty(ApiKey);
 
     public RiskModelProviderSettings Clone()
     {
-        return (RiskModelProviderSettings)MemberwiseClone();
+        var clone = (RiskModelProviderSettings)MemberwiseClone();
+        clone.HttpThreatExcludedHosts = [..HttpThreatExcludedHosts];
+        return clone;
     }
 
     /// <summary>
@@ -123,7 +141,28 @@ public sealed partial class RiskModelProviderSettings
         if (HttpThreatBanHours > 0 && HttpThreatBanMaxHours < HttpThreatBanHours)
             throw new ValidationException("封禁时长上限不能小于首次封禁时长");
         if (HttpThreatExemptDays is < 0 or > 365) throw new ValidationException("解封豁免天数需在 0-365 之间");
+        HttpThreatExcludedHosts = NormalizeHosts(HttpThreatExcludedHosts);
+        _excludedHostMatcher = null;
         if (Enabled && ApiKey.Length == 0) throw new ValidationException("启用前请先填写 API Key");
+    }
+
+    private static List<string> NormalizeHosts(IEnumerable<string>? hosts)
+    {
+        var result = new List<string>();
+        foreach (var raw in hosts ?? [])
+        {
+            var host = raw?.Trim().TrimEnd('.').ToLowerInvariant() ?? string.Empty;
+            if (host.Length == 0) continue;
+            if (host.Contains("://", StringComparison.Ordinal) && Uri.TryCreate(host, UriKind.Absolute, out var uri))
+                host = uri.Host;
+            var bare = host.StartsWith("*.", StringComparison.Ordinal) ? host[2..] : host;
+            if (bare.Length == 0 || bare.Length > 253 || !HostPattern().IsMatch(bare))
+                throw new ValidationException($"域名格式不正确：{raw}");
+            if (!result.Contains(host)) result.Add(host);
+        }
+
+        if (result.Count > 500) throw new ValidationException("排除域名最多 500 个");
+        return result;
     }
 
     public static string NormalizeEndpoint(string? endpoint)
@@ -152,6 +191,47 @@ public sealed partial class RiskModelProviderSettings
 
     [GeneratedRegex("^[A-Za-z0-9._-]{1,64}$")]
     private static partial Regex ModelPattern();
+
+    [GeneratedRegex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$")]
+    private static partial Regex HostPattern();
+
+    private sealed class HostMatcher
+    {
+        private readonly HashSet<string> _exact = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<string> _suffixes = [];
+
+        public HostMatcher(IEnumerable<string> hosts)
+        {
+            foreach (var host in hosts)
+            {
+                if (host.StartsWith("*.", StringComparison.Ordinal))
+                {
+                    _exact.Add(host[2..]);
+                    _suffixes.Add(host[1..]);
+                }
+                else
+                {
+                    _exact.Add(host);
+                }
+            }
+        }
+
+        public bool IsMatch(string host)
+        {
+            host = StripPort(host).TrimEnd('.');
+            if (_exact.Contains(host)) return true;
+            foreach (var suffix in _suffixes)
+                if (host.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        private static string StripPort(string host)
+        {
+            if (host.StartsWith('[')) return host;
+            var colon = host.LastIndexOf(':');
+            return colon > 0 && host.IndexOf(':') == colon ? host[..colon] : host;
+        }
+    }
 }
 
 /// <summary>
@@ -214,7 +294,8 @@ public static class RiskModelProviderStore
             HttpThreatBanMaxHours = input.HttpThreatBanMaxHours,
             HttpThreatExemptDays = input.HttpThreatExemptDays,
             HttpThreatVerifyCrawlers = input.HttpThreatVerifyCrawlers,
-            HttpThreatAggregateIpv6 = input.HttpThreatAggregateIpv6
+            HttpThreatAggregateIpv6 = input.HttpThreatAggregateIpv6,
+            HttpThreatExcludedHosts = input.HttpThreatExcludedHosts ?? []
         };
         merged.Normalize();
         return merged;
@@ -258,6 +339,7 @@ public static class RiskModelProviderStore
             HttpThreatExemptDays = settings.HttpThreatExemptDays,
             HttpThreatVerifyCrawlers = settings.HttpThreatVerifyCrawlers,
             HttpThreatAggregateIpv6 = settings.HttpThreatAggregateIpv6,
+            HttpThreatExcludedHosts = [..settings.HttpThreatExcludedHosts],
             ApiKeyConfigured = settings.ApiKey.Length > 0,
             ApiKeyHint = settings.ApiKey.Length >= 8 ? "****" + settings.ApiKey[^4..] : settings.ApiKey.Length > 0 ? "****" : null
         };
@@ -318,6 +400,7 @@ public sealed class RiskModelProviderView
     public int HttpThreatExemptDays { get; set; }
     public bool HttpThreatVerifyCrawlers { get; set; }
     public bool HttpThreatAggregateIpv6 { get; set; }
+    public List<string> HttpThreatExcludedHosts { get; set; } = [];
     public bool ApiKeyConfigured { get; set; }
     public string? ApiKeyHint { get; set; }
 }
@@ -347,4 +430,5 @@ public sealed class RiskModelProviderInput
     public int HttpThreatExemptDays { get; set; } = 7;
     public bool HttpThreatVerifyCrawlers { get; set; } = true;
     public bool HttpThreatAggregateIpv6 { get; set; } = true;
+    public List<string> HttpThreatExcludedHosts { get; set; } = [];
 }

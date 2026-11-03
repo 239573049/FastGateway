@@ -20,7 +20,6 @@ public sealed class StatisticsOverviewDto
     public long BlockedBot { get; set; }
     public double BlockRate { get; set; }
     public long AttackIps { get; set; }
-    public int AbnormalIpsLive { get; set; }
     public long Error4xx { get; set; }
     public double Error4xxRate { get; set; }
     public long Error5xx { get; set; }
@@ -94,7 +93,6 @@ public sealed class VisitorSummaryDto
     public List<string> BlacklistNames { get; set; } = [];
     public bool Blocked { get; set; }
     public int BlockReason { get; set; }
-    public bool AbnormalIp { get; set; }
     public bool RiskTriggered { get; set; }
     public bool RateLimited { get; set; }
     public long RequestCount { get; set; }

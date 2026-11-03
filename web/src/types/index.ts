@@ -172,6 +172,8 @@ export interface RiskModelProvider {
     httpThreatVerifyCrawlers: boolean;
     /** IPv6 来源按 /64 聚合评估与封禁 */
     httpThreatAggregateIpv6: boolean;
+    /** 不受 Jev 影响的域名：不参与判断，被 Jev 封禁的 IP 访问时也放行；支持 *.example.com */
+    httpThreatExcludedHosts: string[];
     apiKeyConfigured: boolean;
     apiKeyHint?: string | null;
 }
@@ -355,20 +357,6 @@ export interface RateLimit {
     limit: number;
     endpointWhitelist: string[];
     ipWhitelist: string[];
-}
-
-export interface AbnormalIp {
-    ip: string;
-    windowErrorCount: number;
-    totalErrorCount: number;
-    firstSeen: string;
-    lastSeen: string;
-    lastErrorDescription?: string | null;
-    topErrorDescription?: string | null;
-    lastPath?: string | null;
-    lastMethod?: string | null;
-    lastStatusCode?: number | null;
-    lastServerId?: string | null;
 }
 
 export interface BlacklistAndWhitelistItem {

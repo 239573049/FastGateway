@@ -258,7 +258,6 @@ export default function TrafficTab() {
             label="攻击 IP"
             value={overview?.attackIps ?? 0}
             format={formatCount}
-            sub={overview?.abnormalIpsLive ? `实时异常 ${overview.abnormalIpsLive}` : undefined}
             tone="danger"
             loading={loading}
             expandable

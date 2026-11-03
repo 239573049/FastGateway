@@ -73,7 +73,6 @@ export interface VisitorSummary {
   blacklistNames: string[];
   blocked: boolean;
   blockReason: number;
-  abnormalIp: boolean;
   riskTriggered: boolean;
   rateLimited: boolean;
   requestCount: number;

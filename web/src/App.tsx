@@ -13,7 +13,6 @@ const ServerPage = lazy(PAGE_LOADERS['/server'])
 const ServerInfoPage = lazy(PAGE_LOADERS['/server/:id'])
 const SecurityOverviewPage = lazy(PAGE_LOADERS['/security/overview'])
 const AccessControlPage = lazy(PAGE_LOADERS['/security/access'])
-const ThreatDetectionPage = lazy(PAGE_LOADERS['/security/threats'])
 const RiskEventsPage = lazy(PAGE_LOADERS['/security/risk'])
 const VisitorDetailsPage = lazy(PAGE_LOADERS['/security/visitors'])
 const BlockedLogPage = lazy(PAGE_LOADERS['/security/logs'])
@@ -75,13 +74,6 @@ const router = createBrowserRouter([
               </Suspense>
           },
           {
-            path: 'security/threats',
-            element:
-              <Suspense fallback={<Loading fullscreen={false} />}>
-                <ThreatDetectionPage />
-              </Suspense>
-          },
-          {
             path: 'security/risk',
             element:
               <Suspense fallback={<Loading fullscreen={false} />}>
@@ -114,10 +106,6 @@ const router = createBrowserRouter([
           {
             path: 'protect-config/rate-limit',
             element: <Navigate to="/security/rate-limit" replace />
-          },
-          {
-            path: 'protect-config/abnormal-ip',
-            element: <Navigate to="/security/threats" replace />
           },
           {
             path: 'dashboard',

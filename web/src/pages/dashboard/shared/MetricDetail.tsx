@@ -5,7 +5,6 @@ import { AreaChart } from "@/components/ui/area-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getStatisticsRequests, type RankingType } from "@/services/StatisticsService";
-import { GetAbnormalIps } from "@/services/AbnormalIpService";
 import { useIsDark } from "../hooks/useIsDark";
 import {
   formatCount,
@@ -30,18 +29,10 @@ export type MetricId =
   | "blocked"
   | "blockRate"
   | "attackIps"
-  | "abnormalLive"
   | "blocked403"
   | "blocked429";
 
 type Rankings = Partial<Record<RankingType, RankingItem[]>>;
-
-interface AbnormalIpRow {
-  ip: string;
-  windowErrorCount: number;
-  totalErrorCount: number;
-  topErrorDescription?: string;
-}
 
 const COPY: Record<MetricId, { title: string; hint: string }> = {
   requests: { title: "请求趋势与受访页面", hint: "范围内全部 HTTP 请求，含资源与接口。" },
@@ -54,8 +45,7 @@ const COPY: Record<MetricId, { title: string; hint: string }> = {
   avgMs: { title: "平均耗时", hint: "范围内请求平均 elapsed。突发升高看 5xx 与慢路径。" },
   blocked: { title: "拦截明细", hint: "黑名单、限流等策略实际挡住的请求。" },
   blockRate: { title: "拦截率", hint: "拦截次数 / 总请求。" },
-  attackIps: { title: "攻击 / 异常 IP", hint: "统计窗口内被标记的攻击源，以及近 60 秒错误 IP。" },
-  abnormalLive: { title: "实时异常 IP", hint: "近 60 秒窗口内持续报错的源 IP。" },
+  attackIps: { title: "攻击 IP", hint: "统计窗口内被拦截过的源 IP，以及最近的拦截记录。" },
   blocked403: { title: "403 / 访问控制", hint: "策略或机器人保护返回 403 的拦截。" },
   blocked429: { title: "限流拦截", hint: "触发 Rate Limit 返回 429 的请求。" },
 };
@@ -94,16 +84,15 @@ export function MetricDetail({
     [series, range]
   );
 
-  const needBlockedLogs = id === "blocked" || id === "blockRate" || id === "blocked403" || id === "blocked429";
-  const needAbnormal = id === "attackIps" || id === "abnormalLive";
+  const needBlockedLogs =
+    id === "blocked" || id === "blockRate" || id === "blocked403" || id === "blocked429" || id === "attackIps";
 
   const [logs, setLogs] = useState<RequestLogItem[]>([]);
-  const [abnormal, setAbnormal] = useState<AbnormalIpRow[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
 
   useEffect(() => {
     let live = true;
-    if (!needBlockedLogs && !needAbnormal) return;
+    if (!needBlockedLogs) return;
 
     setLoadingExtra(true);
     const tasks: Promise<void>[] = [];
@@ -120,18 +109,6 @@ export function MetricDetail({
       );
     }
 
-    if (needAbnormal) {
-      tasks.push(
-        GetAbnormalIps(1, 6).then((res) => {
-          if (!live) return;
-          const items = Array.isArray((res as { data?: { items?: AbnormalIpRow[] } })?.data?.items)
-            ? (res as { data: { items: AbnormalIpRow[] } }).data.items
-            : [];
-          setAbnormal(items);
-        })
-      );
-    }
-
     Promise.all(tasks)
       .catch(() => undefined)
       .finally(() => {
@@ -141,7 +118,7 @@ export function MetricDetail({
     return () => {
       live = false;
     };
-  }, [id, range, host, needBlockedLogs, needAbnormal]);
+  }, [id, range, host, needBlockedLogs]);
 
   const status4xx = filterStatus(rankings.status, "4");
   const status5xx = filterStatus(rankings.status, "5");
@@ -161,7 +138,7 @@ export function MetricDetail({
           <div className="text-sm font-medium">{meta.title}</div>
           <p className="mt-0.5 text-xs text-muted-foreground">{meta.hint}</p>
         </div>
-        {(id === "attackIps" || id === "abnormalLive" || showBlockChart) && (
+        {(id === "attackIps" || showBlockChart) && (
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate("/security/overview")}>
             打开安全中心
             <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -215,15 +192,11 @@ export function MetricDetail({
               markPeak
             />
           )}
-          {(id === "attackIps" || id === "abnormalLive") && (
+          {id === "attackIps" && (
             <div className="flex h-full flex-col justify-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3">
               <div className="flex items-baseline justify-between text-sm">
                 <span className="text-muted-foreground">攻击 IP</span>
                 <span className="font-semibold tabular-nums">{formatCount(overview?.attackIps ?? 0)}</span>
-              </div>
-              <div className="flex items-baseline justify-between text-sm">
-                <span className="text-muted-foreground">实时异常</span>
-                <span className="font-semibold tabular-nums">{formatCount(overview?.abnormalIpsLive ?? 0)}</span>
               </div>
               <div className="flex items-baseline justify-between text-sm">
                 <span className="text-muted-foreground">拦截</span>
@@ -292,22 +265,22 @@ export function MetricDetail({
               )}
             </div>
           )}
-          {(id === "attackIps" || id === "abnormalLive") && (
+          {id === "attackIps" && (
             <div>
               {loadingExtra ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  加载异常 IP…
+                  加载最近拦截…
                 </div>
-              ) : abnormal.length === 0 ? (
-                <p className="text-xs text-muted-foreground">当前没有实时异常 IP</p>
+              ) : logs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">范围内没有拦截记录</p>
               ) : (
                 <ul className="space-y-1.5">
-                  {abnormal.map((row) => (
-                    <li key={row.ip} className="flex items-center justify-between gap-2 text-xs">
+                  {logs.map((row) => (
+                    <li key={row.id} className="flex items-center justify-between gap-2 text-xs">
                       <code className="font-mono">{row.ip}</code>
-                      <span className="truncate text-muted-foreground">
-                        窗口 {row.windowErrorCount} · {row.topErrorDescription || "错误"}
+                      <span className="min-w-0 truncate text-muted-foreground">
+                        {row.path} · {row.status}
                       </span>
                     </li>
                   ))}
