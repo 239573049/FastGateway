@@ -1,3 +1,5 @@
+using FastGateway.Services;
+
 namespace FastGateway.Dto;
 
 public sealed class StatisticsOverviewDto
@@ -96,4 +98,7 @@ public sealed class VisitorSummaryDto
     public bool RiskTriggered { get; set; }
     public bool RateLimited { get; set; }
     public long RequestCount { get; set; }
+
+    /// <summary>当前生效的 Jev 封禁依据；未被 Jev 封禁时为空。</summary>
+    public JevBanInfoDto? JevBan { get; set; }
 }

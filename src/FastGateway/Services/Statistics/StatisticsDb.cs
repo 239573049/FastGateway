@@ -295,6 +295,8 @@ public static class StatisticsDb
 
         AddColumnIfMissing(connection, "jev_threat_batch", "high_risk_ips", "INTEGER NOT NULL DEFAULT 0");
         AddColumnIfMissing(connection, "jev_threat_batch", "shadow", "INTEGER NOT NULL DEFAULT 0");
+        // 可疑路径样例（换行分隔），供后续批次的历史上下文与界面展示封禁依据
+        AddColumnIfMissing(connection, "jev_threat_evaluation", "evidence", "TEXT");
 
         var version = ExecuteScalarLong(connection, "PRAGMA user_version;");
         if (version < 2 && ExecuteScalarLong(connection,

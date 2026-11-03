@@ -168,6 +168,10 @@ export interface RiskModelProvider {
     httpThreatBanMaxHours: number;
     /** 手动解封后不再交给 Jev 判断的天数；0 表示不豁免 */
     httpThreatExemptDays: number;
+    /** 自称搜索引擎爬虫的来源做反向 DNS 校验 */
+    httpThreatVerifyCrawlers: boolean;
+    /** IPv6 来源按 /64 聚合评估与封禁 */
+    httpThreatAggregateIpv6: boolean;
     apiKeyConfigured: boolean;
     apiKeyHint?: string | null;
 }

@@ -77,6 +77,20 @@ export interface VisitorSummary {
   riskTriggered: boolean;
   rateLimited: boolean;
   requestCount: number;
+  /** 当前生效的 Jev 封禁依据；未被 Jev 封禁时为空 */
+  jevBan?: JevBanInfo | null;
+}
+
+export interface JevBanInfo {
+  /** 封禁主体：单个 IP，或 IPv6 聚合时的 "xxxx::/64" */
+  subject: string;
+  offenseCount: number;
+  bannedAt?: number | null;
+  /** 为空表示永久封禁 */
+  expiresAt?: number | null;
+  batchId?: string | null;
+  risk?: number | null;
+  evidence: string[];
 }
 
 export const getStatisticsVisitors = (
