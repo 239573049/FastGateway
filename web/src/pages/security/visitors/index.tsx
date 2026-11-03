@@ -410,7 +410,6 @@ const VisitorDetailsPage = memo(() => {
                     <TableHead>最近来源页面</TableHead>
                     <TableHead>是否拦截</TableHead>
                     <TableHead>拦截原因</TableHead>
-                    <TableHead>异常 IP</TableHead>
                     <TableHead>触发风控</TableHead>
                     <TableHead>触发限流</TableHead>
                     <TableHead className={`${ACTION_CELL_CLASS} z-30`}>操作</TableHead>
@@ -418,9 +417,9 @@ const VisitorDetailsPage = memo(() => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={15} className="h-28 text-center text-sm text-muted-foreground">加载中...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={14} className="h-28 text-center text-sm text-muted-foreground">加载中...</TableCell></TableRow>
                   ) : items.length === 0 ? (
-                    <TableRow><TableCell colSpan={15} className="h-28 text-center text-sm text-muted-foreground">当前范围暂无访客数据</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={14} className="h-28 text-center text-sm text-muted-foreground">当前范围暂无访客数据</TableCell></TableRow>
                   ) : items.map((item) => {
                     const expanded = expandedIps.has(item.ip);
                     const busy = banningIp === item.ip;
@@ -456,7 +455,6 @@ const VisitorDetailsPage = memo(() => {
                           <TableCell><div className="max-w-[210px] truncate text-xs text-muted-foreground" title={item.refererUrl}>{item.refererUrl || "-"}</div></TableCell>
                           <TableCell>{boolBadge(item.blocked, "被拦截", "正常")}</TableCell>
                           <TableCell><span className="whitespace-nowrap text-xs text-muted-foreground">{blockReasonLabel(item.blockReason) || "-"}</span></TableCell>
-                          <TableCell>{boolBadge(item.abnormalIp, "异常", "正常")}</TableCell>
                           <TableCell>{boolBadge(item.riskTriggered, "已触发", "未触发")}</TableCell>
                           <TableCell>{boolBadge(item.rateLimited, "已触发", "未触发")}</TableCell>
                           <TableCell className={ACTION_CELL_CLASS}>
@@ -481,7 +479,7 @@ const VisitorDetailsPage = memo(() => {
                         </TableRow>
                         {expanded && (
                           <TableRow>
-                            <TableCell colSpan={15} className="bg-muted/20 p-0">
+                            <TableCell colSpan={14} className="bg-muted/20 p-0">
                               <div className="sticky left-0 w-[100cqw] max-w-[100cqw] overflow-hidden">
                                 <VisitorHistory key={`${item.ip}:${filterKey}`} ip={item.ip} range={range} host={host} />
                               </div>
@@ -532,7 +530,6 @@ const VisitorDetailsPage = memo(() => {
                 ["最近受访页面", selected.path || "-"],
                 ["是否被拦截", selected.blocked ? "是" : "否"],
                 ["拦截原因", blockReasonLabel(selected.blockReason) || "-"],
-                ["异常 IP", selected.abnormalIp ? "是" : "否"],
                 ["触发风控", selected.riskTriggered ? "是" : "否"],
                 ["触发限流", selected.rateLimited ? "是" : "否"],
               ].map(([label, value]) => (

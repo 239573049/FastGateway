@@ -13,7 +13,6 @@ export interface StatisticsOverview {
   blockedBot: number;
   blockRate: number;
   attackIps: number;
-  abnormalIpsLive: number;
   error4xx: number;
   error4xxRate: number;
   error5xx: number;

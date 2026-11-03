@@ -5,6 +5,7 @@ using Core.Entities;
 using FastGateway.Dto;
 using FastGateway.Infrastructure;
 using FastGateway.Risk;
+using FastGateway.Risk.Model;
 using FastGateway.Services.Statistics;
 
 namespace FastGateway.Services;
@@ -15,9 +16,11 @@ public static class BlacklistAndWhitelistService
     /// <param name="RangeGroups">含 CIDR/区间规则的分组，用于反查命中网段规则的分组名</param>
     /// <param name="WhitelistV6Subnets">白名单中 IPv6 地址（及长于 /64 的网段）所在的 /64</param>
     /// <param name="WhitelistWideV6">白名单中不长于 /64 的 IPv6 网段</param>
+    /// <param name="BlacklistExceptJev">除 Jev 自动封禁分组外的黑名单，用于 Jev 排除域名放行；为 null 表示没有 Jev 封禁，等同 Blacklist</param>
     private sealed record IpPolicySnapshot(
         IpPolicyMatcher Whitelist,
         IpPolicyMatcher Blacklist,
+        IpPolicyMatcher? BlacklistExceptJev,
         IpPolicyMatcher RegionBlacklist,
         IReadOnlyDictionary<string, IReadOnlyList<string>> BlacklistNames,
         IReadOnlyList<(IpPolicyMatcher Matcher, string Name)> RangeGroups,
@@ -28,7 +31,8 @@ public static class BlacklistAndWhitelistService
 
     private static IpPolicySnapshot EmptySnapshot()
     {
-        return new IpPolicySnapshot(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty,
+        return new IpPolicySnapshot(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, null,
+            IpPolicyMatcher.Empty,
             new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase), [],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase), IpPolicyMatcher.Empty);
     }
@@ -54,7 +58,13 @@ public static class BlacklistAndWhitelistService
         var blacklistGroups = items.Where(x => x.IsBlacklist).ToList();
         var blacklist = blacklistGroups
             .SelectMany(x => x.Ips ?? [])
-            .Where(x => !string.IsNullOrWhiteSpace(x));
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+        var blacklistExceptJev = blacklistGroups
+            .Where(x => !string.Equals(x.Name, JevBanService.BlacklistGroupName, StringComparison.Ordinal))
+            .SelectMany(x => x.Ips ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
 
         // 地区规则在此一次性预编译为 IPv4 区间（扫描 ip2region.xdb 段索引），请求路径零 GeoIP 查询
         var regionRules = items
@@ -86,7 +96,9 @@ public static class BlacklistAndWhitelistService
         var (whitelistV6Subnets, whitelistWideV6) = BuildWhitelistV6Index(whitelist);
 
         Volatile.Write(ref _snapshot,
-            new IpPolicySnapshot(IpPolicyMatcher.Build(whitelist), IpPolicyMatcher.Build(blacklist), regionMatcher,
+            new IpPolicySnapshot(IpPolicyMatcher.Build(whitelist), IpPolicyMatcher.Build(blacklist),
+                blacklistExceptJev.Count == blacklist.Count ? null : IpPolicyMatcher.Build(blacklistExceptJev),
+                regionMatcher,
                 blacklistNames, rangeGroups, whitelistV6Subnets, whitelistWideV6));
     }
 
@@ -215,7 +227,7 @@ public static class BlacklistAndWhitelistService
 
             if (enableBlacklist)
             {
-                if (snapshot.Blacklist.Contains(ip))
+                if (snapshot.Blacklist.Contains(ip) && !IsJevOnlyBanOnExcludedHost(snapshot, ip, context))
                 {
                     context.Items[StatisticsCollector.BlockReasonKey] = (byte)BlockReason.Blacklist;
                     context.Response.StatusCode = 403;
@@ -234,6 +246,14 @@ public static class BlacklistAndWhitelistService
         });
 
         return app;
+    }
+
+    /// <summary>仅因 Jev 自动封禁命中、且访问的是 Jev 排除域名时放行。</summary>
+    private static bool IsJevOnlyBanOnExcludedHost(IpPolicySnapshot snapshot, string ip, HttpContext context)
+    {
+        if (!RiskModelProviderStore.Current.IsHostExcluded(context.Request.Host.Host)) return false;
+        var other = snapshot.BlacklistExceptJev ?? snapshot.Blacklist;
+        return !other.Contains(ip);
     }
 
     public static IEndpointRouteBuilder MapBlacklistAndWhitelist(this IEndpointRouteBuilder app)

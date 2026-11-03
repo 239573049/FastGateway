@@ -725,7 +725,6 @@ public static class Gateway
                 await next(context);
             });
 
-            app.UseAdaptiveThreatProtection(server.Id);
             app.UseRateLimitMiddleware(rateLimits);
 
             // 黑名单默认启用（安全防护），白名单按服务开关控制
@@ -735,8 +734,6 @@ public static class Gateway
 
             app.UseClusterRequestFailover(server.Id, gatewayVersion);
             app.UseProxyErrorResponse(gatewayVersion);
-
-            app.UseAbnormalIpMonitoring(server.Id);
 
             GatewayWebApplications.TryAdd(server.Id, app);
 

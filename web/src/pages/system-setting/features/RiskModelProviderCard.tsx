@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { message } from "@/utils/toast";
 import {
   RiskModelMode,
@@ -58,6 +59,9 @@ const THREAT_NUMBER_FIELDS: { key: NumberField; label: string; hint: string; ste
   { key: "httpThreatExemptDays", label: "解封豁免（天）", hint: "手动解封后不再判断，默认 7；0 为不豁免", step: "1" },
 ];
 
+const parseHosts = (text: string) =>
+  Array.from(new Set(text.split(/[\s,，]+/).map((x) => x.trim().toLowerCase()).filter(Boolean)));
+
 const toInput = (view: RiskModelProvider): RiskModelProviderInput => ({
   enabled: view.enabled,
   provider: view.provider,
@@ -79,6 +83,7 @@ const toInput = (view: RiskModelProvider): RiskModelProviderInput => ({
   httpThreatExemptDays: view.httpThreatExemptDays,
   httpThreatVerifyCrawlers: view.httpThreatVerifyCrawlers,
   httpThreatAggregateIpv6: view.httpThreatAggregateIpv6,
+  httpThreatExcludedHosts: view.httpThreatExcludedHosts ?? [],
   apiKey: "",
   clearApiKey: false,
 });
@@ -91,6 +96,8 @@ export default function RiskModelProviderCard() {
   const [status, setStatus] = useState<RiskModelStatus | null>(null);
   const [testResult, setTestResult] = useState<RiskModelTestResult | null>(null);
   const [models, setModels] = useState<RiskModelInfo[]>([]);
+  // 文本框保留用户输入原样（含换行），保存时才解析成列表
+  const [excludedHostsText, setExcludedHostsText] = useState("");
 
   const loadStatus = useCallback(() => {
     getRiskModelStatus()
@@ -108,6 +115,7 @@ export default function RiskModelProviderCard() {
         if (cancelled || !res?.data) return;
         setSaved(res.data);
         setValue(toInput(res.data));
+        setExcludedHostsText((res.data.httpThreatExcludedHosts ?? []).join("\n"));
       })
       .catch(() => {
         if (!cancelled) message.error("读取 AI 风控模型配置失败");
@@ -140,6 +148,7 @@ export default function RiskModelProviderCard() {
       }
       setSaved(res.data);
       setValue(toInput(res.data));
+      setExcludedHostsText((res.data.httpThreatExcludedHosts ?? []).join("\n"));
       message.success("AI 风控模型配置已保存");
       loadStatus();
     } catch {
@@ -388,6 +397,23 @@ export default function RiskModelProviderCard() {
                     <p className="text-xs text-muted-foreground">{field.hint}</p>
                   </div>
                 ))}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="jev-http-threat-excluded-hosts">不拦截的域名</Label>
+                <Textarea
+                  id="jev-http-threat-excluded-hosts"
+                  rows={4}
+                  className="font-mono text-xs"
+                  value={excludedHostsText}
+                  onChange={(e) => {
+                    setExcludedHostsText(e.target.value);
+                    update({ httpThreatExcludedHosts: parseHosts(e.target.value) });
+                  }}
+                  placeholder={"api.example.com\n*.example.com"}
+                />
+                <p className="text-xs text-muted-foreground">
+                  每行一个，支持 *.example.com 通配（同时匹配 example.com）。这些域名的请求不交给 Jev 判断，被 Jev 封禁的 IP 访问它们时也会放行；手动黑名单仍然生效。
+                </p>
               </div>
             </div>
 

@@ -1,5 +1,4 @@
 using FastGateway.Dto;
-using FastGateway.Security;
 using static FastGateway.Services.Statistics.SqlRunner;
 
 namespace FastGateway.Services.Statistics;
@@ -144,7 +143,6 @@ public static class StatisticsQueryService
                 parameters: [new P("@StartTs", info.StartTs), new P("@hostFilter", hostFilter)]);
         }
 
-        result.AbnormalIpsLive = AbnormalIpMonitor.GetAbnormalIps().Count;
         return result;
     }
 
@@ -523,17 +521,11 @@ public static class StatisticsQueryService
             },
             parameters: paramArray);
 
-        var abnormalIps = global::FastGateway.Services.AbnormalIpMonitor.GetAbnormalIps()
-            .Select(x => x.Ip)
-            .Concat(AdaptiveThreatStore.GetActiveSnapshots().Select(x => x.Ip))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var jevBans = JevBanService.GetActiveBans(connection, items.Select(x => x.Ip));
         foreach (var item in items)
         {
-            item.AbnormalIp = abnormalIps.Contains(item.Ip);
             item.JevBan = jevBans.GetValueOrDefault(item.Ip);
             item.BlacklistNames = BlacklistAndWhitelistService.GetBlacklistNames(item.Ip).ToList();
-            if (AdaptiveThreatStore.IsBlocked(item.Ip)) item.BlacklistNames.Add("自适应临时隔离");
             item.BlacklistNames = item.BlacklistNames.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             item.Blacklisted = item.BlacklistNames.Count > 0;
 

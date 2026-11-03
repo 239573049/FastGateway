@@ -9,7 +9,6 @@ import {
   Activity,
   Lock,
   Gauge,
-  Radar,
   ShieldAlert,
   ScrollText,
   ShieldCheck,
@@ -140,13 +139,6 @@ export function CommandPalette({ open, onOpenChange, onLogout }: CommandPaletteP
           >
             <Gauge className="mr-2 h-4 w-4" />
             <span>限流策略 (Rate Limiting)</span>
-          </CommandItem>
-
-          <CommandItem
-            onSelect={() => runCommand(() => navigate("/security/threats"))}
-          >
-            <Radar className="mr-2 h-4 w-4" />
-            <span>威胁检测 (异常 IP 追踪)</span>
           </CommandItem>
 
           <CommandItem
