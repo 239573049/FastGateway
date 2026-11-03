@@ -643,7 +643,11 @@ public static class Gateway
                 });
             }
 
-            app.UseCors("GatewayOrigins");
+            // GatewayOrigins 只面向网关自身；代理转发的路由必须跳过，否则不在白名单内的来源
+            // 发预检时，网关会直接短路返回不带 CORS 头的 204，上游自己的 CORS 策略永远收不到 OPTIONS。
+            app.UseWhen(
+                ctx => ctx.GetEndpoint()?.Metadata.GetMetadata<RouteModel>() is null,
+                branch => branch.UseCors("GatewayOrigins"));
 
             app.UseWebSockets();
 
