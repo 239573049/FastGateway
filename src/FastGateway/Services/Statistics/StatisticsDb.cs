@@ -275,7 +275,26 @@ public static class StatisticsDb
             );
             CREATE INDEX IF NOT EXISTS idx_jev_threat_eval_batch ON jev_threat_evaluation (batch_id);
             CREATE INDEX IF NOT EXISTS idx_jev_threat_eval_ip ON jev_threat_evaluation (ip, evaluated_at);
+
+            -- Jev 封禁生命周期：active=1 表示 IP 当前在「Jev 自动封禁」分组；expires_at 为空表示永久
+            CREATE TABLE IF NOT EXISTS jev_ban (
+                ip             TEXT PRIMARY KEY,
+                offense_count  INTEGER NOT NULL DEFAULT 0,
+                active         INTEGER NOT NULL DEFAULT 0,
+                banned_at      INTEGER,
+                expires_at     INTEGER,
+                last_batch_id  TEXT,
+                last_risk      REAL,
+                released_at    INTEGER,
+                release_reason TEXT,
+                exempt_until   INTEGER
+            ) WITHOUT ROWID;
+            CREATE INDEX IF NOT EXISTS idx_jev_ban_active ON jev_ban (active, expires_at);
+            CREATE INDEX IF NOT EXISTS idx_jev_ban_exempt ON jev_ban (exempt_until) WHERE exempt_until IS NOT NULL;
             """);
+
+        AddColumnIfMissing(connection, "jev_threat_batch", "high_risk_ips", "INTEGER NOT NULL DEFAULT 0");
+        AddColumnIfMissing(connection, "jev_threat_batch", "shadow", "INTEGER NOT NULL DEFAULT 0");
 
         var version = ExecuteScalarLong(connection, "PRAGMA user_version;");
         if (version < 2 && ExecuteScalarLong(connection,
@@ -285,6 +304,16 @@ public static class StatisticsDb
         }
 
         if (version < SchemaVersion) Execute(connection, $"PRAGMA user_version={SchemaVersion};");
+    }
+
+    /// <summary>按列存在性迁移（与 user_version 无关，可重复执行）；表名列名均为内部常量。</summary>
+    private static void AddColumnIfMissing(SqliteConnection connection, string table, string column, string definition)
+    {
+        if (ExecuteScalarLong(connection,
+                $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = @name;",
+                parameters: [new P("@name", column)]) > 0)
+            return;
+        Execute(connection, $"ALTER TABLE {table} ADD COLUMN {column} {definition};");
     }
 }
 

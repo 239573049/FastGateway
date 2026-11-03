@@ -64,6 +64,18 @@ public sealed partial class RiskModelProviderSettings
     /// <summary>单轮最多评估的 IP 数，避免一次消耗过多模型额度。</summary>
     public int HttpThreatMaxIpsPerRun { get; set; } = 20;
 
+    /// <summary>观察模式：只记录判断结果，不封禁。</summary>
+    public bool HttpThreatShadow { get; set; }
+
+    /// <summary>首次封禁时长（小时），再犯翻倍；0 表示永久封禁。</summary>
+    public int HttpThreatBanHours { get; set; } = 24;
+
+    /// <summary>递增封禁时长上限（小时）。</summary>
+    public int HttpThreatBanMaxHours { get; set; } = 720;
+
+    /// <summary>手动解封 Jev 封禁的 IP 后，在该天数内不再交给 Jev 判断；0 表示不豁免。</summary>
+    public int HttpThreatExemptDays { get; set; } = 7;
+
     [JsonIgnore]
     public bool IsUsable => Enabled && !string.IsNullOrEmpty(ApiKey);
 
@@ -100,6 +112,11 @@ public sealed partial class RiskModelProviderSettings
         if (HttpThreatIntervalHours is < 1 or > 168) throw new ValidationException("自动判断周期需在 1-168 小时之间");
         if (HttpThreatLookbackHours is < 1 or > 168) throw new ValidationException("请求回看范围需在 1-168 小时之间");
         if (HttpThreatMaxIpsPerRun is < 1 or > 200) throw new ValidationException("单轮 IP 上限需在 1-200 之间");
+        if (HttpThreatBanHours is < 0 or > 8760) throw new ValidationException("封禁时长需在 0-8760 小时之间（0 为永久）");
+        if (HttpThreatBanMaxHours is < 1 or > 8760) throw new ValidationException("封禁时长上限需在 1-8760 小时之间");
+        if (HttpThreatBanHours > 0 && HttpThreatBanMaxHours < HttpThreatBanHours)
+            throw new ValidationException("封禁时长上限不能小于首次封禁时长");
+        if (HttpThreatExemptDays is < 0 or > 365) throw new ValidationException("解封豁免天数需在 0-365 之间");
         if (Enabled && ApiKey.Length == 0) throw new ValidationException("启用前请先填写 API Key");
     }
 
@@ -185,7 +202,11 @@ public static class RiskModelProviderStore
             HttpThreatThreshold = input.HttpThreatThreshold,
             HttpThreatIntervalHours = input.HttpThreatIntervalHours,
             HttpThreatLookbackHours = input.HttpThreatLookbackHours,
-            HttpThreatMaxIpsPerRun = input.HttpThreatMaxIpsPerRun
+            HttpThreatMaxIpsPerRun = input.HttpThreatMaxIpsPerRun,
+            HttpThreatShadow = input.HttpThreatShadow,
+            HttpThreatBanHours = input.HttpThreatBanHours,
+            HttpThreatBanMaxHours = input.HttpThreatBanMaxHours,
+            HttpThreatExemptDays = input.HttpThreatExemptDays
         };
         merged.Normalize();
         return merged;
@@ -223,6 +244,10 @@ public static class RiskModelProviderStore
             HttpThreatIntervalHours = settings.HttpThreatIntervalHours,
             HttpThreatLookbackHours = settings.HttpThreatLookbackHours,
             HttpThreatMaxIpsPerRun = settings.HttpThreatMaxIpsPerRun,
+            HttpThreatShadow = settings.HttpThreatShadow,
+            HttpThreatBanHours = settings.HttpThreatBanHours,
+            HttpThreatBanMaxHours = settings.HttpThreatBanMaxHours,
+            HttpThreatExemptDays = settings.HttpThreatExemptDays,
             ApiKeyConfigured = settings.ApiKey.Length > 0,
             ApiKeyHint = settings.ApiKey.Length >= 8 ? "****" + settings.ApiKey[^4..] : settings.ApiKey.Length > 0 ? "****" : null
         };
@@ -277,6 +302,10 @@ public sealed class RiskModelProviderView
     public int HttpThreatIntervalHours { get; set; }
     public int HttpThreatLookbackHours { get; set; }
     public int HttpThreatMaxIpsPerRun { get; set; }
+    public bool HttpThreatShadow { get; set; }
+    public int HttpThreatBanHours { get; set; }
+    public int HttpThreatBanMaxHours { get; set; }
+    public int HttpThreatExemptDays { get; set; }
     public bool ApiKeyConfigured { get; set; }
     public string? ApiKeyHint { get; set; }
 }
@@ -300,4 +329,8 @@ public sealed class RiskModelProviderInput
     public int HttpThreatIntervalHours { get; set; } = 4;
     public int HttpThreatLookbackHours { get; set; } = 24;
     public int HttpThreatMaxIpsPerRun { get; set; } = 20;
+    public bool HttpThreatShadow { get; set; }
+    public int HttpThreatBanHours { get; set; } = 24;
+    public int HttpThreatBanMaxHours { get; set; } = 720;
+    public int HttpThreatExemptDays { get; set; } = 7;
 }

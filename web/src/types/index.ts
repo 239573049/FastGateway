@@ -161,6 +161,13 @@ export interface RiskModelProvider {
     httpThreatIntervalHours: number;
     httpThreatLookbackHours: number;
     httpThreatMaxIpsPerRun: number;
+    /** 观察模式：只记录判断结果，不封禁 */
+    httpThreatShadow: boolean;
+    /** 首次封禁时长（小时），再犯翻倍；0 表示永久 */
+    httpThreatBanHours: number;
+    httpThreatBanMaxHours: number;
+    /** 手动解封后不再交给 Jev 判断的天数；0 表示不豁免 */
+    httpThreatExemptDays: number;
     apiKeyConfigured: boolean;
     apiKeyHint?: string | null;
 }
@@ -175,6 +182,9 @@ export interface JevThreatRunStatus {
     evaluatedIps: number;
     blockedIps: number;
     failedIps: number;
+    /** 风险达到阈值的 IP 数（观察模式下即本应封禁的数量） */
+    highRiskIps: number;
+    shadow: boolean;
     blacklistName?: string | null;
     status: "queued" | "running" | "completed" | "failed" | string;
     error?: string | null;

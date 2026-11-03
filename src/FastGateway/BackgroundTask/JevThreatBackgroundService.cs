@@ -4,6 +4,7 @@ namespace FastGateway.BackgroundTask;
 
 public sealed class JevThreatBackgroundService(
     JevThreatDetectionService detectionService,
+    JevBanService banService,
     ILogger<JevThreatBackgroundService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -19,6 +20,16 @@ public sealed class JevThreatBackgroundService(
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // 到期解封与模型是否启用无关：关闭 Jev 后已有封禁也要按时释放
+            try
+            {
+                banService.Sweep();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Jev 封禁到期对账失败");
+            }
+
             try
             {
                 var queued = detectionService.QueueAutomatic();

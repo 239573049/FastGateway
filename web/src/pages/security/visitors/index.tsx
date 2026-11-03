@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { message } from "@/utils/toast";
 import { AddAbnormalIpToBlacklist } from "@/services/AbnormalIpService";
 import { getJevThreatStatus, startJevThreatScan } from "@/services/RiskService";
+import type { JevThreatRunStatus } from "@/types";
 import {
   getStatisticsRequests,
   getStatisticsVisitors,
@@ -211,6 +212,7 @@ const VisitorDetailsPage = memo(() => {
   const [items, setItems] = useState<VisitorSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [jevScanning, setJevScanning] = useState(false);
+  const [jevLastRun, setJevLastRun] = useState<JevThreatRunStatus | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [expandedIps, setExpandedIps] = useState<Set<string>>(() => new Set());
   const [banningIp, setBanningIp] = useState<string | null>(null);
@@ -227,7 +229,9 @@ const VisitorDetailsPage = memo(() => {
       try {
         const response = await getJevThreatStatus();
         const status = response?.data;
-        if (live) setJevScanning(status?.status === "queued" || status?.status === "running");
+        if (!live) return;
+        setJevScanning(status?.status === "queued" || status?.status === "running");
+        setJevLastRun(status ?? null);
       } catch {
         // 后台任务状态不影响访客数据加载
       }
@@ -334,6 +338,13 @@ const VisitorDetailsPage = memo(() => {
             <BrainCircuit className="h-3.5 w-3.5" />
             {jevScanning ? "判断中..." : "Jev 判断"}
           </Button>
+          {jevLastRun?.status === "completed" ? (
+            <span className="text-xs text-muted-foreground" title={`批次 ${jevLastRun.batchId}`}>
+              {jevLastRun.shadow
+                ? `上次（观察模式）：评估 ${jevLastRun.evaluatedIps}，${jevLastRun.highRiskIps} 个达到阈值未封禁`
+                : `上次：评估 ${jevLastRun.evaluatedIps}，封禁 ${jevLastRun.blockedIps}`}
+            </span>
+          ) : null}
         </div>
       </Reveal>
 

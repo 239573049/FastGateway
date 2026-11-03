@@ -25,6 +25,12 @@ public sealed class JevThreatRunStatusDto
     public int EvaluatedIps { get; set; }
     public int BlockedIps { get; set; }
     public int FailedIps { get; set; }
+
+    /// <summary>风险达到阈值的 IP 数（观察模式下即「本应封禁」的数量）。</summary>
+    public int HighRiskIps { get; set; }
+
+    /// <summary>该批次是否以观察模式运行（只记录不封禁）。</summary>
+    public bool Shadow { get; set; }
     public string? BlacklistName { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? Error { get; set; }
@@ -36,13 +42,12 @@ public sealed class JevThreatRunStatusDto
 /// </summary>
 public sealed partial class JevThreatDetectionService(
     JevClient client,
-    ConfigurationService configService,
+    JevBanService banService,
     ILogger<JevThreatDetectionService> logger)
 {
-    /// <summary>Jev 封禁的 IP 统一归入该黑名单分组，便于集中查看与解封。</summary>
-    public const string BlacklistGroupName = "Jev 自动封禁";
-
-    private const string BlacklistGroupDescription = "由 Jev 恶意请求判断自动加入，可在访客/威胁页面单独解封";
+    private const string BatchColumns =
+        "id, trigger_type, started_at, finished_at, threshold, total_candidates, evaluated_ips, blocked_ips, " +
+        "failed_ips, blacklist_name, status, error, high_risk_ips, shadow";
 
     public const string QuestionMaliciousTraffic = "malicious_http_traffic";
     public const string QuestionAutomatedTooling = "automated_attack_tooling";
@@ -65,17 +70,8 @@ public sealed partial class JevThreatDetectionService(
 
     private readonly SemaphoreSlim _queueLock = new(1, 1);
 
-    /// <summary>
-    ///     旧版每个批次新建一个 "jev-yyyyMMdd-HHmmss-自动/人工" 分组；启动时合并进 <see cref="BlacklistGroupName" />。
-    /// </summary>
-    /// <returns>被合并的旧分组数</returns>
-    public static int MigrateLegacyBlacklistGroups(ConfigurationService configService)
-    {
-        return configService.MergeBlacklistGroups(
-            x => x.Name != null && LegacyBlacklistNamePattern().IsMatch(x.Name) && (x.Regions?.Count ?? 0) == 0,
-            BlacklistGroupName,
-            BlacklistGroupDescription);
-    }
+    /// <summary>旧版按批次创建的分组名 "jev-yyyyMMdd-HHmmss-自动/人工"。</summary>
+    public static bool IsLegacyBlacklistName(string name) => LegacyBlacklistNamePattern().IsMatch(name);
 
     [GeneratedRegex(@"^jev-\d{8}-\d{6}-(人工|自动)$")]
     private static partial Regex LegacyBlacklistNamePattern();
@@ -152,9 +148,8 @@ public sealed partial class JevThreatDetectionService(
         {
             using var connection = StatisticsDb.OpenWriteConnection();
             var latest = Query(connection,
-                    """
-                    SELECT id, trigger_type, started_at, finished_at, threshold, total_candidates,
-                           evaluated_ips, blocked_ips, failed_ips, blacklist_name, status, error
+                    $"""
+                     SELECT {BatchColumns}
                     FROM jev_threat_batch
                     WHERE trigger_type = 'auto'
                     ORDER BY started_at DESC
@@ -181,9 +176,8 @@ public sealed partial class JevThreatDetectionService(
         using var connection = StatisticsDb.OpenWriteConnection();
         using var transaction = connection.BeginTransaction();
         var queued = Query(connection,
-                """
-                SELECT id, trigger_type, started_at, finished_at, threshold, total_candidates,
-                       evaluated_ips, blocked_ips, failed_ips, blacklist_name, status, error
+                $"""
+                 SELECT {BatchColumns}
                 FROM jev_threat_batch
                 WHERE status = 'queued'
                 ORDER BY started_at, id
@@ -258,8 +252,7 @@ public sealed partial class JevThreatDetectionService(
         var parameters = string.IsNullOrWhiteSpace(triggerType) ? [] : new[] { new P("@trigger", triggerType) };
         return Query(connection,
                 $"""
-                 SELECT id, trigger_type, started_at, finished_at, threshold, total_candidates,
-                        evaluated_ips, blocked_ips, failed_ips, blacklist_name, status, error
+                 SELECT {BatchColumns}
                  FROM jev_threat_batch
                  {filter}
                  ORDER BY started_at DESC
@@ -287,16 +280,14 @@ public sealed partial class JevThreatDetectionService(
         using var connection = StatisticsDb.OpenWriteConnection();
 
         // 每个 IP 判定后立即拉黑、写评估记录并推进水位线：批次中途中断时，已消耗额度的结果不会丢失或被重复评估
-        var totalCandidates = 0;
-        var evaluated = 0;
-        var failed = 0;
-        var blocked = 0;
+        var progress = new BatchProgress { Shadow = settings.HttpThreatShadow };
 
         try
         {
             var candidates = LoadCandidates(connection, settings.HttpThreatLookbackHours);
-            totalCandidates = candidates.Count;
+            progress.Total = candidates.Count;
             var selected = candidates.Take(settings.HttpThreatMaxIpsPerRun).ToList();
+            WriteBatch(connection, batchId, progress);
 
             foreach (var candidate in selected)
             {
@@ -310,19 +301,29 @@ public sealed partial class JevThreatDetectionService(
 
                 if (!result.Success || (malicious == null && automated == null))
                 {
-                    failed++;
+                    progress.Failed++;
                     InsertEvaluation(connection, null, batchId, candidate, now, null, automated, false,
                         result.Message ?? "响应缺少恶意请求判断答案", result);
                     logger.LogWarning("Jev 恶意请求判断失败，IP {Ip}: {Error}", candidate.Ip,
                         result.Message ?? "响应缺少答案");
-                    UpdateBatchProgress(connection, batchId, totalCandidates, evaluated, blocked, failed);
+                    WriteBatch(connection, batchId, progress);
                     continue;
                 }
 
                 var risk = Math.Max(malicious ?? 0, (automated ?? 0) * 0.85);
-                var isBlocked = risk >= settings.HttpThreatThreshold && TryBlock(candidate.Ip, risk, batchId);
-                evaluated++;
-                if (isBlocked) blocked++;
+                var isHighRisk = risk >= settings.HttpThreatThreshold;
+                var isBlocked = false;
+                if (isHighRisk)
+                {
+                    progress.HighRisk++;
+                    if (settings.HttpThreatShadow)
+                        logger.LogInformation("Jev 观察模式：IP {Ip} 风险 {Risk:P0} 达到阈值，未封禁", candidate.Ip, risk);
+                    else
+                        isBlocked = TryBlock(connection, candidate.Ip, risk, batchId, settings);
+                }
+
+                progress.Evaluated++;
+                if (isBlocked) progress.Blocked++;
 
                 using (var transaction = connection.BeginTransaction())
                 {
@@ -332,48 +333,14 @@ public sealed partial class JevThreatDetectionService(
                     transaction.Commit();
                 }
 
-                UpdateBatchProgress(connection, batchId, totalCandidates, evaluated, blocked, failed);
+                WriteBatch(connection, batchId, progress);
             }
 
-            Execute(connection,
-                """
-                UPDATE jev_threat_batch
-                SET finished_at = @finished, total_candidates = @total, evaluated_ips = @evaluated,
-                    blocked_ips = @blocked, failed_ips = @failed, blacklist_name = @name, status = 'completed'
-                WHERE id = @id
-                """,
-                parameters:
-                [
-                    new P("@finished", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
-                    new P("@total", totalCandidates),
-                    new P("@evaluated", evaluated),
-                    new P("@blocked", blocked),
-                    new P("@failed", failed),
-                    new P("@name", blocked > 0 ? BlacklistGroupName : null),
-                    new P("@id", batchId)
-                ]);
+            WriteBatch(connection, batchId, progress, "completed");
         }
         catch (Exception ex)
         {
-            Execute(connection,
-                """
-                UPDATE jev_threat_batch
-                SET finished_at = @finished, total_candidates = @total, evaluated_ips = @evaluated,
-                    blocked_ips = @blocked, failed_ips = @failed, blacklist_name = @name,
-                    status = 'failed', error = @error
-                WHERE id = @id
-                """,
-                parameters:
-                [
-                    new P("@finished", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
-                    new P("@total", totalCandidates),
-                    new P("@evaluated", evaluated),
-                    new P("@blocked", blocked),
-                    new P("@failed", failed),
-                    new P("@name", blocked > 0 ? BlacklistGroupName : null),
-                    new P("@error", ex.Message),
-                    new P("@id", batchId)
-                ]);
+            WriteBatch(connection, batchId, progress, "failed", ex.Message);
             throw;
         }
 
@@ -425,9 +392,8 @@ public sealed partial class JevThreatDetectionService(
         if (!StatisticsDb.IsAvailable) return null;
         using var connection = StatisticsDb.OpenReadConnection();
         return Query(connection,
-                """
-                SELECT id, trigger_type, started_at, finished_at, threshold, total_candidates,
-                       evaluated_ips, blocked_ips, failed_ips, blacklist_name, status, error
+                $"""
+                 SELECT {BatchColumns}
                 FROM jev_threat_batch
                 WHERE id = @id
                 LIMIT 1
@@ -491,8 +457,11 @@ public sealed partial class JevThreatDetectionService(
             candidate.Add(row);
         }
 
+        // 手动解封后的豁免期内不再评估，避免同一误判反复封禁
+        var exempt = JevBanService.GetExemptIps(connection);
         return byIp.Values
-            .Where(x => !BlacklistAndWhitelistService.IsBlacklisted(x.Ip) &&
+            .Where(x => !exempt.Contains(x.Ip) &&
+                        !BlacklistAndWhitelistService.IsBlacklisted(x.Ip) &&
                         !BlacklistAndWhitelistService.IsWhitelisted(x.Ip))
             .OrderByDescending(x => x.HeuristicScore)
             .ThenByDescending(x => x.LastTs)
@@ -511,38 +480,50 @@ public sealed partial class JevThreatDetectionService(
     }
 
     /// <summary>
-    ///     把高风险 IP 加入 Jev 分组。白名单、已被任意黑名单（含 CIDR/地区）覆盖的 IP 不算本次封禁。
-    ///     配置写入失败直接抛出，让该 IP 的水位线保持不动，下次重新评估。
+    ///     把高风险 IP 交给 <see cref="JevBanService" /> 封禁。白名单、已被任意黑名单（含 CIDR/地区）覆盖的 IP 不算本次封禁。
+    ///     写入失败直接抛出，让该 IP 的水位线保持不动，下次重新评估。
     /// </summary>
-    private bool TryBlock(string ip, double risk, string batchId)
+    private bool TryBlock(SqliteConnection connection, string ip, double risk, string batchId,
+        RiskModelProviderSettings settings)
     {
         if (BlacklistAndWhitelistService.IsWhitelisted(ip) || BlacklistAndWhitelistService.IsBlacklisted(ip))
             return false;
-        if (!configService.AddIpToBlacklistGroup(BlacklistGroupName, BlacklistGroupDescription, ip))
-            return false;
-
-        BlacklistAndWhitelistService.RefreshCache(configService);
-        logger.LogInformation("Jev 判定 IP {Ip} 为恶意来源（风险 {Risk:P0}，批次 {BatchId}），已加入 {Group}",
-            ip, risk, batchId, BlacklistGroupName);
-        return true;
+        return banService.Ban(connection, ip, risk, batchId, settings);
     }
 
-    private static void UpdateBatchProgress(SqliteConnection connection, string batchId, int total, int evaluated,
-        int blocked, int failed)
+    /// <summary>写入批次计数；传入 status 时同时结束批次。</summary>
+    private static void WriteBatch(SqliteConnection connection, string batchId, BatchProgress progress,
+        string? status = null, string? error = null)
     {
         Execute(connection,
             """
             UPDATE jev_threat_batch
             SET total_candidates = @total, evaluated_ips = @evaluated, blocked_ips = @blocked, failed_ips = @failed,
-                blacklist_name = @name
+                high_risk_ips = @highRisk, shadow = @shadow, blacklist_name = @name,
+                status = COALESCE(@status, status),
+                finished_at = CASE WHEN @status IS NULL THEN finished_at ELSE @finished END,
+                error = COALESCE(@error, error)
             WHERE id = @id
             """,
             parameters:
             [
-                new P("@total", total), new P("@evaluated", evaluated), new P("@blocked", blocked),
-                new P("@failed", failed), new P("@name", blocked > 0 ? BlacklistGroupName : null),
-                new P("@id", batchId)
+                new P("@total", progress.Total), new P("@evaluated", progress.Evaluated),
+                new P("@blocked", progress.Blocked), new P("@failed", progress.Failed),
+                new P("@highRisk", progress.HighRisk), new P("@shadow", progress.Shadow ? 1 : 0),
+                new P("@name", progress.Blocked > 0 ? JevBanService.BlacklistGroupName : null),
+                new P("@status", status), new P("@finished", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                new P("@error", error), new P("@id", batchId)
             ]);
+    }
+
+    private sealed class BatchProgress
+    {
+        public int Total { get; set; }
+        public int Evaluated { get; set; }
+        public int Blocked { get; set; }
+        public int HighRisk { get; set; }
+        public int Failed { get; set; }
+        public bool Shadow { get; init; }
     }
 
     private static void InsertEvaluation(SqliteConnection connection, SqliteTransaction? transaction,
@@ -611,7 +592,9 @@ public sealed partial class JevThreatDetectionService(
             FailedIps = r.GetInt(8),
             BlacklistName = r.IsDBNull(9) ? null : r.GetString(9),
             Status = r.GetStringOrEmpty(10),
-            Error = r.IsDBNull(11) ? null : r.GetString(11)
+            Error = r.IsDBNull(11) ? null : r.GetString(11),
+            HighRiskIps = r.GetInt(12),
+            Shadow = r.GetInt(13) != 0
         };
     }
 
