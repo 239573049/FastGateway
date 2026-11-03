@@ -76,6 +76,12 @@ public sealed partial class RiskModelProviderSettings
     /// <summary>手动解封 Jev 封禁的 IP 后，在该天数内不再交给 Jev 判断；0 表示不豁免。</summary>
     public int HttpThreatExemptDays { get; set; } = 7;
 
+    /// <summary>自称搜索引擎爬虫的来源做反向 DNS 校验：通过的不交给 Jev，未通过的作为仿冒信号提交。</summary>
+    public bool HttpThreatVerifyCrawlers { get; set; } = true;
+
+    /// <summary>IPv6 来源按 /64 聚合评估与封禁，防止在同一网段内轮换地址绕过。</summary>
+    public bool HttpThreatAggregateIpv6 { get; set; } = true;
+
     [JsonIgnore]
     public bool IsUsable => Enabled && !string.IsNullOrEmpty(ApiKey);
 
@@ -206,7 +212,9 @@ public static class RiskModelProviderStore
             HttpThreatShadow = input.HttpThreatShadow,
             HttpThreatBanHours = input.HttpThreatBanHours,
             HttpThreatBanMaxHours = input.HttpThreatBanMaxHours,
-            HttpThreatExemptDays = input.HttpThreatExemptDays
+            HttpThreatExemptDays = input.HttpThreatExemptDays,
+            HttpThreatVerifyCrawlers = input.HttpThreatVerifyCrawlers,
+            HttpThreatAggregateIpv6 = input.HttpThreatAggregateIpv6
         };
         merged.Normalize();
         return merged;
@@ -248,6 +256,8 @@ public static class RiskModelProviderStore
             HttpThreatBanHours = settings.HttpThreatBanHours,
             HttpThreatBanMaxHours = settings.HttpThreatBanMaxHours,
             HttpThreatExemptDays = settings.HttpThreatExemptDays,
+            HttpThreatVerifyCrawlers = settings.HttpThreatVerifyCrawlers,
+            HttpThreatAggregateIpv6 = settings.HttpThreatAggregateIpv6,
             ApiKeyConfigured = settings.ApiKey.Length > 0,
             ApiKeyHint = settings.ApiKey.Length >= 8 ? "****" + settings.ApiKey[^4..] : settings.ApiKey.Length > 0 ? "****" : null
         };
@@ -306,6 +316,8 @@ public sealed class RiskModelProviderView
     public int HttpThreatBanHours { get; set; }
     public int HttpThreatBanMaxHours { get; set; }
     public int HttpThreatExemptDays { get; set; }
+    public bool HttpThreatVerifyCrawlers { get; set; }
+    public bool HttpThreatAggregateIpv6 { get; set; }
     public bool ApiKeyConfigured { get; set; }
     public string? ApiKeyHint { get; set; }
 }
@@ -333,4 +345,6 @@ public sealed class RiskModelProviderInput
     public int HttpThreatBanHours { get; set; } = 24;
     public int HttpThreatBanMaxHours { get; set; } = 720;
     public int HttpThreatExemptDays { get; set; } = 7;
+    public bool HttpThreatVerifyCrawlers { get; set; } = true;
+    public bool HttpThreatAggregateIpv6 { get; set; } = true;
 }

@@ -177,6 +177,8 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(JevHttpThreatRequest))]
 [JsonSerializable(typeof(HttpThreatFeatureState))]
 [JsonSerializable(typeof(HttpThreatRequestTarget))]
+[JsonSerializable(typeof(HttpThreatHistory))]
+[JsonSerializable(typeof(JevBanInfoDto))]
 [JsonSerializable(typeof(JevResponse))]
 [JsonSerializable(typeof(JevModelList))]
 [JsonSerializable(typeof(BotChallengeConfigDto))]

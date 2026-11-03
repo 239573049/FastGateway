@@ -527,9 +527,11 @@ public static class StatisticsQueryService
             .Select(x => x.Ip)
             .Concat(AdaptiveThreatStore.GetActiveSnapshots().Select(x => x.Ip))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var jevBans = JevBanService.GetActiveBans(connection, items.Select(x => x.Ip));
         foreach (var item in items)
         {
             item.AbnormalIp = abnormalIps.Contains(item.Ip);
+            item.JevBan = jevBans.GetValueOrDefault(item.Ip);
             item.BlacklistNames = BlacklistAndWhitelistService.GetBlacklistNames(item.Ip).ToList();
             if (AdaptiveThreatStore.IsBlocked(item.Ip)) item.BlacklistNames.Add("自适应临时隔离");
             item.BlacklistNames = item.BlacklistNames.Distinct(StringComparer.OrdinalIgnoreCase).ToList();

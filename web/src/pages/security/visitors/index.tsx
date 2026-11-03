@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Eye,
   RefreshCw,
+  Undo2,
   Users,
 } from "lucide-react";
 import { Reveal } from "@/components/motion";
@@ -25,12 +26,13 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { message } from "@/utils/toast";
-import { AddAbnormalIpToBlacklist } from "@/services/AbnormalIpService";
+import { AddAbnormalIpToBlacklist, RemoveAbnormalIpFromBlacklist } from "@/services/AbnormalIpService";
 import { getJevThreatStatus, startJevThreatScan } from "@/services/RiskService";
 import type { JevThreatRunStatus } from "@/types";
 import {
   getStatisticsRequests,
   getStatisticsVisitors,
+  type JevBanInfo,
   type VisitorSummary,
 } from "@/services/StatisticsService";
 import type { RequestLogItem, StatRange } from "@/pages/dashboard/types";
@@ -61,6 +63,19 @@ function blockReasonLabel(value: number) {
 function formatTs(ts: number) {
   if (!ts) return "-";
   return new Date(ts * 1000).toLocaleString("zh-CN", { hour12: false });
+}
+
+// 解封接口只处理系统维护的分组（手动封禁的「自动黑名单」与 Jev 分组），用户自建分组需到黑白名单页面管理
+const UNBANNABLE_GROUPS = ["自动黑名单", "Jev 自动封禁"];
+
+function canUnban(item: VisitorSummary) {
+  return Boolean(item.jevBan) || item.blacklistNames.some((name) => UNBANNABLE_GROUPS.includes(name));
+}
+
+function describeJevBan(ban: JevBanInfo) {
+  const risk = ban.risk == null ? "-" : `${Math.round(ban.risk * 100)}%`;
+  const expiry = ban.expiresAt ? `${formatTs(ban.expiresAt)} 到期` : "永久";
+  return `Jev 判定风险 ${risk}，第 ${ban.offenseCount} 次封禁，${expiry}`;
 }
 
 function readStoredPageSize() {
@@ -300,6 +315,20 @@ const VisitorDetailsPage = memo(() => {
     }
   }
 
+  async function handleUnban(ip: string) {
+    try {
+      setBanningIp(ip);
+      const res = (await RemoveAbnormalIpFromBlacklist(ip)) as { success?: boolean; message?: string } | undefined;
+      if (res?.success === false) throw new Error(res.message);
+      message.success(res?.message || `已解封 ${ip}`);
+      setRefreshKey((value) => value + 1);
+    } catch (error) {
+      message.error(error instanceof Error && error.message ? error.message : "解封失败");
+    } finally {
+      setBanningIp(null);
+    }
+  }
+
   async function handleJevScan() {
     setJevScanning(true);
     try {
@@ -412,7 +441,7 @@ const VisitorDetailsPage = memo(() => {
                                 <Badge
                                   variant="destructive"
                                   className="cursor-help text-[10px]"
-                                  title={`所在黑名单：${item.blacklistNames.join("、")}`}
+                                  title={[`所在黑名单：${item.blacklistNames.join("、")}`, item.jevBan ? describeJevBan(item.jevBan) : ""].filter(Boolean).join("\n")}
                                 >
                                   封禁
                                 </Badge>
@@ -432,10 +461,17 @@ const VisitorDetailsPage = memo(() => {
                           <TableCell>{boolBadge(item.rateLimited, "已触发", "未触发")}</TableCell>
                           <TableCell className={ACTION_CELL_CLASS}>
                             <div className="flex items-center gap-2 whitespace-nowrap">
-                              <Button size="sm" variant="destructive" className="h-8 gap-1.5" title={item.blacklisted ? `所在黑名单：${item.blacklistNames.join("、")}` : undefined} disabled={busy || item.blacklisted} onClick={() => handleBan(item.ip)}>
-                                <Ban className="h-3.5 w-3.5" />
-                                {item.blacklisted ? "已封禁" : busy ? "处理中" : "封禁"}
-                              </Button>
+                              {item.blacklisted && canUnban(item) ? (
+                                <Button size="sm" variant="outline" className="h-8 gap-1.5" title={item.jevBan ? describeJevBan(item.jevBan) : `所在黑名单：${item.blacklistNames.join("、")}`} disabled={busy} onClick={() => handleUnban(item.ip)}>
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                  {busy ? "处理中" : "解封"}
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="destructive" className="h-8 gap-1.5" title={item.blacklisted ? `所在黑名单：${item.blacklistNames.join("、")}` : undefined} disabled={busy || item.blacklisted} onClick={() => handleBan(item.ip)}>
+                                  <Ban className="h-3.5 w-3.5" />
+                                  {item.blacklisted ? "已封禁" : busy ? "处理中" : "封禁"}
+                                </Button>
+                              )}
                               <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setSelected(item)}>
                                 <Eye className="h-3.5 w-3.5" />
                                 详情
@@ -505,6 +541,36 @@ const VisitorDetailsPage = memo(() => {
                   <div className="mt-1 break-all font-mono text-xs">{value}</div>
                 </div>
               ))}
+              {selected.jevBan ? (
+                <div className="min-w-0 space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 sm:col-span-2">
+                  <div className="text-xs font-medium text-destructive">Jev 封禁依据</div>
+                  <div className="grid gap-2 text-xs sm:grid-cols-2">
+                    {[
+                      ["封禁主体", selected.jevBan.subject],
+                      ["判定风险", selected.jevBan.risk == null ? "-" : `${Math.round(selected.jevBan.risk * 100)}%`],
+                      ["违规次数", String(selected.jevBan.offenseCount)],
+                      ["封禁时间", selected.jevBan.bannedAt ? formatTs(selected.jevBan.bannedAt) : "-"],
+                      ["到期时间", selected.jevBan.expiresAt ? formatTs(selected.jevBan.expiresAt) : "永久"],
+                      ["判定批次", selected.jevBan.batchId || "-"],
+                    ].map(([label, value]) => (
+                      <div key={label} className="min-w-0">
+                        <span className="text-muted-foreground">{label}：</span>
+                        <span className="break-all font-mono">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {selected.jevBan.evidence.length > 0 ? (
+                    <div className="space-y-1">
+                      <div className="text-xs text-muted-foreground">可疑请求路径</div>
+                      <ul className="space-y-0.5">
+                        {selected.jevBan.evidence.map((path) => (
+                          <li key={path} className="break-all font-mono text-xs">{path}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           )}
         </DialogContent>

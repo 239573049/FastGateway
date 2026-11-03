@@ -1,9 +1,29 @@
+using System.Net;
+using System.Net.Sockets;
+using FastGateway.Risk;
 using FastGateway.Risk.Model;
 using FastGateway.Services.Statistics;
 using Microsoft.Data.Sqlite;
 using static FastGateway.Services.Statistics.SqlRunner;
 
 namespace FastGateway.Services;
+
+/// <summary>访客页展示的 Jev 封禁依据。</summary>
+public sealed class JevBanInfoDto
+{
+    /// <summary>封禁主体：单个 IP，或 IPv6 聚合时的 "xxxx::/64"。</summary>
+    public string Subject { get; set; } = string.Empty;
+
+    public int OffenseCount { get; set; }
+    public long? BannedAt { get; set; }
+
+    /// <summary>为空表示永久封禁。</summary>
+    public long? ExpiresAt { get; set; }
+
+    public string? BatchId { get; set; }
+    public double? Risk { get; set; }
+    public List<string> Evidence { get; set; } = [];
+}
 
 /// <summary>
 ///     「Jev 自动封禁」分组的生命周期：按次递增的封禁时长、到期自动解封、手动解封后的豁免期。
@@ -75,15 +95,18 @@ public sealed class JevBanService(ConfigurationService configService, ILogger<Je
     }
 
     /// <summary>
-    ///     手动解封：从 Jev 分组移除，并按配置进入豁免期（豁免期内 Jev 不再评估该 IP）。
+    ///     手动解封：从 Jev 分组移除该 IP（IPv6 时连同其所在的 /64 主体），并按配置进入豁免期（豁免期内 Jev 不再评估）。
     /// </summary>
     /// <returns>从分组中移除的条目数</returns>
     public int Unban(string ip)
     {
+        var subjects = SubjectsFor(ip);
         lock (_lock)
         {
-            var removed = configService.RemoveIpFromBlacklistGroups(GroupNames, ip);
-            if (removed == 0) return 0;
+            var removedSubjects = subjects
+                .Where(subject => configService.RemoveIpFromBlacklistGroups(GroupNames, subject) > 0)
+                .ToList();
+            if (removedSubjects.Count == 0) return 0;
             BlacklistAndWhitelistService.RefreshCache(configService);
 
             try
@@ -93,7 +116,8 @@ public sealed class JevBanService(ConfigurationService configService, ILogger<Je
                 {
                     using var connection = StatisticsDb.OpenWriteConnection();
                     var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                    MarkManuallyReleased(connection, null, ip, now, RiskModelProviderStore.Current);
+                    foreach (var subject in removedSubjects)
+                        MarkManuallyReleased(connection, null, subject, now, RiskModelProviderStore.Current);
                 }
             }
             catch (Exception ex)
@@ -102,8 +126,64 @@ public sealed class JevBanService(ConfigurationService configService, ILogger<Je
                 logger.LogError(ex, "记录 Jev 解封豁免失败，IP {Ip}", ip);
             }
 
-            return removed;
+            return removedSubjects.Count;
         }
+    }
+
+    /// <summary>可能覆盖该 IP 的 Jev 封禁主体：IP 本身，IPv6 时再加上所在 /64。</summary>
+    public static List<string> SubjectsFor(string ip)
+    {
+        var subjects = new List<string> { ip };
+        if (IPAddress.TryParse(ip, out var address) && address.AddressFamily == AddressFamily.InterNetworkV6 &&
+            !address.IsIPv4MappedToIPv6 && IpSubnet.GetKey(ip) is { } subnet)
+            subjects.Add(subnet);
+        return subjects;
+    }
+
+    /// <summary>
+    ///     查询一批 IP 当前生效的 Jev 封禁详情（含最近一次判定的可疑路径），供访客页展示封禁依据。
+    /// </summary>
+    public static Dictionary<string, JevBanInfoDto> GetActiveBans(SqliteConnection connection, IEnumerable<string> ips)
+    {
+        var result = new Dictionary<string, JevBanInfoDto>(StringComparer.OrdinalIgnoreCase);
+        var bySubject = ips.Distinct(StringComparer.OrdinalIgnoreCase)
+            .SelectMany(ip => SubjectsFor(ip).Select(subject => (Ip: ip, Subject: subject)))
+            .GroupBy(x => x.Subject, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.Select(y => y.Ip).ToList(), StringComparer.OrdinalIgnoreCase);
+        if (bySubject.Count == 0) return result;
+
+        var names = bySubject.Keys.Select((_, i) => $"@s{i}").ToList();
+        var parameters = bySubject.Keys.Select((subject, i) => new P($"@s{i}", subject)).ToArray();
+        var bans = Query(connection,
+            $"""
+             SELECT b.ip, b.offense_count, b.banned_at, b.expires_at, b.last_batch_id, b.last_risk,
+                    (SELECT e.evidence FROM jev_threat_evaluation e
+                     WHERE e.ip = b.ip AND e.batch_id = b.last_batch_id
+                     ORDER BY e.id DESC LIMIT 1)
+             FROM jev_ban b
+             WHERE b.active = 1 AND b.ip IN ({string.Join(", ", names)})
+             """,
+            r => new JevBanInfoDto
+            {
+                Subject = r.GetString(0),
+                OffenseCount = r.GetInt32(1),
+                BannedAt = r.IsDBNull(2) ? null : r.GetInt64(2),
+                ExpiresAt = r.IsDBNull(3) ? null : r.GetInt64(3),
+                BatchId = r.IsDBNull(4) ? null : r.GetString(4),
+                Risk = r.IsDBNull(5) ? null : r.GetDouble(5),
+                Evidence = r.IsDBNull(6)
+                    ? []
+                    : r.GetString(6).Split('\n', StringSplitOptions.RemoveEmptyEntries).ToList()
+            },
+            parameters: parameters);
+
+        foreach (var ban in bans)
+        foreach (var ip in bySubject.GetValueOrDefault(ban.Subject) ?? [])
+            // 同一 IP 同时命中自身与所在 /64 时，保留更具体的单 IP 封禁
+            if (!result.TryGetValue(ip, out var existing) || existing.Subject.Contains('/'))
+                result[ip] = ban;
+
+        return result;
     }
 
     /// <summary>当前处于豁免期的 IP。</summary>

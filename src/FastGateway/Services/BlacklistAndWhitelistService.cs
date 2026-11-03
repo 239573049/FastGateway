@@ -1,30 +1,43 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Net;
+using System.Net.Sockets;
 using Core.Entities;
 using FastGateway.Dto;
 using FastGateway.Infrastructure;
+using FastGateway.Risk;
 using FastGateway.Services.Statistics;
 
 namespace FastGateway.Services;
 
 public static class BlacklistAndWhitelistService
 {
+    /// <param name="BlacklistNames">精确 IP 规则所在的分组名</param>
+    /// <param name="RangeGroups">含 CIDR/区间规则的分组，用于反查命中网段规则的分组名</param>
+    /// <param name="WhitelistV6Subnets">白名单中 IPv6 地址（及长于 /64 的网段）所在的 /64</param>
+    /// <param name="WhitelistWideV6">白名单中不长于 /64 的 IPv6 网段</param>
     private sealed record IpPolicySnapshot(
         IpPolicyMatcher Whitelist,
         IpPolicyMatcher Blacklist,
         IpPolicyMatcher RegionBlacklist,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> BlacklistNames);
+        IReadOnlyDictionary<string, IReadOnlyList<string>> BlacklistNames,
+        IReadOnlyList<(IpPolicyMatcher Matcher, string Name)> RangeGroups,
+        IReadOnlySet<string> WhitelistV6Subnets,
+        IpPolicyMatcher WhitelistWideV6);
 
-    private static IpPolicySnapshot _snapshot =
-        new(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty,
-            new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase));
+    private static IpPolicySnapshot _snapshot = EmptySnapshot();
+
+    private static IpPolicySnapshot EmptySnapshot()
+    {
+        return new IpPolicySnapshot(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty,
+            new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase), [],
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase), IpPolicyMatcher.Empty);
+    }
 
     public static void RefreshCache(IEnumerable<BlacklistAndWhitelist> blacklistAndWhitelists)
     {
         if (blacklistAndWhitelists == null)
         {
-            Volatile.Write(ref _snapshot,
-                new IpPolicySnapshot(IpPolicyMatcher.Empty, IpPolicyMatcher.Empty, IpPolicyMatcher.Empty,
-                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)));
+            Volatile.Write(ref _snapshot, EmptySnapshot());
             return;
         }
 
@@ -33,7 +46,9 @@ public static class BlacklistAndWhitelistService
         var whitelist = items
             .Where(x => x is { Enable: true, IsBlacklist: false })
             .SelectMany(x => x.Ips ?? [])
-            .Where(x => !string.IsNullOrWhiteSpace(x));
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
+            .ToList();
 
         // 黑名单强制启用，不受 Enable 开关影响（安全防护不可关闭）
         var blacklistGroups = items.Where(x => x.IsBlacklist).ToList();
@@ -62,9 +77,54 @@ public static class BlacklistAndWhitelistService
                 x => (IReadOnlyList<string>)x.Select(y => y.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                 StringComparer.OrdinalIgnoreCase);
 
+        var rangeGroups = blacklistGroups
+            .Select(group => (Rules: (group.Ips ?? []).Where(IsRangeRule).ToList(), group.Name))
+            .Where(x => x.Rules.Count > 0)
+            .Select(x => (IpPolicyMatcher.Build(x.Rules), x.Name))
+            .ToList();
+
+        var (whitelistV6Subnets, whitelistWideV6) = BuildWhitelistV6Index(whitelist);
+
         Volatile.Write(ref _snapshot,
             new IpPolicySnapshot(IpPolicyMatcher.Build(whitelist), IpPolicyMatcher.Build(blacklist), regionMatcher,
-                blacklistNames));
+                blacklistNames, rangeGroups, whitelistV6Subnets, whitelistWideV6));
+    }
+
+    private static bool IsRangeRule(string? rule)
+    {
+        return !string.IsNullOrWhiteSpace(rule) && (rule.Contains('/') || rule.Contains('-'));
+    }
+
+    private static (HashSet<string> Subnets, IpPolicyMatcher Wide) BuildWhitelistV6Index(List<string> rules)
+    {
+        var subnets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var wide = new List<string>();
+        foreach (var rule in rules)
+        {
+            var slash = rule.IndexOf('/');
+            var baseText = slash > 0 ? rule[..slash] : rule;
+            if (!IPAddress.TryParse(baseText, out var address) ||
+                address.AddressFamily != AddressFamily.InterNetworkV6 || address.IsIPv4MappedToIPv6)
+                continue;
+
+            if (slash > 0 && int.TryParse(rule[(slash + 1)..], out var prefix) && prefix <= 64)
+                wide.Add(rule);
+            else if (IpSubnet.GetKey(baseText) is { } key)
+                subnets.Add(key);
+        }
+
+        return (subnets, wide.Count == 0 ? IpPolicyMatcher.Empty : IpPolicyMatcher.Build(wide));
+    }
+
+    /// <summary>
+    ///     IPv6 /64 主体（如 "2001:db8::/64"）是否与白名单有交集：封禁整段前必须确认不会误伤白名单地址。
+    /// </summary>
+    public static bool WhitelistOverlaps(string subnet)
+    {
+        var slash = subnet.IndexOf('/');
+        if (slash <= 0) return IsWhitelisted(subnet);
+        var snapshot = Volatile.Read(ref _snapshot);
+        return snapshot.WhitelistV6Subnets.Contains(subnet) || snapshot.WhitelistWideV6.Contains(subnet[..slash]);
     }
 
     public static void RefreshCache(ConfigurationService configService)
@@ -113,8 +173,13 @@ public static class BlacklistAndWhitelistService
     {
         if (string.IsNullOrWhiteSpace(ip)) return [];
         var snapshot = Volatile.Read(ref _snapshot);
-        if (snapshot.BlacklistNames.TryGetValue(ip, out var names) && names.Count > 0) return names;
-        return snapshot.RegionBlacklist.Contains(ip) ? ["地区封禁"] : [];
+        var result = new List<string>();
+        if (snapshot.BlacklistNames.TryGetValue(ip, out var names)) result.AddRange(names);
+        foreach (var (matcher, name) in snapshot.RangeGroups)
+            if (matcher.Contains(ip) && !result.Contains(name, StringComparer.OrdinalIgnoreCase))
+                result.Add(name);
+        if (result.Count == 0 && snapshot.RegionBlacklist.Contains(ip)) result.Add("地区封禁");
+        return result;
     }
 
     public static WebApplication UseBlacklistMiddleware(this WebApplication app,

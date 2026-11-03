@@ -77,6 +77,8 @@ const toInput = (view: RiskModelProvider): RiskModelProviderInput => ({
   httpThreatBanHours: view.httpThreatBanHours,
   httpThreatBanMaxHours: view.httpThreatBanMaxHours,
   httpThreatExemptDays: view.httpThreatExemptDays,
+  httpThreatVerifyCrawlers: view.httpThreatVerifyCrawlers,
+  httpThreatAggregateIpv6: view.httpThreatAggregateIpv6,
   apiKey: "",
   clearApiKey: false,
 });
@@ -344,6 +346,32 @@ export default function RiskModelProviderCard() {
                   id="jev-http-threat-shadow"
                   checked={value.httpThreatShadow}
                   onCheckedChange={(httpThreatShadow) => update({ httpThreatShadow })}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="jev-http-threat-verify-crawlers">校验搜索引擎爬虫</Label>
+                  <div className="text-xs text-muted-foreground">
+                    自称 Googlebot、Bingbot、Baiduspider 等的来源做反向 DNS 校验：通过的不消耗额度，未通过的按仿冒处理
+                  </div>
+                </div>
+                <Switch
+                  id="jev-http-threat-verify-crawlers"
+                  checked={value.httpThreatVerifyCrawlers}
+                  onCheckedChange={(httpThreatVerifyCrawlers) => update({ httpThreatVerifyCrawlers })}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="jev-http-threat-aggregate-ipv6">IPv6 按 /64 聚合</Label>
+                  <div className="text-xs text-muted-foreground">
+                    同一 /64 网段的地址合并评估并整段封禁，防止轮换地址绕过；与白名单有交集的网段不会封禁
+                  </div>
+                </div>
+                <Switch
+                  id="jev-http-threat-aggregate-ipv6"
+                  checked={value.httpThreatAggregateIpv6}
+                  onCheckedChange={(httpThreatAggregateIpv6) => update({ httpThreatAggregateIpv6 })}
                 />
               </div>
               <div className="grid gap-4 sm:grid-cols-4">
