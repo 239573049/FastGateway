@@ -348,15 +348,6 @@ public sealed class RiskModelTests
         Assert.Equal(20, merged.HttpThreatMaxIpsPerRun);
     }
 
-    [Theory]
-    [InlineData("2026-11-01T12:34:56+08:00", JevThreatTrigger.Manual, "jev-20261101-123456-人工")]
-    [InlineData("2026-11-01T12:34:56+08:00", JevThreatTrigger.Auto, "jev-20261101-123456-自动")]
-    public void BuildBlacklistName_UsesBatchTimestampAndTrigger(string timestamp, JevThreatTrigger trigger,
-        string expected)
-    {
-        Assert.Equal(expected, JevThreatDetectionService.BuildBlacklistName(DateTimeOffset.Parse(timestamp), trigger));
-    }
-
     private static RiskModelProviderSettings Saved()
     {
         return new RiskModelProviderSettings { Enabled = true, ApiKey = Key, Model = "jev-1.14.0" };

@@ -13,7 +13,7 @@ RUN npm run build
 
 # 生成阶段：随目标平台($TARGETPLATFORM)运行，保证 Native AOT 在目标架构上原生编译
 # （AOT 交叉编译复杂，buildx 会为每个目标架构分别执行此阶段）。
-FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0-resolute AS build
 ARG BUILD_CONFIGURATION=Release
 ARG TARGETARCH
 # Native AOT 原生链接所需工具链；curl 用于下载离线 IP 库
@@ -38,8 +38,8 @@ RUN RID=$([ "$TARGETARCH" = "arm64" ] && echo linux-arm64 || echo linux-x64) \
 
 # 依赖收集阶段：chiseled 最终镜像无 apt/shell，故在此（有 shell 的构建镜像）安装 libmsquic
 # 并把 HTTP/3 所需原生库与离线 IP 库归拢到 /deps，供最终阶段直接 COPY。
-# libmsquic 不在 Ubuntu 官方仓库，需先注册微软 apt 源（ubuntu/24.04 = noble）。
-RUN curl -sSL -O https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb \
+# libmsquic 不在 Ubuntu 官方仓库，需先注册微软 apt 源（ubuntu/26.04 = resolute）。
+RUN curl -sSL -O https://packages.microsoft.com/config/ubuntu/26.04/packages-microsoft-prod.deb \
     && dpkg -i packages-microsoft-prod.deb \
     && rm packages-microsoft-prod.deb \
     && apt-get update \
@@ -61,7 +61,7 @@ RUN (curl -sSL --retry 3 -o /deps/ip2region.xdb https://tokenfile.oss-cn-beijing
 
 # 最终阶段：chiseled-extra 含 Native AOT 运行所需原生依赖与 tzdata/ICU 等，且不含 shell。
 # 基础镜像默认 USER app（UID 1654）；改为 root，避免 bind mount 的 data/certs 无法写入。
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled-extra AS final
+FROM mcr.microsoft.com/dotnet/runtime-deps:11.0-resolute-chiseled-extra AS final
 # chiseled 无法执行 ln/apt，改用 TZ 环境变量设置时区（镜像已内置 tzdata）
 ENV TZ=Asia/Shanghai
 # 兜底：若 libe_sqlite3.so 仍留在 /app，让动态加载器能找到
