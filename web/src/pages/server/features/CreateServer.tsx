@@ -2,7 +2,7 @@
 import { toast } from "sonner";
 
 import { createServer } from "@/services/ServerService";
-import { ClientIpSource, clientIpSourceOptions, Server } from "@/types";
+import { ClientIpSource, clientIpSourceOptions, frameOptionsOptions, Server } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +46,7 @@ export default function CreateServer({
             redirectHttps: false,
             id: null,
             isHttps: false,
+            frameOptions: "SAMEORIGIN",
             onLine: false,
             clientIpSource: ClientIpSource.Default,
             copyRequestHost: true,
@@ -450,6 +451,36 @@ export default function CreateServer({
                                 <p className="text-xs text-muted-foreground">
                                     {clientIpSourceOptions.find(
                                         (option) => option.value === value.clientIpSource
+                                    )?.description}
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                                <FieldLabel
+                                    htmlFor="create-server-frame-options"
+                                    label="iframe 嵌套策略（X-Frame-Options）"
+                                    tooltip="网关默认只允许同源嵌套。DENY 会连本站自己的 iframe 一起禁掉，导致依赖同源预览的应用报错；上游已声明该头或 CSP frame-ancestors 时网关不改写。"
+                                />
+                                <Select
+                                    value={value.frameOptions ?? "SAMEORIGIN"}
+                                    onValueChange={(next) =>
+                                        setValue((prev) => ({ ...prev, frameOptions: next }))
+                                    }
+                                >
+                                    <SelectTrigger id="create-server-frame-options">
+                                        <SelectValue placeholder="选择嵌套策略" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {frameOptionsOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {frameOptionsOptions.find(
+                                        (option) => option.value === (value.frameOptions ?? "SAMEORIGIN")
                                     )?.description}
                                 </p>
                             </div>
