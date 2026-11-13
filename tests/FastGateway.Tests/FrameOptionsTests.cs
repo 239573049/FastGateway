@@ -1,3 +1,8 @@
+using System.Text.Json;
+using Core.Entities;
+using FastGateway.Cluster;
+using FastGateway.Infrastructure;
+using FastGateway.Services;
 using Xunit;
 
 namespace FastGateway.Tests;
@@ -35,5 +40,53 @@ public sealed class FrameOptionsTests
         Assert.Null(Gateway.Gateway.ResolveFrameOptions("DENY", true));
         Assert.Null(Gateway.Gateway.ResolveFrameOptions(null, true));
         Assert.Null(Gateway.Gateway.ResolveFrameOptions("SAMEORIGIN", true));
+    }
+
+    [Fact]
+    public void GatewayConfig_FrameOptions_RoundTrips()
+    {
+        var config = new GatewayConfig();
+        config.Servers.Add(new Server
+        {
+            Id = "s1", Name = "https", Listen = 443, IsHttps = true, FrameOptions = "DENY"
+        });
+
+        var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.GatewayConfig);
+        var restored = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.GatewayConfig)!;
+
+        Assert.Equal("DENY", Assert.Single(restored.Servers).FrameOptions);
+    }
+
+    [Fact]
+    public void GatewayConfig_LegacyFileWithoutField_FallsBackToSameOrigin()
+    {
+        // 2.14.0 及更早的 gateway.config 里没有 frameOptions 字段
+        const string legacy = """{"servers":[{"id":"s1","listen":443,"name":"old","isHttps":true}],"domainNames":[]}""";
+        var config = JsonSerializer.Deserialize(legacy, ConfigJsonContext.Default.GatewayConfig)!;
+        var server = Assert.Single(config.Servers);
+
+        Assert.Null(server.FrameOptions);
+        Assert.Equal("SAMEORIGIN", Gateway.Gateway.ResolveFrameOptions(server.FrameOptions, false));
+    }
+
+    [Fact]
+    public void ClusterConfig_FrameOptions_RoundTripsToWorker()
+    {
+        var config = new GatewayConfig();
+        config.Servers.Add(new Server
+        {
+            Id = "s1", Name = "https", Listen = 443, IsHttps = true, FrameOptions = "NONE"
+        });
+
+        var frame = ClusterProtocol.Encode(new ClusterMessage
+        {
+            Type = ClusterMessage.TypeConfig,
+            Config = new ClusterConfigPayload { Config = config }
+        });
+        var stream = new MemoryStream();
+        stream.Write(frame);
+        var decoded = ClusterProtocol.Decode(stream)!.Config!.Config;
+
+        Assert.Equal("NONE", Assert.Single(decoded.Servers).FrameOptions);
     }
 }
