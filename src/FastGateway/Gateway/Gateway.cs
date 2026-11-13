@@ -627,16 +627,25 @@ public static class Gateway
 
             if (server.IsHttps)
             {
+                // 反向代理只补齐上游没有声明的安全头，不改写上游自己的策略。
+                // X-Frame-Options 默认 SAMEORIGIN：DENY 会连同源 iframe 一起禁掉，把「父窗口驱动同源预览」
+                // 这类应用直接打断，浏览器还会因为拿到跨源空 frame 而不断抛 SecurityError。
                 app.Use(async (context, next) =>
                 {
                     context.Response.OnStarting(() =>
                     {
                         var headers = context.Response.Headers;
-                        headers["X-Content-Type-Options"] = "nosniff";
-                        headers["X-Frame-Options"] = "DENY";
-                        headers["Referrer-Policy"] = "no-referrer";
-                        headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
-                        headers["Strict-Transport-Security"] = "max-age=31536000";
+                        TryAddSecurityHeader(headers, "X-Content-Type-Options", "nosniff");
+                        TryAddSecurityHeader(headers, "Referrer-Policy", "no-referrer");
+                        TryAddSecurityHeader(headers, "Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+                        TryAddSecurityHeader(headers, "Strict-Transport-Security", "max-age=31536000");
+
+                        var upstreamDeclaresFramePolicy = headers.ContainsKey("X-Frame-Options") ||
+                                                          headers.TryGetValue("Content-Security-Policy", out var csp) &&
+                                                          csp.ToString().Contains("frame-ancestors",
+                                                              StringComparison.OrdinalIgnoreCase);
+                        var frameOptions = ResolveFrameOptions(server.FrameOptions, upstreamDeclaresFramePolicy);
+                        if (frameOptions is not null) headers["X-Frame-Options"] = frameOptions;
                         return Task.CompletedTask;
                     });
                     await next(context);
@@ -944,6 +953,32 @@ public static class Gateway
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         var prefix = Path.EndsInDirectorySeparator(rootFull) ? rootFull : rootFull + Path.DirectorySeparatorChar;
         return fullPath.StartsWith(prefix, comparison) || string.Equals(fullPath, rootFull, comparison);
+    }
+
+    /// <summary>
+    ///     只在上游没有声明该安全头时补齐，避免网关覆盖源站自己的策略
+    /// </summary>
+    private static void TryAddSecurityHeader(IHeaderDictionary headers, string name, string value)
+    {
+        if (!headers.ContainsKey(name)) headers[name] = value;
+    }
+
+    /// <summary>
+    ///     计算 X-Frame-Options；返回 null 表示不注入，完全交给上游。
+    ///     配置值：空 / SAMEORIGIN（默认）、DENY、NONE（不注入）。只接受标准值，
+    ///     其余输入一律回退 SAMEORIGIN，避免管理端写入任意字符串造成响应头注入。
+    /// </summary>
+    public static string? ResolveFrameOptions(string? configured, bool upstreamDeclaresFramePolicy)
+    {
+        if (upstreamDeclaresFramePolicy) return null;
+
+        var mode = string.IsNullOrWhiteSpace(configured) ? "SAMEORIGIN" : configured.Trim();
+        if (mode.Equals("NONE", StringComparison.OrdinalIgnoreCase) ||
+            mode.Equals("OFF", StringComparison.OrdinalIgnoreCase) ||
+            mode.Equals("DISABLE", StringComparison.OrdinalIgnoreCase) ||
+            mode.Equals("DISABLED", StringComparison.OrdinalIgnoreCase))
+            return null;
+        return mode.Equals("DENY", StringComparison.OrdinalIgnoreCase) ? "DENY" : "SAMEORIGIN";
     }
 
     private static bool IsEtagMatch(StringValues ifNoneMatch, string etag)

@@ -42,6 +42,11 @@ public class ServerDto
     public bool IsHttps { get; set; }
 
     /// <summary>
+    ///     X-Frame-Options 注入策略：空 / SAMEORIGIN（默认）、DENY、NONE
+    /// </summary>
+    public string? FrameOptions { get; set; }
+
+    /// <summary>
     ///     是否启用隧道
     /// </summary>
     public bool EnableTunnel { get; set; }

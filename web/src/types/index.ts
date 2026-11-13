@@ -39,6 +39,25 @@ export function getClientIpSourceShortLabel(source: ClientIpSource | null | unde
     );
 }
 
+/** 网关注入的 X-Frame-Options 策略；SAMEORIGIN 为默认，兼容依赖同源 iframe 的应用 */
+export const frameOptionsOptions = [
+    {
+        value: "SAMEORIGIN",
+        label: "同源允许（默认）",
+        description: "允许本站页面嵌入本站页面，仍禁止第三方站点嵌套。使用同源 iframe 预览的应用必须选这项。",
+    },
+    {
+        value: "DENY",
+        label: "完全禁止嵌套",
+        description: "任何页面都不能通过 iframe 嵌入，包括本站。会打断依赖同源 iframe 的应用。",
+    },
+    {
+        value: "NONE",
+        label: "不注入（由上游决定）",
+        description: "网关不添加 X-Frame-Options，完全沿用源站响应头；上游声明过嵌入策略时网关本来就不会改写。",
+    },
+] as const;
+
 export interface Server {
     id: string | null;
     listen: number;
@@ -48,6 +67,8 @@ export interface Server {
     enable: boolean;
     staticCompress: boolean;
     isHttps: boolean;
+    /** X-Frame-Options 注入策略：空 / SAMEORIGIN / DENY / NONE */
+    frameOptions: string | null;
     enableTunnel: boolean;
     enableBlacklist: boolean;
     enableWhitelist: boolean;

@@ -54,6 +54,13 @@ public sealed class Server
     public bool IsHttps { get; set; }
 
     /// <summary>
+    /// 点击劫持策略 / X-Frame-Options 注入值。
+    /// 空或 SAMEORIGIN（默认，允许同源 iframe）、DENY（完全禁止嵌套）、NONE（网关不注入，交给上游）。
+    /// 上游已声明 X-Frame-Options 或 CSP frame-ancestors 时，网关一律不改写。
+    /// </summary>
+    public string? FrameOptions { get; set; }
+
+    /// <summary>
     /// 是否启用隧道
     /// </summary>
     public bool EnableTunnel { get; set; }

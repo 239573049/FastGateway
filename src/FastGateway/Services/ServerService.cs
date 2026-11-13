@@ -33,6 +33,7 @@ public static class ServerService
                     CopyRequestHost = x.CopyRequestHost,
                     Enable = x.Enable,
                     IsHttps = x.IsHttps,
+                    FrameOptions = x.FrameOptions,
                     Listen = x.Listen,
                     OnLine = Gateway.Gateway.CheckServerOnline(x.Id),
                     RedirectHttps = x.RedirectHttps,
