@@ -87,6 +87,16 @@ All paths below are relative to the application directory; in the Docker image t
 | `gateway.pfx` | Packaged fallback certificate used when no matching certificate is available. |
 | `ip2region.xdb` | Optional offline IP geolocation database used for traffic analysis. |
 
+### Cross-origin access
+
+In **System Settings → Cross-origin origins**, enter one allowed origin per line. Changes apply immediately to new requests, persist in `data/gateway.config`, and synchronize with cluster configuration. Dashboard settings override `Cors:AllowedOrigins`; reset to use environment/appsettings configuration, or the existing `https://gateway.towuhu.com:12301` default if none is configured. An empty list denies all cross-origin requests that include an Origin.
+
+`https://office.example.com` matches its exact scheme, host and port; `https://*.example.com:8443` allows subdomains at any depth on that scheme and port. `*.example.com` allows subdomains at any depth over HTTP or HTTPS on any port. Replace the example domain with your own. Wildcards exclude the apex domain; add it separately if needed. Paths, queries and a global `*` are not supported.
+
+The policy checks the Origin of gateway WebSockets, including proxied WebSockets, and controls CORS for gateway-owned HTTP endpoints. Proxied HTTP CORS remains the upstream's responsibility. WebSocket requests without Origin pass this check; Origin is not authentication. Existing connections are not disconnected.
+
+Alternatively set `"Cors": { "AllowedOrigins": ["https://office.example.com", "*.example.com"] }` in `appsettings.json` (replace the example domain with your own), or use `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, etc. Environment values override individual indices; additional indices from appsettings may remain. Use the dashboard to replace the entire list explicitly.
+
 ## Supported Features
 
 - [x] Login authorization

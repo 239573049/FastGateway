@@ -121,6 +121,7 @@ public static class Program
             RiskSigningKey.Initialize(configService, scope.ServiceProvider.GetRequiredService<ClusterStateService>());
             RiskSettingsStore.Initialize(configService);
             RiskModelProviderStore.Initialize(configService);
+            Gateway.OriginPolicyStore.Initialize(configService, builder.Configuration);
 
             var certs = configService.GetActiveCerts();
             CertService.InitCert(certs);

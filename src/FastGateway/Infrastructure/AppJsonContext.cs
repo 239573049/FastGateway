@@ -3,6 +3,7 @@ using Core.Entities;
 using Core.Entities.Core;
 using FastGateway.Cluster;
 using FastGateway.Dto;
+using FastGateway.Gateway;
 using FastGateway.Risk.Model;
 using FastGateway.Services;
 using FastGateway.Tunnels;
@@ -38,6 +39,8 @@ namespace FastGateway.Infrastructure;
 [JsonSerializable(typeof(RateLimit))]
 [JsonSerializable(typeof(List<RateLimit>))]
 [JsonSerializable(typeof(Setting))]
+[JsonSerializable(typeof(OriginSettingsResponse))]
+[JsonSerializable(typeof(UpdateOriginSettingsRequest))]
 [JsonSerializable(typeof(List<Setting>))]
 [JsonSerializable(typeof(StreamForward))]
 [JsonSerializable(typeof(List<StreamForward>))]

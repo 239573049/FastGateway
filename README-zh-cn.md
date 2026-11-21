@@ -87,6 +87,16 @@ FastGateway 是一个可单机部署的管理控制面与代理运行时。`src/
 | `gateway.pfx` | 没有匹配证书时使用的内置回退证书。 |
 | `ip2region.xdb` | 用于流量分析的可选离线 IP 归属地数据库。 |
 
+### 跨域来源
+
+在「系统设置 → 跨域来源」逐行填写允许的来源，保存后立即影响新请求，并持久化到 `data/gateway.config`、随集群配置同步。界面配置优先于 `Cors:AllowedOrigins`；点击「恢复配置文件」后使用环境变量或 appsettings 中的值，均未配置时保留原有默认来源 `https://gateway.towuhu.com:12301`。空列表拒绝所有带 Origin 的跨域请求。
+
+例如 `https://office.example.com` 精确匹配协议、主机和端口；`https://*.example.com:8443` 匹配指定协议和端口的任意层级子域；`*.example.com` 匹配 HTTP/HTTPS、任意端口的任意层级子域，均不包含根域。请将示例域名替换为自己的域名；需要根域时请单独添加。规则不支持路径、查询或全局 `*`。
+
+该设置校验网关 WebSocket 请求（包括代理路由）的 Origin，并控制网关自身的 HTTP CORS；代理路由的 HTTP CORS 由上游处理。没有 Origin 的 WebSocket 请求仍允许通过来源检查，Origin 不是身份认证机制；已建立的连接不会被断开。
+
+也可在 `appsettings.json` 中设置 `"Cors": { "AllowedOrigins": ["https://office.example.com", "*.example.com"] }`（替换为自己的域名），或通过 `Cors__AllowedOrigins__0`、`Cors__AllowedOrigins__1` 等环境变量配置。环境变量按索引覆盖配置项，若配置文件中有更多索引，剩余项仍可能保留；使用界面配置可明确替换整个列表。
+
 ## 支持功能
 
 - [x] 登录授权

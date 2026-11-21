@@ -27,9 +27,14 @@ public class ConfigurationService
     /// </summary>
     public static event Action? ConfigurationChanged;
 
-    public ConfigurationService()
+    [ActivatorUtilitiesConstructor]
+    public ConfigurationService() : this(Path.Combine(AppContext.BaseDirectory, "data", "gateway.config"))
     {
-        _configPath = Path.Combine(AppContext.BaseDirectory, "data", "gateway.config");
+    }
+
+    public ConfigurationService(string configPath)
+    {
+        _configPath = configPath;
 
         // 判断目录是否存在，如果不存在则创建
         var directory = Path.GetDirectoryName(_configPath);
@@ -73,12 +78,7 @@ public class ConfigurationService
 
             try
             {
-                var json = JsonSerializer.Serialize(_config, ConfigJsonContext.Default.GatewayConfig);
-
-                // 原子落盘：先写临时文件再替换，避免写入途中崩溃/断电损坏配置文件
-                var tempPath = _configPath + ".tmp";
-                File.WriteAllText(tempPath, json);
-                File.Move(tempPath, _configPath, overwrite: true);
+                WriteConfig();
             }
             catch (Exception ex)
             {
@@ -89,6 +89,14 @@ public class ConfigurationService
 
         // 锁外触发，避免订阅方回调 ExportSnapshot 等带锁方法时死锁
         ConfigurationChanged?.Invoke();
+    }
+
+    private void WriteConfig()
+    {
+        var json = JsonSerializer.Serialize(_config, ConfigJsonContext.Default.GatewayConfig);
+        var tempPath = _configPath + ".tmp";
+        File.WriteAllText(tempPath, json);
+        File.Move(tempPath, _configPath, overwrite: true);
     }
 
     /// <summary>
@@ -657,6 +665,29 @@ public class ConfigurationService
 
             SaveConfig();
         }
+    }
+
+    public void SetManagedSetting(string key, Setting? setting)
+    {
+        lock (_lockObject)
+        {
+            var oldSettings = _config.Settings.ToList();
+            _config.Settings.RemoveAll(s => s.Key == key);
+            if (setting != null) _config.Settings.Add(setting);
+
+            try
+            {
+                WriteConfig();
+                Interlocked.Increment(ref _version);
+            }
+            catch
+            {
+                _config.Settings = oldSettings;
+                throw;
+            }
+        }
+
+        ConfigurationChanged?.Invoke();
     }
 
     public void DeleteSetting(string key)

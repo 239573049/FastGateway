@@ -31,7 +31,8 @@ public static class RiskSigningKey
     /// </summary>
     public static bool IsManagedSetting(string? key)
     {
-        return IsProtectedSetting(key) || string.Equals(key, RiskSettingsStore.SettingKey, StringComparison.Ordinal);
+        return IsProtectedSetting(key) || string.Equals(key, RiskSettingsStore.SettingKey, StringComparison.Ordinal) ||
+               string.Equals(key, Gateway.OriginPolicyStore.SettingKey, StringComparison.Ordinal);
     }
 
     public static void Initialize(ConfigurationService configService, ClusterStateService clusterState)

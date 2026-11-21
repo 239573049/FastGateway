@@ -2,6 +2,7 @@
 using Core.Entities;
 using FastGateway.Dto;
 using FastGateway.Infrastructure;
+using FastGateway.Gateway;
 using FastGateway.Risk;
 using FastGateway.Services.Statistics;
 
@@ -17,6 +18,21 @@ public static class SettingService
             .WithDescription("设置管理")
             .AddEndpointFilter<ResultFilter>()
             .WithDisplayName("设置");
+
+        setting.MapGet("cors-origins", () => OriginPolicyStore.Get())
+            .WithDescription("获取网关跨域来源").WithDisplayName("获取跨域来源");
+        setting.MapPut("cors-origins", (ConfigurationService configService, UpdateOriginSettingsRequest input) =>
+            {
+                OriginPolicyStore.Save(configService, input.Origins);
+                return OriginPolicyStore.Get();
+            })
+            .WithDescription("设置网关跨域来源").WithDisplayName("设置跨域来源");
+        setting.MapDelete("cors-origins", (ConfigurationService configService) =>
+            {
+                OriginPolicyStore.Reset(configService);
+                return OriginPolicyStore.Get();
+            })
+            .WithDescription("恢复配置文件中的跨域来源").WithDisplayName("恢复跨域来源");
 
         setting.MapGet(string.Empty,
                 async (SettingProvide settingProvide) => (await settingProvide.GetListAsync())

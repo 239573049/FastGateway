@@ -1,4 +1,4 @@
-import { get, postJson } from '@/utils/fetch';
+import { del, get, postJson, putJson } from '@/utils/fetch';
 
 const baseUrl = '/api/v1/setting';
 
@@ -43,3 +43,17 @@ export const getSetting = (key: string): Promise<SettingResponse<string | null>>
 export const setSetting = (key: string, value: string): Promise<SettingResponse<unknown>> => {
   return postJson(`${baseUrl}/${encodeURIComponent(key)}`, { key, value });
 };
+
+export interface OriginSettings {
+  origins: string[];
+  isOverride: boolean;
+}
+
+export const getOriginSettings = (): Promise<SettingResponse<OriginSettings>> =>
+  get(`${baseUrl}/cors-origins`);
+
+export const setOriginSettings = (origins: string[]): Promise<SettingResponse<OriginSettings>> =>
+  putJson(`${baseUrl}/cors-origins`, { origins });
+
+export const resetOriginSettings = (): Promise<SettingResponse<OriginSettings>> =>
+  del(`${baseUrl}/cors-origins`);
