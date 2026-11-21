@@ -409,21 +409,9 @@ public static class Gateway
                 options.MultipartHeadersLengthLimit = int.MaxValue;
             });
 
-            var corsOrigins = builder.Configuration
-                .GetSection("Cors:AllowedOrigins")
-                .GetChildren()
-                .Select(x => x.Value)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(x => x!)
-                .ToArray();
-            if (corsOrigins.Length == 0)
-                corsOrigins = new[] { "https://gateway.towuhu.com:12301" };
-
             builder.Services.AddWebSockets(options =>
             {
                 options.KeepAliveTimeout = TimeSpan.FromSeconds(120);
-                foreach (var origin in corsOrigins)
-                    options.AllowedOrigins.Add(origin);
             });
 
             builder.WebHost.ConfigureKestrel((kestrel =>
@@ -441,7 +429,7 @@ public static class Gateway
                 {
                     options.AddPolicy("GatewayOrigins",
                         policy => policy
-                            .WithOrigins(corsOrigins)
+                            .SetIsOriginAllowed(OriginPolicyStore.IsAllowed)
                             .AllowAnyMethod()
                             .AllowAnyHeader()
                             .AllowCredentials());
@@ -659,6 +647,7 @@ public static class Gateway
                 branch => branch.UseCors("GatewayOrigins"));
 
             app.UseWebSockets();
+            app.UseWebSocketOriginPolicy();
 
             // 压缩只对静态文件路由生效：代理转发的动态内容透传上游的 Content-Encoding，
             // 避免网关为上游未压缩的大响应白白消耗 CPU（WebApplication 会在用户中间件前
