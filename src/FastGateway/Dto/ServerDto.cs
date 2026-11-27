@@ -47,6 +47,11 @@ public class ServerDto
     public string? FrameOptions { get; set; }
 
     /// <summary>
+    ///     Referrer-Policy 注入策略：空（默认 no-referrer）/ 标准策略值 / NONE
+    /// </summary>
+    public string? ReferrerPolicy { get; set; }
+
+    /// <summary>
     ///     是否启用隧道
     /// </summary>
     public bool EnableTunnel { get; set; }

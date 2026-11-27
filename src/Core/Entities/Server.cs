@@ -61,6 +61,13 @@ public sealed class Server
     public string? FrameOptions { get; set; }
 
     /// <summary>
+    /// Referrer-Policy 注入值。
+    /// 空（默认 no-referrer）、标准策略值（如 strict-origin-when-cross-origin）、NONE（网关不注入，交给上游）。
+    /// 上游已声明 Referrer-Policy 时，网关一律不改写。
+    /// </summary>
+    public string? ReferrerPolicy { get; set; }
+
+    /// <summary>
     /// 是否启用隧道
     /// </summary>
     public bool EnableTunnel { get; set; }

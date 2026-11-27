@@ -58,6 +58,30 @@ export const frameOptionsOptions = [
     },
 ] as const;
 
+/** 网关注入的 Referrer-Policy 策略；空值为 no-referrer，NONE 表示不注入 */
+export const referrerPolicyOptions = [
+    {
+        value: "no-referrer",
+        label: "不发送 Referer（默认）",
+        description: "所有请求都不携带 Referer。依赖来源信息的统计、防盗链或风控站点可能提示 Referer 被禁用。",
+    },
+    {
+        value: "strict-origin-when-cross-origin",
+        label: "跨站仅来源域名（推荐）",
+        description: "同源请求发送完整 URL，跨站 HTTPS 到 HTTPS 只发送来源域名，降级到 HTTP 时不发送。兼顾兼容与隐私。",
+    },
+    {
+        value: "no-referrer-when-downgrade",
+        label: "仅降级时不发送",
+        description: "同源及 HTTPS 到 HTTPS 发送完整 URL，只在降级到 HTTP 时不发送。兼容性最好，但跨站会泄露完整路径。",
+    },
+    {
+        value: "NONE",
+        label: "不注入（由上游决定）",
+        description: "网关不添加 Referrer-Policy，完全沿用源站响应头；上游声明过该头时网关本来就不会改写。",
+    },
+] as const;
+
 export interface Server {
     id: string | null;
     listen: number;
@@ -69,6 +93,8 @@ export interface Server {
     isHttps: boolean;
     /** X-Frame-Options 注入策略：空 / SAMEORIGIN / DENY / NONE */
     frameOptions: string | null;
+    /** Referrer-Policy 注入策略：空（no-referrer）/ 标准策略值 / NONE */
+    referrerPolicy: string | null;
     enableTunnel: boolean;
     enableBlacklist: boolean;
     enableWhitelist: boolean;

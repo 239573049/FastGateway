@@ -34,6 +34,7 @@ public static class ServerService
                     Enable = x.Enable,
                     IsHttps = x.IsHttps,
                     FrameOptions = x.FrameOptions,
+                    ReferrerPolicy = x.ReferrerPolicy,
                     Listen = x.Listen,
                     OnLine = Gateway.Gateway.CheckServerOnline(x.Id),
                     RedirectHttps = x.RedirectHttps,
