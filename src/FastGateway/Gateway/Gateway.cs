@@ -636,7 +636,9 @@ public static class Gateway
                     {
                         var headers = context.Response.Headers;
                         TryAddSecurityHeader(headers, "X-Content-Type-Options", "nosniff");
-                        TryAddSecurityHeader(headers, "Referrer-Policy", "no-referrer");
+                        var referrerPolicy = ResolveReferrerPolicy(server.ReferrerPolicy,
+                            headers.ContainsKey("Referrer-Policy"));
+                        if (referrerPolicy is not null) headers["Referrer-Policy"] = referrerPolicy;
                         TryAddSecurityHeader(headers, "Permissions-Policy", "camera=(), microphone=(), geolocation=()");
                         TryAddSecurityHeader(headers, "Strict-Transport-Security", "max-age=31536000");
 
@@ -963,6 +965,18 @@ public static class Gateway
         if (!headers.ContainsKey(name)) headers[name] = value;
     }
 
+    private static readonly string[] ReferrerPolicies =
+    [
+        "no-referrer",
+        "no-referrer-when-downgrade",
+        "origin",
+        "origin-when-cross-origin",
+        "same-origin",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+        "unsafe-url"
+    ];
+
     /// <summary>
     ///     计算 X-Frame-Options；返回 null 表示不注入，完全交给上游。
     ///     配置值：空 / SAMEORIGIN（默认）、DENY、NONE（不注入）。只接受标准值，
@@ -973,13 +987,34 @@ public static class Gateway
         if (upstreamDeclaresFramePolicy) return null;
 
         var mode = string.IsNullOrWhiteSpace(configured) ? "SAMEORIGIN" : configured.Trim();
-        if (mode.Equals("NONE", StringComparison.OrdinalIgnoreCase) ||
-            mode.Equals("OFF", StringComparison.OrdinalIgnoreCase) ||
-            mode.Equals("DISABLE", StringComparison.OrdinalIgnoreCase) ||
-            mode.Equals("DISABLED", StringComparison.OrdinalIgnoreCase))
-            return null;
+        if (IsDisableDirective(mode)) return null;
         return mode.Equals("DENY", StringComparison.OrdinalIgnoreCase) ? "DENY" : "SAMEORIGIN";
     }
+
+    /// <summary>
+    ///     计算 Referrer-Policy；返回 null 表示不注入，完全交给上游。
+    ///     配置值：空（默认 no-referrer）、标准策略值、NONE（不注入）。只接受标准值，
+    ///     其余输入一律回退 no-referrer，避免管理端写入任意字符串造成响应头注入。
+    /// </summary>
+    public static string? ResolveReferrerPolicy(string? configured, bool upstreamDeclaresPolicy)
+    {
+        if (upstreamDeclaresPolicy) return null;
+
+        var mode = string.IsNullOrWhiteSpace(configured) ? "no-referrer" : configured.Trim();
+        if (IsDisableDirective(mode)) return null;
+
+        foreach (var policy in ReferrerPolicies)
+        {
+            if (mode.Equals(policy, StringComparison.OrdinalIgnoreCase)) return policy;
+        }
+        return "no-referrer";
+    }
+
+    private static bool IsDisableDirective(string value) =>
+        value.Equals("NONE", StringComparison.OrdinalIgnoreCase) ||
+        value.Equals("OFF", StringComparison.OrdinalIgnoreCase) ||
+        value.Equals("DISABLE", StringComparison.OrdinalIgnoreCase) ||
+        value.Equals("DISABLED", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsEtagMatch(StringValues ifNoneMatch, string etag)
     {

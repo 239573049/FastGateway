@@ -2,7 +2,7 @@
 import { toast } from "sonner";
 
 import { createServer } from "@/services/ServerService";
-import { ClientIpSource, clientIpSourceOptions, frameOptionsOptions, Server } from "@/types";
+import { ClientIpSource, clientIpSourceOptions, frameOptionsOptions, referrerPolicyOptions, Server } from "@/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,7 @@ export default function CreateServer({
             id: null,
             isHttps: false,
             frameOptions: "SAMEORIGIN",
+            referrerPolicy: "no-referrer",
             onLine: false,
             clientIpSource: ClientIpSource.Default,
             copyRequestHost: true,
@@ -481,6 +482,36 @@ export default function CreateServer({
                                 <p className="text-xs text-muted-foreground">
                                     {frameOptionsOptions.find(
                                         (option) => option.value === (value.frameOptions ?? "SAMEORIGIN")
+                                    )?.description}
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                                <FieldLabel
+                                    htmlFor="create-server-referrer-policy"
+                                    label="Referrer-Policy（来源信息）"
+                                    tooltip="默认 no-referrer 会让浏览器完全不发送 Referer，依赖来源信息的站点会报「Referer 被禁用」。需要 Referer 时可选跨站仅来源域名；上游已声明该头时网关不改写。"
+                                />
+                                <Select
+                                    value={value.referrerPolicy ?? "no-referrer"}
+                                    onValueChange={(next) =>
+                                        setValue((prev) => ({ ...prev, referrerPolicy: next }))
+                                    }
+                                >
+                                    <SelectTrigger id="create-server-referrer-policy">
+                                        <SelectValue placeholder="选择来源策略" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {referrerPolicyOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {referrerPolicyOptions.find(
+                                        (option) => option.value === (value.referrerPolicy ?? "no-referrer")
                                     )?.description}
                                 </p>
                             </div>

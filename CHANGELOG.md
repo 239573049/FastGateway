@@ -10,10 +10,12 @@
 - **网关（HTTPS 服务）**：`X-Frame-Options` 由硬编码 `DENY` 改为默认 `SAMEORIGIN`。`DENY` 连同源 iframe 一起禁止，会让依赖「父窗口驱动同源预览」的应用预览空白，并因拿到跨源空 frame 而持续抛 `SecurityError`。
 - **网关**：安全头改为「仅补齐、不覆盖」；上游已声明 `X-Frame-Options` 或 CSP `frame-ancestors` 时网关不再注入，避免反向代理改写源站自己的策略。
 - **网关**：新增服务级 `FrameOptions` 配置（`SAMEORIGIN` / `DENY` / `NONE`），管理界面「服务 → 功能设置」可选；旧配置文件缺该字段时默认 `SAMEORIGIN`。
+- **网关**：新增服务级 `ReferrerPolicy` 配置，可选标准策略值或 `NONE`（不注入），管理界面「服务 → 功能设置」可选；默认仍为 `no-referrer`，旧配置文件行为不变。依赖 Referer 的上游站点可改为 `strict-origin-when-cross-origin` 或 `NONE`。
 
 ### 测试 Tests
 
 - 新增 `FrameOptionsTests`，覆盖默认值、大小写、非法值回退、禁用与上游策略优先。
+- 新增 `ReferrerPolicyTests`，覆盖默认值、大小写、非法值回退、禁用、上游策略优先、配置与集群 round-trip。
 
 ## [2.15.0] - 2026-08-12
 
